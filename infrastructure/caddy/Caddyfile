@@ -1,0 +1,26 @@
+:80 {
+    encode gzip zstd
+
+    # API endpoints
+    handle /api/* {
+        reverse_proxy api:4000
+    }
+
+    # Documentation Swagger
+    handle /swagger* {
+        reverse_proxy api:4000
+    }
+
+    # Frontend Next.js
+    handle /* {
+        reverse_proxy web:3000
+    }
+
+    # Sécurité en-têtes HTTP
+    header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        -Server
+    }
+}

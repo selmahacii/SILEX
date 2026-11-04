@@ -1,0 +1,93 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: silex_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-silex_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silex_secure_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-silex_erp}
+      TZ: Africa/Algiers
+    ports:
+      - "5433:5432"
+    volumes:
+      - silex_pgdata:/var/lib/postgresql/data
+    networks:
+      - silex-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U silex_admin -d silex_erp"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.api
+    container_name: silex_api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-silex_admin}:${POSTGRES_PASSWORD:-silex_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-silex_erp}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-silex_super_secret_jwt_key_industrial_erp_2026_demo}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-silex_super_refresh_jwt_key_industrial_erp_2026_demo}
+      DEMO_MODE: ${DEMO_MODE:-true}
+      TZ: Africa/Algiers
+    ports:
+      - "4000:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - silex-net
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.web
+    container_name: silex_web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+      DEMO_MODE: ${DEMO_MODE:-true}
+      TZ: Africa/Algiers
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - silex-net
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: silex_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile
+      - silex_caddy_data:/data
+      - silex_caddy_config:/config
+    depends_on:
+      - web
+      - api
+    networks:
+      - silex-net
+
+volumes:
+  silex_pgdata:
+    name: silex_pgdata
+  silex_caddy_data:
+    name: silex_caddy_data
+  silex_caddy_config:
+    name: silex_caddy_config
+
+networks:
+  silex-net:
+    name: silex-net
+    driver: bridge
