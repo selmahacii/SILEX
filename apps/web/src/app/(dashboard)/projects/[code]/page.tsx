@@ -276,7 +276,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
 
   useEffect(() => {
     fetchProject();
-    api.get<any[]>('/users').then(setUsersList).catch(() => {});
+    api.get<any[]>('/users').then(data => setUsersList(Array.isArray(data) ? data : [])).catch(() => {});
   }, [resolvedParams.code]);
 
   const handleOpenEdit = () => {
@@ -1634,7 +1634,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                     className="w-full p-2 border border-slate-300 rounded bg-white font-medium"
                   >
                     <option value="">Sélectionner un responsable...</option>
-                    {usersList.map(u => (
+                    {(Array.isArray(usersList) ? usersList : []).map(u => (
                       <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
                     ))}
                   </select>
@@ -1926,7 +1926,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                       onChange={e => {
                         const val = e.target.value;
                         setMilestoneSupervisor(val);
-                        const found = usersList.find(u => `${u.name} (${u.title || u.role})` === val || u.name === val);
+                        const found = (Array.isArray(usersList) ? usersList : []).find(u => `${u.name} (${u.title || u.role})` === val || u.name === val);
                         if (found) {
                           setMilestoneSupervisorEmail(found.email);
                           setMilestoneSupervisorContact('+213 (0) 560 21 88 44');
@@ -1938,7 +1938,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                       <option value="Yacine Khelifi (Superviseur CND & Soudage)">Yacine Khelifi (Superviseur CND)</option>
                       <option value="Karim Mansouri (Directeur Technique)">Karim Mansouri (Directeur Technique)</option>
                       <option value="Nadia Chaib (Responsable QHSE)">Nadia Chaib (Responsable QHSE)</option>
-                      {usersList.map(u => (
+                      {(Array.isArray(usersList) ? usersList : []).map(u => (
                         <option key={u.id} value={`${u.name} (${u.title || u.role})`}>
                           {u.name} ({u.role})
                         </option>
@@ -2233,7 +2233,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                   className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-semibold"
                 >
                   <option value="">-- Choisir un intervenant --</option>
-                  {usersList
+                  {(Array.isArray(usersList) ? usersList : [])
                     .filter(u => !(project.assignedUsers || []).some((a: any) => a.userId === u.id))
                     .map(u => (
                       <option key={u.id} value={u.id}>
