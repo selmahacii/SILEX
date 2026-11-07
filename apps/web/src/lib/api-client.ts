@@ -29,16 +29,23 @@ class ApiClient {
   }
 
   private getBaseUrl(): string {
+    // 1. Côté serveur (SSR / Server Actions / Server Functions) :
+    // Utiliser la variable injectée par le binding de service Vercel (API_URL) ou fallback local
+    if (typeof window === 'undefined') {
+      const serverUrl =
+        process.env.API_URL ||
+        process.env.INTERNAL_API_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        'http://127.0.0.1:4000';
+      return serverUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
+    }
+
+    // 2. Côté navigateur :
+    // Utiliser des requêtes relatives ('') pour que Vercel route /api/(.*) directement vers le service api
     if (process.env.NEXT_PUBLIC_API_URL) {
-      return process.env.NEXT_PUBLIC_API_URL;
+      return process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
     }
-    // Dans le navigateur, utiliser les requêtes relatives (/api/...) via le rewrite Next.js
-    // pour garantir la compatibilité même origine et éviter tout conflit CORS / ports
-    if (typeof window !== 'undefined') {
-      return '';
-    }
-    // Côté serveur (SSR), joindre directement l'API locale
-    return 'http://127.0.0.1:4000';
+    return '';
   }
 
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
