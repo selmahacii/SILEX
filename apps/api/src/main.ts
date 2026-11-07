@@ -1,14 +1,24 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, INestApplication } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import express, { Express, Request, Response } from 'express';
 import helmet from 'helmet';
 import compression from 'compression';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
-async function bootstrap() {
-  const logger = new Logger('SILEX_API_BOOTSTRAP');
-  const app = await NestFactory.create(AppModule);
+let serverApp: INestApplication | null = null;
+let expressInstance: Express | null = null;
+
+export async function createApp(): Promise<{ app: INestApplication; express: Express }> {
+  if (serverApp && expressInstance) {
+    return { app: serverApp, express: expressInstance };
+  }
+
+  const expressApp = express();
+  const adapter = new ExpressAdapter(expressApp);
+  const app = await NestFactory.create(AppModule, adapter);
 
   app.setGlobalPrefix('api');
 
@@ -50,10 +60,30 @@ async function bootstrap() {
     customSiteTitle: 'SILEX ERP API Docs',
   });
 
-  const port = process.env.PORT || 4000;
-  await app.listen(port, '0.0.0.0');
-  logger.log(`🚀 SILEX ERP API démarrée sur http://0.0.0.0:${port}/api`);
-  logger.log(`📚 Documentation Swagger disponible sur http://localhost:${port}/api/docs`);
+  await app.init();
+  serverApp = app;
+  expressInstance = expressApp;
+
+  return { app, express: expressApp };
 }
 
-bootstrap();
+// Handler exporté par défaut pour Vercel Serverless
+export default async function handler(req: Request, res: Response) {
+  const { express: server } = await createApp();
+  return server(req, res);
+}
+
+// Démarrage standalone standard si exécuté directement (local ou conteneur)
+if (!process.env.VERCEL) {
+  const logger = new Logger('SILEX_API_BOOTSTRAP');
+  createApp()
+    .then(async ({ app }) => {
+      const port = process.env.PORT || 4000;
+      await app.listen(port, '0.0.0.0');
+      logger.log(`🚀 SILEX ERP API démarrée sur http://0.0.0.0:${port}/api`);
+      logger.log(`📚 Documentation Swagger disponible sur http://localhost:${port}/api/docs`);
+    })
+    .catch((err) => {
+      logger.error('Erreur au démarrage de l\'API:', err);
+    });
+}
