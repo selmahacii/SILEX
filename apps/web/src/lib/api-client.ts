@@ -209,30 +209,57 @@ class ApiClient {
     }
 
     // 2.5 Procurement
+    if (clean.includes('/suppliers')) {
+      return mockStore.getSuppliers();
+    }
+    if (clean.includes('/purchase-orders')) {
+      return mockStore.getPurchaseOrders();
+    }
     if (clean.includes('/procurement')) {
       return mockStore.getProcurementRequests();
     }
 
     // 2.6 Inventory
+    if (clean.includes('/warehouses')) {
+      return mockStore.getWarehouses();
+    }
+    if (clean.includes('/stock-movements') || clean.includes('/movements')) {
+      return mockStore.getStockMovements();
+    }
     if (clean.includes('/inventory')) {
       return mockStore.getInventoryItems();
     }
 
-    // 2.7 Finance
+    // 2.7 HR & Utilisateurs
+    if (clean.includes('/employees') || clean.includes('/users') || clean.includes('/hr')) {
+      return mockStore.getEmployees();
+    }
+
+    // 2.8 Finance
     if (clean.includes('/finance')) {
       return {
         kpis: mockStore.getKpis(),
+        summary: {
+          totalBilled: 125000000,
+          totalCollected: 98000000,
+          pendingCollection: 27000000,
+          warrantyHeld: 8500000,
+          treasuryBalance: 42500000,
+        },
         distribution: MOCK_COST_DISTRIBUTION,
-        projects: mockStore.getProjects(),
+        projects: mockStore.getProjects().map(p => ({
+          ...p,
+          marginRate: 25.1,
+          contractAmount: p.contractAmount || 145000000,
+          billedAmount: 45000000,
+          paidAmount: 38000000,
+          warrantyAmount: 7250000,
+        })),
       };
     }
 
-    // Default fallback
-    return {
-      success: true,
-      items: [],
-      data: [],
-    };
+    // Default fallback: Always return an Array so `.find()` or `.map()` never crashes
+    return [];
   }
 
   async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

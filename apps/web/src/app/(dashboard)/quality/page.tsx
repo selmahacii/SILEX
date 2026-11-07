@@ -126,9 +126,9 @@ export default function QualityPage() {
         api.get<any[]>('/quality/non-conformities'),
         api.get<any[]>('/projects'),
       ]);
-      setDocuments(docs);
-      setNonConformities(ncs);
-      setProjects(prjs);
+      setDocuments(Array.isArray(docs) ? docs : []);
+      setNonConformities(Array.isArray(ncs) ? ncs : []);
+      setProjects(Array.isArray(prjs) ? prjs : []);
 
       if (prjs.length > 0 && !ncProjectId) setNcProjectId(prjs[0].id);
     } catch (err) {

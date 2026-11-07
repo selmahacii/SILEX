@@ -220,20 +220,27 @@ export default function InventoryPage() {
         api.get<any[]>('/projects'),
         api.get<any[]>('/hr/employees'),
       ]);
-      setItems(itms);
-      setWarehouses(whs);
-      setMovements(mvts);
-      setPurchaseOrders(pos);
-      setProjects(prjs);
-      setEmployees(emps);
+      const safeItms = Array.isArray(itms) ? itms : [];
+      const safeWhs = Array.isArray(whs) ? whs : [];
+      const safeMvts = Array.isArray(mvts) ? mvts : [];
+      const safePos = Array.isArray(pos) ? pos : [];
+      const safePrjs = Array.isArray(prjs) ? prjs : [];
+      const safeEmps = Array.isArray(emps) ? emps : [];
 
-      if (whs.length > 0 && !selectedWarehouseId) setSelectedWarehouseId(whs[0].id);
-      if (prjs.length > 0 && !selectedProjectId) setSelectedProjectId(prjs[0].id);
-      if (pos.length > 0 && !selectedPOId) setSelectedPOId(pos[0].id);
-      if (itms.length > 0 && issueLines[0] && !issueLines[0].itemId) {
-        setIssueLines([{ id: 'line-1', itemId: itms[0].id, quantity: 5, batchNumber: 'LOT-TUB-2026-904' }]);
+      setItems(safeItms);
+      setWarehouses(safeWhs);
+      setMovements(safeMvts);
+      setPurchaseOrders(safePos);
+      setProjects(safePrjs);
+      setEmployees(safeEmps);
+
+      if (safeWhs.length > 0 && !selectedWarehouseId) setSelectedWarehouseId(safeWhs[0].id);
+      if (safePrjs.length > 0 && !selectedProjectId) setSelectedProjectId(safePrjs[0].id);
+      if (safePos.length > 0 && !selectedPOId) setSelectedPOId(safePos[0].id);
+      if (safeItms.length > 0 && issueLines[0] && !issueLines[0].itemId) {
+        setIssueLines([{ id: 'line-1', itemId: safeItms[0].id, quantity: 5, batchNumber: 'LOT-TUB-2026-904' }]);
       }
-      if (emps.length > 0 && !recipientEmployeeId) setRecipientEmployeeId(emps[0].id);
+      if (safeEmps.length > 0 && !recipientEmployeeId) setRecipientEmployeeId(safeEmps[0].id);
       if (whs.length > 1) {
         if (!transferSourceWhId) setTransferSourceWhId(whs[0].id);
         if (!transferTargetWhId) setTransferTargetWhId(whs[1].id);

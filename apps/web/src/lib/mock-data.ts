@@ -249,6 +249,71 @@ const DEFAULT_WORKFLOWS_INBOX = [
   },
 ];
 
+export const MOCK_WAREHOUSES = [
+  { id: 'wh-hmd', code: 'MAG-HMD', name: 'Magasin Central Base Sud Hassi Messaoud', location: 'Zone Industrielle Irara, Hassi Messaoud', managerName: 'Tarek Meziani' },
+  { id: 'wh-ski', code: 'MAG-SKI', name: 'Magasin Régional Chantier Skikda', location: 'Plateforme Pétrochimique, Skikda', managerName: 'Khaled Bounab' },
+  { id: 'wh-rou', code: 'MAG-ROU', name: 'Magasin Principal & Atelier de Préfabrication Rouiba', location: 'Zone Industrielle Voie C, Rouiba (Alger)', managerName: 'Mustapha Touati' },
+];
+
+export const MOCK_SUPPLIERS = [
+  { id: 'sup-1', code: 'FRN-001', name: 'Sarl Algérie Vannes & Robinetterie', contactName: 'Mourad Cherif', email: 'contact@algerievannes.dz', phone: '+213 21 82 45 10', address: 'Zone Industrielle Dar El Beida, Alger', specialties: 'Robinetterie PN40/PN100, vannes API, clapets pétrole', rating: 4.8 },
+  { id: 'sup-2', code: 'FRN-002', name: 'Eurl Comptoir Sidérurgique & Métallurgique', contactName: 'Djamel Hadj', email: 'ventes@siderurgique-est.dz', phone: '+213 38 72 11 00', address: 'Zone Industrielle Chaiba, Annaba', specialties: 'Tubes ASTM A106, tôles chaudronnerie P265GH, profilés', rating: 4.6 },
+  { id: 'sup-3', code: 'FRN-003', name: 'Sarl Gaz & Soudure Industrielle DZ', contactName: 'Hocine Kaci', email: 'kaci@gaz-soudure.dz', phone: '+213 29 73 55 20', address: 'Zone Industrielle Irara, Hassi Messaoud', specialties: 'Électrodes E7018, fils TIG, torches, gaz spéciaux', rating: 4.9 },
+  { id: 'sup-4', code: 'FRN-004', name: 'Eurl Robinetterie & Brides Industrielles Oran', contactName: 'Nabil Mansour', email: 'contact@rbi-oran.dz', phone: '+213 41 40 18 90', address: 'Zone Industrielle Es Senia, Oran', specialties: 'Brides forgées WNRF/BLRF, visserie B7/2H', rating: 4.4 },
+];
+
+export const MOCK_PURCHASE_ORDERS = [
+  {
+    id: 'po-01',
+    poNumber: 'BC-2026-0051',
+    code: 'BC-2026-0051',
+    supplierName: 'Sarl Algérie Vannes & Robinetterie',
+    supplier: { id: 'sup-1', name: 'Sarl Algérie Vannes & Robinetterie' },
+    projectCode: 'PRJ-2026-001',
+    projectName: 'Maintenance Arrêt Unité Raffinage U-100',
+    totalAmountHT: 4850000,
+    totalAmountTTC: 5771500,
+    status: 'CONFIRMED',
+    issuedDate: '2026-11-04T10:00:00.000Z',
+    items: [
+      { id: 'poi-1', itemId: '1', code: 'ART-001', name: 'Vanne à opercule acier forgé DN100 PN40', quantity: 8, unitCost: 14200, unit: 'U' },
+    ],
+  },
+];
+
+export const MOCK_EMPLOYEES = [
+  { id: 'usr-rp-002', name: 'Sofiane Belkacem', email: 's.belkacem@silex-services.dz', role: 'RESPONSABLE_PROJET', departmentCode: 'OPERATIONS_PROJETS', title: 'Ingénieur Chef de Projets Industriels' },
+  { id: 'usr-dg-001', name: 'Karim Mansouri', email: 'k.mansouri@silex-services.dz', role: 'DIRECTEUR_GENERAL', departmentCode: 'DIRECTION_GENERALE', title: 'Directeur Général' },
+  { id: 'usr-ach-003', name: 'Amina Benali', email: 'a.benali@silex-services.dz', role: 'RESPONSABLE_ACHATS', departmentCode: 'ACHATS_LOGISTIQUE', title: 'Responsable Approvisionnements & Achats' },
+  { id: 'usr-mag-004', name: 'Tarek Meziani', email: 't.meziani@silex-services.dz', role: 'RESPONSABLE_MAGASIN', departmentCode: 'MAGASIN_STOCKS', title: 'Gestionnaire Magasin Central' },
+  { id: 'usr-rh-005', name: 'Samira Haddad', email: 's.haddad@silex-services.dz', role: 'RESPONSABLE_RH', departmentCode: 'RESSOURCES_HUMAINES', title: 'Responsable RH & Compétences' },
+  { id: 'usr-sou-01', name: 'Mourad Zitouni', email: 'm.zitouni@silex-services.dz', role: 'OPERATEUR_CHANTIER', departmentCode: 'OPERATIONS_PROJETS', title: 'Soudeur Haute Pression ASME IX' },
+  { id: 'usr-cnd-02', name: 'Yacine Khelifi', email: 'y.khelifi@silex-services.dz', role: 'RESPONSABLE_QUALITE', departmentCode: 'QHSE', title: 'Inspecteur CND Niveau II' },
+];
+
+export const MOCK_STOCK_MOVEMENTS = [
+  {
+    id: 'mvt-01',
+    type: 'ENTRY',
+    itemCode: 'ART-001',
+    itemName: 'Vanne à opercule acier forgé DN100 PN40',
+    quantity: 10,
+    warehouseName: 'Magasin Central Base Sud Hassi Messaoud',
+    reference: 'BR-2026-081',
+    timestamp: '2026-11-05T11:00:00.000Z',
+  },
+  {
+    id: 'mvt-02',
+    type: 'EXIT',
+    itemCode: 'ART-002',
+    itemName: 'Tube acier sans soudure ASTM A106 Gr.B 4" Sch 40',
+    quantity: 15,
+    warehouseName: 'Magasin Central Base Sud Hassi Messaoud',
+    reference: 'BS-2026-142',
+    timestamp: '2026-11-06T15:30:00.000Z',
+  },
+];
+
 export const MOCK_COST_DISTRIBUTION = [
   { name: 'Tuyauterie, Soudage & Matériaux', value: 45, color: '#0B207D' },
   { name: 'Main d’œuvre & Soudeurs ASME', value: 30, color: '#0A7F7C' },
@@ -596,6 +661,26 @@ class StatefulMockStore {
 
   getInventoryItems() {
     return this.inventory;
+  }
+
+  getWarehouses() {
+    return MOCK_WAREHOUSES;
+  }
+
+  getSuppliers() {
+    return MOCK_SUPPLIERS;
+  }
+
+  getPurchaseOrders() {
+    return MOCK_PURCHASE_ORDERS;
+  }
+
+  getEmployees() {
+    return MOCK_EMPLOYEES;
+  }
+
+  getStockMovements() {
+    return MOCK_STOCK_MOVEMENTS;
   }
 
   addInventoryMovement(movement: any) {

@@ -101,10 +101,10 @@ export default function HrPage() {
         api.get<any[]>('/hr/attendances'),
         api.get<any[]>('/projects'),
       ]);
-      setEmployees(emps);
-      setCertifications(certs);
-      setAttendances(atts);
-      setProjects(prjs);
+      setEmployees(Array.isArray(emps) ? emps : []);
+      setCertifications(Array.isArray(certs) ? certs : []);
+      setAttendances(Array.isArray(atts) ? atts : []);
+      setProjects(Array.isArray(prjs) ? prjs : []);
 
       if (emps.length > 0) {
         if (!certEmployeeId) setCertEmployeeId(emps[0].id);

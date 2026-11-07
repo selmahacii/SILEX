@@ -282,10 +282,10 @@ export default function MaintenancePage() {
         api.get<any[]>('/projects'),
         api.get<any[]>('/inventory/items'),
       ]);
-      setAssets(asts);
-      setOrders(ords);
-      setProjects(prjs);
-      setInventoryItems(itms);
+      setAssets(Array.isArray(asts) ? asts : []);
+      setOrders(Array.isArray(ords) ? ords : []);
+      setProjects(Array.isArray(prjs) ? prjs : []);
+      setInventoryItems(Array.isArray(itms) ? itms : []);
 
       if (asts.length > 0 && !orderAssetId) setOrderAssetId(asts[0].id);
       if (prjs.length > 0 && !assetProjectId) setAssetProjectId(prjs[0].id);

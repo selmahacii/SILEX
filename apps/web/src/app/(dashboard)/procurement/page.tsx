@@ -275,14 +275,20 @@ export default function ProcurementPage() {
         api.get<any[]>('/procurement/suppliers'),
       ]);
 
-      setPurchaseRequests(prs);
-      setPurchaseOrders(pos);
-      setProjects(prjs);
-      setItems(itms);
-      setSuppliers(supps);
+      const safePrs = Array.isArray(prs) ? prs : [];
+      const safePos = Array.isArray(pos) ? pos : [];
+      const safePrjs = Array.isArray(prjs) ? prjs : [];
+      const safeItms = Array.isArray(itms) ? itms : [];
+      const safeSupps = Array.isArray(supps) ? supps : [];
 
-      if (prjs.length > 0 && !selectedProjectId) setSelectedProjectId(prjs[0].id);
-      if (itms.length > 0 && !selectedItemId) setSelectedItemId(itms[0].id);
+      setPurchaseRequests(safePrs);
+      setPurchaseOrders(safePos);
+      setProjects(safePrjs);
+      setItems(safeItms);
+      setSuppliers(safeSupps);
+
+      if (safePrjs.length > 0 && !selectedProjectId) setSelectedProjectId(safePrjs[0].id);
+      if (safeItms.length > 0 && !selectedItemId) setSelectedItemId(safeItms[0].id);
       if (supps.length > 0 && !quoteSupplierId) setQuoteSupplierId(supps[0].id);
 
       if (itms.length > 0) {
