@@ -1,9 +1,16 @@
-import { Injectable, UnauthorizedException, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  NotFoundException,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { SystemRole, UserSessionPayload } from '@silex/shared';
+import { SystemRole, UserSessionPayload, DEMO_PROFILES } from '@silex/shared';
 import { AuthResponseDto } from '@silex/contracts';
 
 @Injectable()
@@ -116,9 +123,41 @@ export class AuthService {
     };
   }
 
-  async login(email: string, password?: string): Promise<AuthResponseDto> {
+  private failedAttempts = new Map<string, { count: number; lockedUntil?: number }>();
+
+  private recordFailedAttempt(email: string) {
+    const current = this.failedAttempts.get(email) || { count: 0 };
+    current.count += 1;
+    if (current.count >= 5) {
+      current.lockedUntil = Date.now() + 15 * 60 * 1000; // Verrouillage 15 minutes
+    }
+    this.failedAttempts.set(email, current);
+  }
+
+  async login(email: string, password: string): Promise<AuthResponseDto> {
+    // Validation stricte des paramètres d'entrée
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      throw new UnauthorizedException('Identifiants invalides.');
+    }
+
+    if (!password || typeof password !== 'string' || !password.trim()) {
+      throw new UnauthorizedException('Identifiants invalides.');
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Protection anti-force brute : vérification de verrouillage
+    const attempt = this.failedAttempts.get(normalizedEmail);
+    if (attempt && attempt.lockedUntil && attempt.lockedUntil > Date.now()) {
+      const remainingMinutes = Math.ceil((attempt.lockedUntil - Date.now()) / (60 * 1000));
+      throw new HttpException(
+        `Compte temporairement verrouillé suite à de multiples tentatives échouées. Réessayez dans ${remainingMinutes} minute(s).`,
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
     const user = await this.prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       include: {
         assignedProjects: {
           select: { project: { select: { code: true } } },
@@ -127,15 +166,18 @@ export class AuthService {
     });
 
     if (!user || !user.active) {
-      throw new UnauthorizedException('Identifiants invalides ou compte inactif.');
+      this.recordFailedAttempt(normalizedEmail);
+      throw new UnauthorizedException('Identifiants invalides.');
     }
 
-    if (password) {
-      const isMatch = await argon2.verify(user.passwordHash, password);
-      if (!isMatch) {
-        throw new UnauthorizedException('Identifiants invalides.');
-      }
+    const isMatch = await argon2.verify(user.passwordHash, password);
+    if (!isMatch) {
+      this.recordFailedAttempt(normalizedEmail);
+      throw new UnauthorizedException('Identifiants invalides.');
     }
+
+    // Réinitialisation des tentatives échouées en cas de succès
+    this.failedAttempts.delete(normalizedEmail);
 
     await this.auditService.logAction({
       entityName: 'USER',
@@ -155,8 +197,9 @@ export class AuthService {
       throw new BadRequestException('Le mode démonstration est désactivé sur cet environnement.');
     }
 
+    const targetEmail = DEMO_PROFILES[targetRole]?.email;
     const demoUser = await this.prisma.user.findFirst({
-      where: { role: targetRole, active: true },
+      where: targetEmail ? { email: targetEmail } : { role: targetRole, active: true },
       include: {
         assignedProjects: {
           select: { project: { select: { code: true } } },

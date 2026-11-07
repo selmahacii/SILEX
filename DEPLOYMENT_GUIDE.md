@@ -70,18 +70,20 @@
    *Renseigner des secrets forts pour JWT_SECRET, JWT_REFRESH_SECRET et DATABASE_URL. Désactiver DEMO_MODE si nécessaire.*
 4. **Configuration du nom de domaine dans Caddy** :
    Éditer `infrastructure/caddy/Caddyfile` en remplaçant `localhost` par le domaine officiel (ex: `erp.silex-services.dz`). Caddy provisionnera automatiquement le certificat SSL/TLS Let's Encrypt.
-5. **Construction et lancement des conteneurs** :
+5. **Construction et lancement des conteneurs en production** :
+   En production VPS, utiliser impérativement le profil durci `docker-compose.prod.yml` garantissant qu'aucun port de base de données ni d'API interne n'est exposé publiquement (seul Caddy écoute sur les ports 80 et 443) :
    ```bash
-   docker compose -f infrastructure/docker/docker-compose.yml build
-   docker compose -f infrastructure/docker/docker-compose.yml up -d
+   docker compose -f infrastructure/docker/docker-compose.prod.yml build
+   docker compose -f infrastructure/docker/docker-compose.prod.yml up -d
    ```
 6. **Application des migrations de base de données** :
+   Le schéma est entièrement versionné dans `apps/api/prisma/migrations`. Appliquer les migrations de manière reproductible et sûre :
    ```bash
-   docker compose -f infrastructure/docker/docker-compose.yml exec api pnpm prisma migrate deploy
+   docker compose -f infrastructure/docker/docker-compose.prod.yml exec api pnpm --filter @silex/api prisma migrate deploy
    ```
 7. **Vérification de l'état des services** :
    ```bash
-   docker compose -f infrastructure/docker/docker-compose.yml ps
+   docker compose -f infrastructure/docker/docker-compose.prod.yml ps
    curl -I https://erp.silex-services.dz/api/health
    ```
 

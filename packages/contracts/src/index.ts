@@ -14,7 +14,7 @@ import {
 
 export interface LoginRequestDto {
   email: string;
-  password?: string;
+  password: string;
 }
 
 export interface DemoSwitchUserRequestDto {
@@ -117,6 +117,15 @@ export interface IssueMaterialToProjectDto {
   workZone?: string;
   recipientEmployeeId: string;
   notes?: string;
+}
+
+export interface CreateUserDto {
+  name: string;
+  email: string;
+  role: SystemRole;
+  departmentCode: DepartmentCode;
+  title?: string;
+  password?: string;
 }
 
 export interface DashboardKPIDto {

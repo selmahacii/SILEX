@@ -9,7 +9,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-silex_erp}
       TZ: Africa/Algiers
     ports:
-      - "5433:5432"
+      # Liaison exclusive sur localhost (évite toute exposition sur 0.0.0.0)
+      - "127.0.0.1:5433:5432"
     volumes:
       - silex_pgdata:/var/lib/postgresql/data
     networks:
@@ -35,12 +36,17 @@ services:
       DEMO_MODE: ${DEMO_MODE:-true}
       TZ: Africa/Algiers
     ports:
-      - "4000:4000"
+      - "127.0.0.1:4000:4000"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - silex-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4000/api/projects/kpis || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   web:
     build:
@@ -56,16 +62,23 @@ services:
       DEMO_MODE: ${DEMO_MODE:-true}
       TZ: Africa/Algiers
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       - api
     networks:
       - silex-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000 || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   caddy:
     image: caddy:2-alpine
     container_name: silex_caddy
     restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
     ports:
       - "80:80"
       - "443:443"

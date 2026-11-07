@@ -2,8 +2,11 @@ import { z } from 'zod';
 import { SystemRole } from '@silex/shared';
 
 export const loginSchema = z.object({
-  email: z.string().email('Adresse email invalide'),
-  password: z.string().min(6, 'Le mot de passe doit comporter au moins 6 caractères').optional(),
+  email: z.string().trim().email('Adresse email invalide'),
+  password: z
+    .string({ required_error: 'Le mot de passe est obligatoire' })
+    .min(1, 'Le mot de passe ne peut pas être vide')
+    .min(6, 'Le mot de passe doit comporter au moins 6 caractères'),
 });
 
 export const demoSwitchSchema = z.object({

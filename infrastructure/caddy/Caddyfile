@@ -1,26 +1,42 @@
-:80 {
+{$DOMAIN:localhost} {
     encode gzip zstd
 
-    # API endpoints
+    # API endpoints & OpenAPI Swagger documentation
     handle /api/* {
-        reverse_proxy api:4000
+        reverse_proxy api:4000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
     }
 
-    # Documentation Swagger
-    handle /swagger* {
-        reverse_proxy api:4000
-    }
-
-    # Frontend Next.js
+    # Frontend Next.js (Dashboard & Login)
     handle /* {
-        reverse_proxy web:3000
+        reverse_proxy web:3000 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
     }
 
-    # Sécurité en-têtes HTTP
+    # Limite de taille de requête (10MB pour les pièces jointes chantiers)
+    request_body {
+        max_size 10MB
+    }
+
+    # En-têtes HTTP de sécurité renforcés
     header {
         X-Content-Type-Options nosniff
         X-Frame-Options DENY
         Referrer-Policy strict-origin-when-cross-origin
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         -Server
+    }
+
+    log {
+        output stdout
+        format json
     }
 }

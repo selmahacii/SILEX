@@ -7,20 +7,22 @@
 
 ## 1. Authentification & Gestion des Sessions
 
-- [x] **Hachage cryptographique robuste** : Mots de passe chiffrés avec `Argon2id` (paramètres mémoire et parallélisme conformes aux recommandations ANSSI/OWASP).
-- [x] **Stockage sécurisé des tokens** : JWT transmis via en-têtes d'autorisation sécurisés ou cookies `HttpOnly; Secure; SameSite=Strict`.
+- [x] **Hachage cryptographique robuste & Vérification obligatoire** : Mots de passe chiffrés et vérifiés avec `Argon2id`. Le champ `password` est obligatoire dans `LoginRequestDto` et validé par Zod (min 6 caractères, non vide). Refus catégorique des connexions sans mot de passe ou avec mot de passe null/vide.
+- [x] **Stockage sécurisé des tokens** : JWT signé avec clé secrète, durée de validité contrôlée, transmis via en-têtes d'autorisation sécurisés (`Bearer`).
 - [x] **Rotation des Refresh Tokens** : Chaque session de renouvellement invalide l'ancien jeton en base (`RefreshSession`).
-- [x] **Rate Limiting sur l'authentification** : Protection active contre les attaques par force brute (ex: 5 tentatives par minute par IP).
-- [x] **Sécurisation du sélecteur de démo** : Le sélecteur de rôles n'est actif que si `DEMO_MODE=true` ; en production, le flag est désactivé et l'endpoint API dédié retourne `404 Not Found`.
+- [x] **Protection anti-brute-force & Lockout** : Verrouillage automatique de compte après 5 tentatives infructueuses consécutives (blocage 15 minutes avec code HTTP `429 Too Many Requests`).
+- [x] **Sécurisation du sélecteur de démo** : Le sélecteur de rôles n'est actif que si `DEMO_MODE=true` ; en production, le flag est désactivé et l'endpoint API dédié retourne `404 Not Found`. La page de connexion `/login` fonctionne de manière autonome en mode standard.
+- [x] **Protection des données sensibles** : Exclusion systématique de `passwordHash` dans toutes les projections Prisma (`select`), notamment `GET /api/users` et `GET /api/auth/me`. L'accès à `GET /api/users` est strictement restreint à `ADMINISTRATEUR`, `DIRECTEUR_GENERAL` et `RESPONSABLE_RH`.
 
 ---
 
 ## 2. Contrôle d'Accès & Autorisations (RBAC & ABAC)
 
-- [x] **Vérification systématique côté serveur** : Les composants d'interface ne cachent que la vue ; chaque requête API passe par `JwtAuthGuard`, `RolesGuard` et `ProjectAccessGuard`.
+- [x] **Vérification systématique côté serveur** : `JwtAuthGuard` appliqué globalement à l'ensemble de l'API (bypasses uniquement sur routes annotées `@Public()`).
+- [x] **Contrôle de rôle (RBAC)** : `RolesGuard` validant les rôles autorisés sur chaque endpoint sensible (achats, stocks, finance, utilisateurs).
 - [x] **Protection contre l'escalade horizontale de privilèges (BOLA/IDOR)** :
-  - Un chef de projet ne peut ni lire ni modifier une ressource rattachée à un projet non assigné.
-  - L'accès par identifiant (`GET /api/projects/:id`) vérifie la relation `UserProjectAssignment`.
+  - Un chef de projet ne peut ni lire ni modifier une ressource rattachée à un projet non assigné (`ProjectAccessGuard` validant l'assignation sur `id` ou `code`).
+  - Toute violation déclenche un code HTTP `403 Forbidden`.
 - [x] **Règle de séparation des tâches (SoD)** : Le demandeur d'une commande ne peut valider sa propre demande, même s'il possède le rôle d'approbateur délégué.
 - [x] **Idempotence des décisions** : Impossibilité de revalider ou rejeter deux fois la même demande.
 
@@ -31,7 +33,8 @@
 - [x] **Types Decimal pour la finance** : Zéro calcul monétaire sur des flottants JavaScript (IEEE 754). Utilisation de `Decimal.js` et types Prisma `Decimal(15,2)`.
 - [x] **Atomicité PostgreSQL (`prisma.$transaction`)** : Les opérations combinées (ex: validation de réception, création de mouvement stock, et mise à jour de commande) s'exécutent dans un bloc transactionnel unifié.
 - [x] **Immuabilité du stock ledger** : Aucun enregistrement de mouvement de stock validé ne peut être supprimé ou altéré. Une régularisation s'effectue par un mouvement compensatoire tracé.
-- [x] **Contrainte anti-stock négatif** : Vérification stricte en amont du mouvement sous verrou de ligne (`SELECT FOR UPDATE` ou transaction sérialisable).
+- [x] **Contrainte anti-stock négatif & Concurrence** : Décrément conditionnel atomique (`currentStock: { gte: quantity }`) doublé d'une contrainte CHECK PostgreSQL native (`CONSTRAINT check_positive_stock CHECK (currentStock >= 0)`). Impossibilité physique d'atteindre un stock négatif, même sous requêtes concurrentes simultanées.
+- [x] **Gestion des migrations BDD** : Migration baseline `0_init` versionnée et reproductible via `prisma migrate deploy`.
 
 ---
 

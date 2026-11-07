@@ -30,13 +30,14 @@ export class ProjectAccessGuard implements CanActivate {
 
     // Extraction du projectId ou code depuis les paramètres de route ou le corps de requête
     const projectId =
+      request.params?.code ||
       request.params?.projectId ||
       request.params?.id ||
       request.body?.projectId ||
       request.query?.projectId;
 
-    if (!projectId) {
-      // Pas de filtre spécifique au niveau de la route
+    if (!projectId || projectId === 'kpis') {
+      // Pas de filtre spécifique au niveau de la route ou route d'agrégation KPI
       return true;
     }
 

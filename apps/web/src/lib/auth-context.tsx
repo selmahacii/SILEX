@@ -9,6 +9,7 @@ interface AuthContextType {
   activeRole: SystemRole;
   currentProfile: DemoProfile;
   loading: boolean;
+  login: (email: string, password: string) => Promise<void>;
   switchRole: (role: SystemRole) => Promise<void>;
   logout: () => void;
 }
@@ -20,14 +21,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const initAuth = async (roleToLoad: SystemRole) => {
+  const initAuth = async (_roleToLoad: SystemRole) => {
     try {
       setLoading(true);
-      const authData = await api.switchDemoRole(roleToLoad);
-      setUser(authData.user);
-      setActiveRole(roleToLoad);
+      const token = api.getToken();
+      if (token) {
+        try {
+          const me = await api.getMe();
+          setUser(me);
+          setActiveRole(me.role);
+          return;
+        } catch {
+          api.setToken(null);
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
     } catch (err) {
       console.error('Erreur initialisation auth:', err);
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const login = async (email: string, password: string) => {
+    setLoading(true);
+    try {
+      const authData = await api.login(email, password);
+      setUser(authData.user);
+      setActiveRole(authData.user.role);
+      localStorage.setItem('silex_active_role', authData.user.role);
     } finally {
       setLoading(false);
     }
@@ -67,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         activeRole,
         currentProfile,
         loading,
+        login,
         switchRole,
         logout,
       }}

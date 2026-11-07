@@ -51,8 +51,8 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || 4000;
-  await app.listen(port);
-  logger.log(`🚀 SILEX ERP API démarrée sur http://localhost:${port}/api`);
+  await app.listen(port, '0.0.0.0');
+  logger.log(`🚀 SILEX ERP API démarrée sur http://0.0.0.0:${port}/api`);
   logger.log(`📚 Documentation Swagger disponible sur http://localhost:${port}/api/docs`);
 }
 
