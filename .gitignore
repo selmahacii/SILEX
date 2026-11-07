@@ -8,6 +8,8 @@ build/
 .next/
 out/
 *.tsbuildinfo
+!packages/*/dist/
+!packages/*/dist/**
 
 # Environment variables
 .env
