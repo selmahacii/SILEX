@@ -1,24 +1,16 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger, INestApplication } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import express, { Express, Request, Response } from 'express';
 import helmet from 'helmet';
 import compression from 'compression';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
-let serverApp: INestApplication | null = null;
-let expressInstance: Express | null = null;
+let appPromise: Promise<INestApplication> | null = null;
 
-export async function createApp(): Promise<{ app: INestApplication; express: Express }> {
-  if (serverApp && expressInstance) {
-    return { app: serverApp, express: expressInstance };
-  }
-
-  const expressApp = express();
-  const adapter = new ExpressAdapter(expressApp);
-  const app = await NestFactory.create(AppModule, adapter);
+async function bootstrap(): Promise<INestApplication> {
+  const logger = new Logger('SILEX_API_BOOTSTRAP');
+  const app = await NestFactory.create(AppModule);
 
   app.setGlobalPrefix('api');
 
@@ -60,30 +52,25 @@ export async function createApp(): Promise<{ app: INestApplication; express: Exp
     customSiteTitle: 'SILEX ERP API Docs',
   });
 
-  await app.init();
-  serverApp = app;
-  expressInstance = expressApp;
+  const port = process.env.PORT || 4000;
+  await app.listen(port, '0.0.0.0');
+  logger.log(`🚀 SILEX ERP API démarrée sur http://0.0.0.0:${port}/api`);
+  logger.log(`📚 Documentation Swagger disponible sur http://localhost:${port}/api/docs`);
 
-  return { app, express: expressApp };
+  return app;
 }
 
-// Handler exporté par défaut pour Vercel Serverless
-export default async function handler(req: Request, res: Response) {
-  const { express: server } = await createApp();
-  return server(req, res);
-}
+appPromise = bootstrap().catch((err) => {
+  console.error('Erreur au bootstrap de l\'application API:', err);
+  throw err;
+});
 
-// Démarrage standalone standard si exécuté directement (local ou conteneur)
-if (!process.env.VERCEL) {
-  const logger = new Logger('SILEX_API_BOOTSTRAP');
-  createApp()
-    .then(async ({ app }) => {
-      const port = process.env.PORT || 4000;
-      await app.listen(port, '0.0.0.0');
-      logger.log(`🚀 SILEX ERP API démarrée sur http://0.0.0.0:${port}/api`);
-      logger.log(`📚 Documentation Swagger disponible sur http://localhost:${port}/api/docs`);
-    })
-    .catch((err) => {
-      logger.error('Erreur au démarrage de l\'API:', err);
-    });
+// Handler exporté pour Vercel Serverless si invoqué en mode fonction
+export default async function handler(req: any, res: any) {
+  const app = await appPromise;
+  if (!app) {
+    throw new Error('Application NestJS non initialisée.');
+  }
+  const instance = app.getHttpAdapter().getInstance();
+  return instance(req, res);
 }
