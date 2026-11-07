@@ -1,6 +1,37 @@
-import { SystemRole, DepartmentCode, DEMO_PROFILES } from '@silex/shared';
+import { SystemRole, DepartmentCode, DEMO_PROFILES, formatCurrencyDA } from '@silex/shared';
 
-export const MOCK_KPIS = {
+export interface MilestoneItem {
+  id: string;
+  name: string;
+  description?: string;
+  dueDate: string;
+  progressWeight: number;
+  status: 'PENDING' | 'IN_PROGRESS' | 'VALIDATED' | 'BLOCKED';
+}
+
+export interface ServiceOrderItem {
+  id: string;
+  number: string;
+  type: string;
+  title: string;
+  issuedDate: string;
+  status: 'ISSUED' | 'IN_PROGRESS' | 'EXECUTED' | 'CANCELLED';
+  description?: string;
+  delayImpactDays?: number;
+  costImpact?: number;
+}
+
+export interface WorkSituationItem {
+  id: string;
+  number: string;
+  periodStart: string;
+  periodEnd: string;
+  amountHT: number;
+  status: 'DRAFT' | 'UNDER_REVIEW' | 'APPROVED' | 'REJECTED';
+  inspector?: string;
+}
+
+const DEFAULT_KPIS = {
   activeProjectsCount: 5,
   totalContractValue: 1721500000,
   committedCost: 22557500,
@@ -10,7 +41,7 @@ export const MOCK_KPIS = {
   averageProgress: 48.5,
 };
 
-export const MOCK_PROJECTS = [
+const DEFAULT_PROJECTS = [
   {
     id: 'prj-001',
     code: 'PRJ-2026-001',
@@ -21,7 +52,9 @@ export const MOCK_PROJECTS = [
     siteLocation: 'Zone Industrielle Arzew, Oran',
     status: 'IN_PROGRESS',
     progressPhysical: 52,
+    physicalProgress: 52,
     progressFinancial: 45,
+    financialProgress: 45,
     budgetAmount: 120500000,
     contractAmount: 145000000,
     committedCost: 18500000,
@@ -33,6 +66,11 @@ export const MOCK_PROJECTS = [
       name: 'Sofiane Belkacem',
       email: 's.belkacem@silex-services.dz',
     },
+    teamMembers: [
+      { id: 'usr-rp-002', name: 'Sofiane Belkacem', role: 'Ingénieur Chef de Projet' },
+      { id: 'usr-sou-01', name: 'Mourad Zitouni', role: 'Soudeur Haute Pression ASME IX' },
+      { id: 'usr-cnd-02', name: 'Yacine Khelifi', role: 'Inspecteur CND Niveau II' },
+    ],
     milestones: [
       { id: 'm-1', name: 'Mise à disposition et consignation des unités', dueDate: '2026-02-10T00:00:00.000Z', progressWeight: 10, status: 'VALIDATED' },
       { id: 'm-2', name: 'Dépose tuyauteries et extraction faisceaux tubulaires', dueDate: '2026-04-15T00:00:00.000Z', progressWeight: 25, status: 'VALIDATED' },
@@ -59,7 +97,9 @@ export const MOCK_PROJECTS = [
     siteLocation: 'Centrale Électrique Cap Djinet / Mostaganem',
     status: 'IN_PROGRESS',
     progressPhysical: 42,
+    physicalProgress: 42,
     progressFinancial: 38,
+    financialProgress: 38,
     budgetAmount: 280000000,
     contractAmount: 340000000,
     committedCost: 28400000,
@@ -71,11 +111,17 @@ export const MOCK_PROJECTS = [
       name: 'Sofiane Belkacem',
       email: 's.belkacem@silex-services.dz',
     },
+    teamMembers: [
+      { id: 'usr-rp-002', name: 'Sofiane Belkacem', role: 'Ingénieur Chef de Projet' },
+      { id: 'usr-mec-01', name: 'Karim Brahimi', role: 'Chef d’équipe Tuyauterie' },
+    ],
     milestones: [
       { id: 'm-21', name: 'Homologation des DMOS et QMOS soudeurs ASME IX', dueDate: '2026-02-28T00:00:00.000Z', progressWeight: 15, status: 'VALIDATED' },
       { id: 'm-22', name: 'Préfabrication spools en atelier Rouiba 50%', dueDate: '2026-05-30T00:00:00.000Z', progressWeight: 35, status: 'IN_PROGRESS' },
       { id: 'm-23', name: 'Montage sur site et épreuves hydro 120B', dueDate: '2026-09-30T00:00:00.000Z', progressWeight: 30, status: 'PENDING' },
     ],
+    serviceOrders: [],
+    workSituations: [],
   },
   {
     id: 'prj-003',
@@ -87,7 +133,9 @@ export const MOCK_PROJECTS = [
     siteLocation: 'Complexe Gazier Hassi R’Mel (Laghouat)',
     status: 'IN_PROGRESS',
     progressPhysical: 65,
+    physicalProgress: 65,
     progressFinancial: 60,
+    financialProgress: 60,
     budgetAmount: 95000000,
     contractAmount: 118000000,
     committedCost: 12100000,
@@ -99,6 +147,10 @@ export const MOCK_PROJECTS = [
       name: 'Sofiane Belkacem',
       email: 's.belkacem@silex-services.dz',
     },
+    teamMembers: [],
+    milestones: [],
+    serviceOrders: [],
+    workSituations: [],
   },
   {
     id: 'prj-004',
@@ -110,13 +162,24 @@ export const MOCK_PROJECTS = [
     siteLocation: 'Atelier de Préfabrication SILEX, Rouiba (Alger)',
     status: 'IN_PROGRESS',
     progressPhysical: 35,
+    physicalProgress: 35,
     progressFinancial: 30,
+    financialProgress: 30,
     budgetAmount: 165000000,
     contractAmount: 198000000,
     committedCost: 15300000,
     actualCost: 3100000,
     startDate: '2026-03-15T00:00:00.000Z',
     contractEndDate: '2026-11-30T00:00:00.000Z',
+    manager: {
+      id: 'usr-rp-002',
+      name: 'Sofiane Belkacem',
+      email: 's.belkacem@silex-services.dz',
+    },
+    teamMembers: [],
+    milestones: [],
+    serviceOrders: [],
+    workSituations: [],
   },
   {
     id: 'prj-005',
@@ -128,13 +191,61 @@ export const MOCK_PROJECTS = [
     siteLocation: 'Usine de Meftah, W. Blida',
     status: 'IN_PROGRESS',
     progressPhysical: 75,
+    physicalProgress: 75,
     progressFinancial: 70,
+    financialProgress: 70,
     budgetAmount: 85000000,
     contractAmount: 104000000,
     committedCost: 9800000,
     actualCost: 1950000,
     startDate: '2026-02-15T00:00:00.000Z',
     contractEndDate: '2026-06-15T00:00:00.000Z',
+    manager: {
+      id: 'usr-rp-002',
+      name: 'Sofiane Belkacem',
+      email: 's.belkacem@silex-services.dz',
+    },
+    teamMembers: [],
+    milestones: [],
+    serviceOrders: [],
+    workSituations: [],
+  },
+];
+
+const DEFAULT_WORKFLOWS_INBOX = [
+  {
+    id: 'wf-001',
+    type: 'PURCHASE_REQUEST',
+    reference: 'DA-2026-0042',
+    title: 'Achat Tubes acier A106 Gr.B 6" Sch 80 & Vannes PN40',
+    requesterName: 'Sofiane Belkacem',
+    requesterRole: 'RESPONSABLE_PROJET',
+    projectCode: 'PRJ-2026-001',
+    projectName: 'Maintenance Arrêt Unité Raffinage U-100',
+    amount: 4850000,
+    createdAt: '2026-11-06T14:20:00.000Z',
+    status: 'PENDING_APPROVAL',
+    urgency: 'HIGH',
+    description: 'Fourniture urgente pour tir radiographique et épreuve hydrostatique 150 Bars.',
+    lines: [
+      { id: 'l-1', itemCode: 'ART-003', designation: 'Tube acier sans soudure ASTM A106 Gr.B 6" Sch 80', quantity: 120, unit: 'M', unitPrice: 11800, totalHT: 1416000 },
+      { id: 'l-2', itemCode: 'ART-001', designation: 'Vanne à opercule acier forgé DN100 PN40', quantity: 8, unit: 'U', unitPrice: 14200, totalHT: 113600 },
+    ],
+  },
+  {
+    id: 'wf-002',
+    type: 'WORK_SITUATION',
+    reference: 'SIT-2026-02',
+    title: 'Situation Périodique N°02 (Avancement physique 52%)',
+    requesterName: 'Sofiane Belkacem',
+    requesterRole: 'RESPONSABLE_PROJET',
+    projectCode: 'PRJ-2026-001',
+    projectName: 'Maintenance Arrêt Unité Raffinage U-100',
+    amount: 32000000,
+    createdAt: '2026-11-07T09:15:00.000Z',
+    status: 'PENDING_APPROVAL',
+    urgency: 'MEDIUM',
+    description: 'Attachement contradictoire signé par le client SONATRACH DP Hassi Messaoud.',
   },
 ];
 
@@ -144,42 +255,6 @@ export const MOCK_COST_DISTRIBUTION = [
   { name: 'Froid, HVAC & Électricité', value: 15, color: '#D99B35' },
   { name: 'Sous-traitance & Contrôles CND', value: 10, color: '#E51A1A' },
 ];
-
-export const MOCK_WORKFLOWS_INBOX = {
-  items: [
-    {
-      id: 'wf-001',
-      type: 'PURCHASE_REQUEST',
-      reference: 'DA-2026-0042',
-      title: 'Achat Tubes acier A106 Gr.B 6" Sch 80 & Vannes PN40',
-      requesterName: 'Sofiane Belkacem',
-      requesterRole: 'RESPONSABLE_PROJET',
-      projectCode: 'PRJ-2026-001',
-      projectName: 'Maintenance Arrêt Unité Raffinage U-100',
-      amount: 4850000,
-      createdAt: '2026-11-06T14:20:00.000Z',
-      status: 'PENDING_APPROVAL',
-      urgency: 'HIGH',
-      description: 'Fourniture urgente pour tir radiographique et épreuve hydrostatique 150 Bars.',
-    },
-    {
-      id: 'wf-002',
-      type: 'WORK_SITUATION',
-      reference: 'SIT-2026-02',
-      title: 'Situation Périodique N°02 (Avancement physique 52%)',
-      requesterName: 'Sofiane Belkacem',
-      requesterRole: 'RESPONSABLE_PROJET',
-      projectCode: 'PRJ-2026-001',
-      projectName: 'Maintenance Arrêt Unité Raffinage U-100',
-      amount: 32000000,
-      createdAt: '2026-11-07T09:15:00.000Z',
-      status: 'PENDING_APPROVAL',
-      urgency: 'MEDIUM',
-      description: 'Attachement contradictoire signé par le client SONATRACH DP Hassi Messaoud.',
-    },
-  ],
-  total: 2,
-};
 
 export const MOCK_PROCUREMENT_REQUESTS = [
   {
@@ -219,3 +294,327 @@ export const MOCK_INVENTORY_ITEMS = [
   { id: '6', code: 'ART-009', name: 'Électrodes enrobées basiques E7018 diam 3.2mm', categoryCode: 'SOUDAGE', currentStock: 450, minStockLevel: 100, unit: 'KG', unitCost: 850 },
   { id: '7', code: 'ART-010', name: 'Fil d’apport TIG acier ER70S-6 diam 2.4mm', categoryCode: 'SOUDAGE', currentStock: 210, minStockLevel: 50, unit: 'KG', unitCost: 1200 },
 ];
+
+/**
+ * MOCK STATEFUL REACTIVE STORE
+ * Persists user actions in LocalStorage so that all buttons, modals, and status updates work dynamically!
+ */
+class StatefulMockStore {
+  private projects: any[] = DEFAULT_PROJECTS;
+  private workflows: any[] = DEFAULT_WORKFLOWS_INBOX;
+  private kpis: any = DEFAULT_KPIS;
+  private procurement: any[] = MOCK_PROCUREMENT_REQUESTS;
+  private inventory: any[] = MOCK_INVENTORY_ITEMS;
+
+  constructor() {
+    this.loadFromStorage();
+  }
+
+  private loadFromStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      const storedProjects = localStorage.getItem('silex_mock_projects');
+      if (storedProjects) this.projects = JSON.parse(storedProjects);
+
+      const storedWorkflows = localStorage.getItem('silex_mock_workflows');
+      if (storedWorkflows) this.workflows = JSON.parse(storedWorkflows);
+
+      const storedKpis = localStorage.getItem('silex_mock_kpis');
+      if (storedKpis) this.kpis = JSON.parse(storedKpis);
+
+      const storedProc = localStorage.getItem('silex_mock_procurement');
+      if (storedProc) this.procurement = JSON.parse(storedProc);
+
+      const storedInv = localStorage.getItem('silex_mock_inventory');
+      if (storedInv) this.inventory = JSON.parse(storedInv);
+    } catch {
+      // ignore
+    }
+  }
+
+  private saveToStorage() {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem('silex_mock_projects', JSON.stringify(this.projects));
+      localStorage.setItem('silex_mock_workflows', JSON.stringify(this.workflows));
+      localStorage.setItem('silex_mock_kpis', JSON.stringify(this.kpis));
+      localStorage.setItem('silex_mock_procurement', JSON.stringify(this.procurement));
+      localStorage.setItem('silex_mock_inventory', JSON.stringify(this.inventory));
+    } catch {
+      // ignore
+    }
+  }
+
+  getProjects() {
+    return this.projects;
+  }
+
+  getProject(identifier: string) {
+    const clean = identifier.toUpperCase();
+    return this.projects.find(p => p.code?.toUpperCase() === clean || p.id === identifier) || this.projects[0];
+  }
+
+  updateProject(idOrCode: string, patch: any) {
+    const proj = this.getProject(idOrCode);
+    if (proj) {
+      Object.assign(proj, patch);
+      this.saveToStorage();
+    }
+    return proj;
+  }
+
+  adjustProgress(idOrCode: string, physicalProgress: number, financialProgress: number) {
+    const proj = this.getProject(idOrCode);
+    if (proj) {
+      proj.progressPhysical = physicalProgress;
+      proj.physicalProgress = physicalProgress;
+      proj.progressFinancial = financialProgress;
+      proj.financialProgress = financialProgress;
+      this.saveToStorage();
+    }
+    return proj;
+  }
+
+  addMilestone(idOrCode: string, milestone: any) {
+    const proj = this.getProject(idOrCode);
+    if (proj) {
+      if (!proj.milestones) proj.milestones = [];
+      const newM = {
+        id: 'm-' + Date.now(),
+        name: milestone.title || milestone.name,
+        description: milestone.description,
+        dueDate: milestone.targetDate || milestone.dueDate || new Date().toISOString(),
+        progressWeight: milestone.progressWeight || 15,
+        status: milestone.status || 'IN_PROGRESS',
+      };
+      proj.milestones.push(newM);
+
+      // Recalculer l'avancement physique en fonction des jalons
+      const totalWeight = proj.milestones.reduce((acc: number, m: any) => acc + (Number(m.progressWeight) || 0), 0);
+      const validatedWeight = proj.milestones
+        .filter((m: any) => m.status === 'VALIDATED')
+        .reduce((acc: number, m: any) => acc + (Number(m.progressWeight) || 0), 0);
+      if (totalWeight > 0) {
+        proj.progressPhysical = Math.min(100, Math.round((validatedWeight / totalWeight) * 100));
+        proj.physicalProgress = proj.progressPhysical;
+      }
+
+      this.saveToStorage();
+    }
+    return proj;
+  }
+
+  addServiceOrder(idOrCode: string, odsData: any) {
+    const proj = this.getProject(idOrCode);
+    if (proj) {
+      if (!proj.serviceOrders) proj.serviceOrders = [];
+      const count = proj.serviceOrders.length + 1;
+      const newOds = {
+        id: 'ods-' + Date.now(),
+        number: `ODS-2026-00${count}`,
+        type: odsData.type || 'COMMENCEMENT',
+        title: odsData.title || 'Ordre de service',
+        issuedDate: odsData.issuedDate || new Date().toISOString(),
+        status: 'ISSUED',
+        description: odsData.description,
+        delayImpactDays: odsData.delayImpactDays || 0,
+        costImpact: odsData.costImpact || 0,
+      };
+      proj.serviceOrders.unshift(newOds);
+
+      if (odsData.costImpact) {
+        proj.committedCost = (Number(proj.committedCost) || 0) + Number(odsData.costImpact);
+      }
+      this.saveToStorage();
+    }
+    return proj;
+  }
+
+  addWorkSituation(idOrCode: string, sitData: any) {
+    const proj = this.getProject(idOrCode);
+    if (proj) {
+      if (!proj.workSituations) proj.workSituations = [];
+      const count = proj.workSituations.length + 1;
+      const amount = Number(sitData.totalAmountHT || sitData.amountHT || 2500000);
+      const newSit = {
+        id: 'sit-' + Date.now(),
+        number: `SIT-2026-0${count}`,
+        periodStart: sitData.periodStart || new Date().toISOString(),
+        periodEnd: sitData.periodEnd || new Date().toISOString(),
+        amountHT: amount,
+        status: 'UNDER_REVIEW',
+        inspector: sitData.inspectorName || 'Contrôle Technique',
+      };
+      proj.workSituations.unshift(newSit);
+
+      // Ajouter automatiquement un workflow d'approbation DG
+      this.workflows.unshift({
+        id: 'wf-' + Date.now(),
+        type: 'WORK_SITUATION',
+        reference: newSit.number,
+        title: `Situation Périodique N°0${count} - ${proj.name}`,
+        requesterName: 'Sofiane Belkacem',
+        requesterRole: 'RESPONSABLE_PROJET',
+        projectCode: proj.code,
+        projectName: proj.name,
+        amount: amount,
+        createdAt: new Date().toISOString(),
+        status: 'PENDING_APPROVAL',
+        urgency: 'HIGH',
+        description: sitData.notes || 'Attachement contradictoire des travaux sur site.',
+      });
+
+      this.kpis.pendingApprovalsCount = this.workflows.filter(w => w.status === 'PENDING_APPROVAL').length;
+      this.saveToStorage();
+    }
+    return proj;
+  }
+
+  addCost(idOrCode: string, costData: any) {
+    const proj = this.getProject(idOrCode);
+    if (proj) {
+      const amount = Number(costData.amount || 0);
+      proj.actualCost = (Number(proj.actualCost) || 0) + amount;
+      this.kpis.actualCost = (Number(this.kpis.actualCost) || 0) + amount;
+      this.saveToStorage();
+    }
+    return proj;
+  }
+
+  addMember(idOrCode: string, memberData: any) {
+    const proj = this.getProject(idOrCode);
+    if (proj) {
+      if (!proj.teamMembers) proj.teamMembers = [];
+      const user = Object.values(DEMO_PROFILES).find(p => p.id === memberData.userId);
+      proj.teamMembers.push({
+        id: memberData.userId || 'usr-' + Date.now(),
+        name: user?.name || 'Collaborateur Chantier SILEX',
+        role: user?.title || 'Intervenant Opérationnel',
+      });
+      this.saveToStorage();
+    }
+    return proj;
+  }
+
+  getWorkflows() {
+    return {
+      items: this.workflows,
+      total: this.workflows.length,
+    };
+  }
+
+  approveWorkflow(wfId: string, notes?: string) {
+    const item = this.workflows.find(w => w.id === wfId);
+    if (item) {
+      item.status = 'APPROVED';
+      item.approvedAt = new Date().toISOString();
+      item.notes = notes;
+
+      // Si c'est une situation de travaux, mettre à jour le projet
+      if (item.type === 'WORK_SITUATION') {
+        const proj = this.projects.find(p => p.code === item.projectCode);
+        if (proj && proj.workSituations) {
+          const sit = proj.workSituations.find((s: any) => s.number === item.reference);
+          if (sit) sit.status = 'APPROVED';
+        }
+      }
+
+      this.kpis.pendingApprovalsCount = this.workflows.filter(w => w.status === 'PENDING_APPROVAL').length;
+      this.saveToStorage();
+    }
+    return { success: true, item };
+  }
+
+  rejectWorkflow(wfId: string, reason?: string) {
+    const item = this.workflows.find(w => w.id === wfId);
+    if (item) {
+      item.status = 'REJECTED';
+      item.rejectedAt = new Date().toISOString();
+      item.reason = reason;
+      this.kpis.pendingApprovalsCount = this.workflows.filter(w => w.status === 'PENDING_APPROVAL').length;
+      this.saveToStorage();
+    }
+    return { success: true, item };
+  }
+
+  requestRevisionWorkflow(wfId: string, instructions?: string) {
+    const item = this.workflows.find(w => w.id === wfId);
+    if (item) {
+      item.status = 'REVISION_REQUESTED';
+      item.instructions = instructions;
+      this.saveToStorage();
+    }
+    return { success: true, item };
+  }
+
+  getKpis() {
+    this.kpis.pendingApprovalsCount = this.workflows.filter(w => w.status === 'PENDING_APPROVAL').length;
+    return this.kpis;
+  }
+
+  getProcurementRequests() {
+    return this.procurement;
+  }
+
+  createProcurementRequest(data: any) {
+    const count = this.procurement.length + 1;
+    const newReq = {
+      id: 'pr-' + Date.now(),
+      code: `DA-2026-00${count}`,
+      projectCode: data.projectCode || 'PRJ-2026-001',
+      projectName: data.projectName || 'Projet Chantier SILEX',
+      title: data.title || 'Demande d’achat fournitures & équipements',
+      requesterName: data.requesterName || 'Sofiane Belkacem',
+      status: 'SUBMITTED',
+      estimatedAmount: Number(data.estimatedAmount || 1500000),
+      createdAt: new Date().toISOString(),
+      lines: data.lines || [],
+    };
+    this.procurement.unshift(newReq);
+
+    // Ajouter un workflow
+    this.workflows.unshift({
+      id: 'wf-' + Date.now(),
+      type: 'PURCHASE_REQUEST',
+      reference: newReq.code,
+      title: newReq.title,
+      requesterName: newReq.requesterName,
+      requesterRole: 'RESPONSABLE_PROJET',
+      projectCode: newReq.projectCode,
+      projectName: newReq.projectName,
+      amount: newReq.estimatedAmount,
+      createdAt: new Date().toISOString(),
+      status: 'PENDING_APPROVAL',
+      urgency: 'HIGH',
+      description: data.justification || 'Demande d’achat urgente pour approvisionnement chantier.',
+    });
+
+    this.kpis.pendingApprovalsCount = this.workflows.filter(w => w.status === 'PENDING_APPROVAL').length;
+    this.saveToStorage();
+    return newReq;
+  }
+
+  getInventoryItems() {
+    return this.inventory;
+  }
+
+  addInventoryMovement(movement: any) {
+    const item = this.inventory.find(i => i.code === movement.itemCode || i.id === movement.itemId);
+    if (item) {
+      const qty = Number(movement.quantity || 0);
+      if (movement.type === 'ENTRY' || movement.type === 'RECEIPT') {
+        item.currentStock += qty;
+      } else if (movement.type === 'EXIT' || movement.type === 'ISSUE') {
+        item.currentStock = Math.max(0, item.currentStock - qty);
+      }
+      this.saveToStorage();
+    }
+    return { success: true, item };
+  }
+}
+
+export const mockStore = new StatefulMockStore();
+
+export const MOCK_KPIS = DEFAULT_KPIS;
+export const MOCK_PROJECTS = DEFAULT_PROJECTS;
+export const MOCK_WORKFLOWS_INBOX = { items: DEFAULT_WORKFLOWS_INBOX, total: DEFAULT_WORKFLOWS_INBOX.length };

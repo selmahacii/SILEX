@@ -1,12 +1,8 @@
 import { SystemRole, DEMO_PROFILES } from '@silex/shared';
 import { AuthResponseDto } from '@silex/contracts';
 import {
-  MOCK_KPIS,
-  MOCK_PROJECTS,
+  mockStore,
   MOCK_COST_DISTRIBUTION,
-  MOCK_WORKFLOWS_INBOX,
-  MOCK_PROCUREMENT_REQUESTS,
-  MOCK_INVENTORY_ITEMS,
 } from './mock-data';
 
 class ApiClient {
@@ -56,41 +52,123 @@ class ApiClient {
 
   private getMockFallback(endpoint: string, options: RequestInit = {}): any {
     const clean = endpoint.toLowerCase();
+    const method = (options.method || 'GET').toUpperCase();
+    let body: any = {};
+    if (options.body && typeof options.body === 'string') {
+      try {
+        body = JSON.parse(options.body);
+      } catch {
+        // ignore
+      }
+    }
 
-    // 1. Auth Login / Demo Switch
-    if (clean.includes('/auth/login') || clean.includes('/auth/demo-switch')) {
-      let role: SystemRole = SystemRole.DIRECTEUR_GENERAL;
-      if (options.body) {
-        try {
-          const parsed = JSON.parse(options.body as string);
-          if (parsed.role) {
-            role = parsed.role;
-          } else if (parsed.email) {
-            const found = Object.values(DEMO_PROFILES).find(p => p.email.toLowerCase() === parsed.email.toLowerCase());
-            if (found) role = found.role;
-          }
-        } catch {
-          // ignore
+    // ==========================================
+    // 1. MUTATIONS (POST / PUT / PATCH / DELETE)
+    // ==========================================
+    if (method === 'POST' || method === 'PATCH' || method === 'PUT' || method === 'DELETE') {
+      // 1.1 Workflows Decisions (Approve, Reject, Revise)
+      if (clean.includes('/workflows/')) {
+        const wfMatch = endpoint.match(/\/workflows\/([a-zA-Z0-9_-]+)\/(approve|reject|request-revision)/);
+        if (wfMatch) {
+          const wfId = wfMatch[1];
+          const action = wfMatch[2];
+          if (action === 'approve') return mockStore.approveWorkflow(wfId, body.notes);
+          if (action === 'reject') return mockStore.rejectWorkflow(wfId, body.reason);
+          if (action === 'request-revision') return mockStore.requestRevisionWorkflow(wfId, body.instructions);
         }
       }
-      const profile = DEMO_PROFILES[role] || DEMO_PROFILES[SystemRole.DIRECTEUR_GENERAL];
+
+      // 1.2 Projects Actions (Progress, Milestones, ODS, Situations, Members, Costs, Updates)
+      if (clean.includes('/projects/')) {
+        // Avancement physique & dépenses
+        if (clean.includes('/progress')) {
+          const idMatch = endpoint.match(/\/projects\/([a-zA-Z0-9_-]+)\/progress/);
+          if (idMatch) return mockStore.adjustProgress(idMatch[1], Number(body.physicalProgress || 0), Number(body.financialProgress || 0));
+        }
+
+        // Ajout jalon contractuel (milestone)
+        if (clean.includes('/milestones')) {
+          const idMatch = endpoint.match(/\/projects\/([a-zA-Z0-9_-]+)\/milestones/);
+          if (idMatch) return mockStore.addMilestone(idMatch[1], body);
+        }
+
+        // Émission Ordre de Service (ODS)
+        if (clean.includes('/service-orders')) {
+          const idMatch = endpoint.match(/\/projects\/([a-zA-Z0-9_-]+)\/service-orders/);
+          if (idMatch) return mockStore.addServiceOrder(idMatch[1], body);
+        }
+
+        // Création situation de travaux périodique
+        if (clean.includes('/work-situations')) {
+          const idMatch = endpoint.match(/\/projects\/([a-zA-Z0-9_-]+)\/work-situations/);
+          if (idMatch) return mockStore.addWorkSituation(idMatch[1], body);
+        }
+
+        // Imputation dépenses / frais
+        if (clean.includes('/costs')) {
+          const idMatch = endpoint.match(/\/projects\/([a-zA-Z0-9_-]+)\/costs/);
+          if (idMatch) return mockStore.addCost(idMatch[1], body);
+        }
+
+        // Affectation collaborateur
+        if (clean.includes('/members')) {
+          const idMatch = endpoint.match(/\/projects\/([a-zA-Z0-9_-]+)\/members/);
+          if (idMatch) return mockStore.addMember(idMatch[1], body);
+        }
+
+        // Modification fiche projet générale
+        const projIdMatch = endpoint.match(/\/projects\/([a-zA-Z0-9_-]+)$/);
+        if (projIdMatch) {
+          return mockStore.updateProject(projIdMatch[1], body);
+        }
+      }
+
+      // 1.3 Procurement (Création DA)
+      if (clean.includes('/procurement')) {
+        return mockStore.createProcurementRequest(body);
+      }
+
+      // 1.4 Stocks & Mouvements
+      if (clean.includes('/inventory')) {
+        return mockStore.addInventoryMovement(body);
+      }
+
+      // 1.5 Auth Login / Demo Switch
+      if (clean.includes('/auth/login') || clean.includes('/auth/demo-switch')) {
+        let role: SystemRole = SystemRole.DIRECTEUR_GENERAL;
+        if (body.role) {
+          role = body.role;
+        } else if (body.email) {
+          const found = Object.values(DEMO_PROFILES).find(p => p.email.toLowerCase() === body.email.toLowerCase());
+          if (found) role = found.role;
+        }
+        const profile = DEMO_PROFILES[role] || DEMO_PROFILES[SystemRole.DIRECTEUR_GENERAL];
+        return {
+          accessToken: 'silex_demo_token_' + profile.role,
+          user: {
+            id: profile.id,
+            email: profile.email,
+            name: profile.name,
+            role: profile.role,
+            departmentCode: profile.departmentCode,
+            avatarUrl: profile.avatar,
+            title: profile.title,
+            assignedProjects: (profile.assignedProjectCodes || []).map(code => ({ id: code, code, name: code })),
+            permissions: ['*'],
+          },
+        };
+      }
+
       return {
-        accessToken: 'silex_demo_token_' + profile.role,
-        user: {
-          id: profile.id,
-          email: profile.email,
-          name: profile.name,
-          role: profile.role,
-          departmentCode: profile.departmentCode,
-          avatarUrl: profile.avatar,
-          title: profile.title,
-          assignedProjects: (profile.assignedProjectCodes || []).map(code => ({ id: code, code, name: code })),
-          permissions: ['*'],
-        },
+        success: true,
+        message: 'Action enregistrée et appliquée avec succès dans le store opérationnel.',
       };
     }
 
-    // 2. Auth /me
+    // ==========================================
+    // 2. LECTURES (GET)
+    // ==========================================
+    // 2.1 Auth /me
     if (clean.includes('/auth/me')) {
       const savedRole = (typeof window !== 'undefined' ? localStorage.getItem('silex_active_role') : null) as SystemRole || SystemRole.DIRECTEUR_GENERAL;
       const profile = DEMO_PROFILES[savedRole] || DEMO_PROFILES[SystemRole.DIRECTEUR_GENERAL];
@@ -107,53 +185,51 @@ class ApiClient {
       };
     }
 
-    // 3. KPIs
+    // 2.2 KPIs
     if (clean.includes('/kpis') || clean.includes('/stats')) {
-      return MOCK_KPIS;
+      return mockStore.getKpis();
     }
 
-    // 4. Projects
+    // 2.3 Projets (Détail ou Liste)
     if (clean.includes('/projects/')) {
       const codeMatch = endpoint.match(/\/projects\/([a-zA-Z0-9_-]+)/);
-      const code = codeMatch ? codeMatch[1].toUpperCase() : null;
-      const found = MOCK_PROJECTS.find(p => p.code === code);
-      return found || MOCK_PROJECTS[0];
+      const code = codeMatch ? codeMatch[1].toUpperCase() : '';
+      return mockStore.getProject(code);
     }
     if (clean.includes('/projects') || clean.includes('/analytics/cost-distribution') || clean.includes('/finance/distribution')) {
       if (clean.includes('distribution')) {
         return MOCK_COST_DISTRIBUTION;
       }
-      return MOCK_PROJECTS;
+      return mockStore.getProjects();
     }
 
-    // 5. Workflows
+    // 2.4 Workflows
     if (clean.includes('/workflows')) {
-      return MOCK_WORKFLOWS_INBOX;
+      return mockStore.getWorkflows();
     }
 
-    // 6. Procurement
+    // 2.5 Procurement
     if (clean.includes('/procurement')) {
-      return MOCK_PROCUREMENT_REQUESTS;
+      return mockStore.getProcurementRequests();
     }
 
-    // 7. Inventory
+    // 2.6 Inventory
     if (clean.includes('/inventory')) {
-      return MOCK_INVENTORY_ITEMS;
+      return mockStore.getInventoryItems();
     }
 
-    // 8. Finance
+    // 2.7 Finance
     if (clean.includes('/finance')) {
       return {
-        kpis: MOCK_KPIS,
+        kpis: mockStore.getKpis(),
         distribution: MOCK_COST_DISTRIBUTION,
-        projects: MOCK_PROJECTS,
+        projects: mockStore.getProjects(),
       };
     }
 
-    // Default generic fallback
+    // Default fallback
     return {
       success: true,
-      message: 'Opération simulée avec succès en mode démo résilient.',
       items: [],
       data: [],
     };
