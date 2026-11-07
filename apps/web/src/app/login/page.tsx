@@ -173,10 +173,10 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* Demo fast-login accounts */}
+          {/* Fast-login accounts */}
           <div className="pt-3 border-t border-slate-100">
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-              Comptes Démonstration Clés (Accès Direct 1 Clic)
+              Comptes d&apos;Accès Opérationnels SILEX (Connexion Immédiate)
             </p>
             <div className="grid grid-cols-2 gap-1.5 text-[10px]">
               <button
@@ -213,7 +213,7 @@ export default function LoginPage() {
               </button>
             </div>
             <p className="text-[10px] text-slate-500 mt-2 text-center">
-              Mot de passe universel démo : <code className="font-mono font-bold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">SilexDemo2026!</code>
+              Mot de passe opérationnel : <code className="font-mono font-bold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">SilexDemo2026!</code> ou <code className="font-mono font-bold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">Silex2026@!</code>
             </p>
           </div>
         </div>

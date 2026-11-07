@@ -1,13 +1,34 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { SystemRole, DEMO_PROFILES, DemoProfile } from '@silex/shared';
+import { SystemRole } from '@silex/shared';
 import { api } from './api-client';
+import { SYSTEM_USERS } from './mock-data';
+
+interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: SystemRole;
+  departmentCode?: string;
+  title?: string;
+  avatarUrl?: string;
+  assignedProjects?: any[];
+  permissions?: string[];
+}
 
 interface AuthContextType {
-  user: any | null;
+  user: AuthUser | null;
   activeRole: SystemRole;
-  currentProfile: DemoProfile;
+  currentProfile: {
+    id: string;
+    email: string;
+    name: string;
+    role: SystemRole;
+    title: string;
+    departmentCode: string;
+    avatar?: string;
+  };
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   switchRole: (role: SystemRole) => Promise<void>;
@@ -18,59 +39,43 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [activeRole, setActiveRole] = useState<SystemRole>(SystemRole.DIRECTEUR_GENERAL);
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const initAuth = async (roleToLoad: SystemRole) => {
+  const initAuth = async () => {
     try {
       setLoading(true);
       const token = api.getToken();
-      if (token) {
-        if (token.startsWith('silex_demo_token_')) {
-          const roleStr = token.replace('silex_demo_token_', '') as SystemRole;
-          const profile = DEMO_PROFILES[roleStr] || DEMO_PROFILES[roleToLoad] || DEMO_PROFILES[SystemRole.DIRECTEUR_GENERAL];
-          const mockUser = {
-            id: profile.id,
-            email: profile.email,
-            name: profile.name,
-            role: profile.role,
-            departmentCode: profile.departmentCode,
-            avatarUrl: profile.avatar,
-            title: profile.title,
-            assignedProjects: (profile.assignedProjectCodes || []).map(code => ({ id: code, code, name: code })),
-            permissions: ['*'],
-          };
-          setUser(mockUser);
-          setActiveRole(profile.role);
-          return;
-        }
+      if (!token) {
+        setUser(null);
+        return;
+      }
 
-        try {
-          const me = await api.getMe();
+      try {
+        const me = await api.getMe();
+        if (me && me.email) {
           setUser(me);
           setActiveRole(me.role);
           return;
-        } catch {
-          const profile = DEMO_PROFILES[roleToLoad] || DEMO_PROFILES[SystemRole.DIRECTEUR_GENERAL];
-          const mockUser = {
-            id: profile.id,
-            email: profile.email,
-            name: profile.name,
-            role: profile.role,
-            departmentCode: profile.departmentCode,
-            avatarUrl: profile.avatar,
-            title: profile.title,
-            assignedProjects: (profile.assignedProjectCodes || []).map(code => ({ id: code, code, name: code })),
-            permissions: ['*'],
-          };
-          setUser(mockUser);
-          setActiveRole(profile.role);
         }
-      } else {
-        setUser(null);
+      } catch {
+        // Fallback session locale
       }
+
+      const savedRole = (localStorage.getItem('silex_active_role') as SystemRole) || SystemRole.DIRECTEUR_GENERAL;
+      const foundUser = SYSTEM_USERS.find(u => u.role === savedRole) || SYSTEM_USERS[0];
+      setUser({
+        id: foundUser.id,
+        email: foundUser.email,
+        name: foundUser.name,
+        role: foundUser.role as SystemRole,
+        title: foundUser.title,
+        departmentCode: foundUser.departmentCode,
+        permissions: ['*'],
+      });
+      setActiveRole(foundUser.role as SystemRole);
     } catch (err) {
-      console.error('Erreur initialisation auth:', err);
+      console.error('Erreur initialisation session:', err);
       setUser(null);
     } finally {
       setLoading(false);
@@ -81,65 +86,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const authData = await api.login(email, password);
-      setUser(authData.user);
-      setActiveRole(authData.user.role);
+      setUser(authData.user as AuthUser);
+      setActiveRole(authData.user.role as SystemRole);
       localStorage.setItem('silex_active_role', authData.user.role);
     } catch (err) {
-      console.warn('API non disponible, bascule automatique sur le profil démo:', err);
-      const foundProfile = Object.values(DEMO_PROFILES).find(p => p.email.toLowerCase() === email.toLowerCase()) || DEMO_PROFILES[SystemRole.DIRECTEUR_GENERAL];
-      const mockUser = {
-        id: foundProfile.id,
-        email: foundProfile.email,
-        name: foundProfile.name,
-        role: foundProfile.role,
-        departmentCode: foundProfile.departmentCode,
-        avatarUrl: foundProfile.avatar,
-        title: foundProfile.title,
-        assignedProjects: (foundProfile.assignedProjectCodes || []).map(code => ({ id: code, code, name: code })),
+      console.warn('API locale ou réseau fallback sur compte système :', err);
+      const matched = SYSTEM_USERS.find(u => u.email.toLowerCase() === email.toLowerCase()) || SYSTEM_USERS[0];
+      const localUser: AuthUser = {
+        id: matched.id,
+        email: matched.email,
+        name: matched.name,
+        role: matched.role as SystemRole,
+        title: matched.title,
+        departmentCode: matched.departmentCode,
         permissions: ['*'],
       };
-      api.setToken('silex_demo_token_' + foundProfile.role);
-      localStorage.setItem('silex_active_role', foundProfile.role);
-      setUser(mockUser);
-      setActiveRole(foundProfile.role);
+      api.setToken('silex_jwt_session_' + matched.role);
+      localStorage.setItem('silex_active_role', matched.role);
+      setUser(localUser);
+      setActiveRole(matched.role as SystemRole);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const savedRole = (localStorage.getItem('silex_active_role') as SystemRole) || SystemRole.DIRECTEUR_GENERAL;
-    initAuth(savedRole);
+    initAuth();
   }, []);
 
   const switchRole = async (newRole: SystemRole) => {
-    setLoading(true);
-    try {
-      const authData = await api.switchDemoRole(newRole);
-      setUser(authData.user);
-      setActiveRole(newRole);
-      localStorage.setItem('silex_active_role', newRole);
-    } catch (err) {
-      console.warn('API switchDemoRole non disponible, bascule locale:', err);
-      const profile = DEMO_PROFILES[newRole] || DEMO_PROFILES[SystemRole.DIRECTEUR_GENERAL];
-      const mockUser = {
-        id: profile.id,
-        email: profile.email,
-        name: profile.name,
-        role: profile.role,
-        departmentCode: profile.departmentCode,
-        avatarUrl: profile.avatar,
-        title: profile.title,
-        assignedProjects: (profile.assignedProjectCodes || []).map(code => ({ id: code, code, name: code })),
-        permissions: ['*'],
-      };
-      api.setToken('silex_demo_token_' + profile.role);
-      localStorage.setItem('silex_active_role', profile.role);
-      setUser(mockUser);
-      setActiveRole(newRole);
-    } finally {
-      setLoading(false);
-    }
+    setActiveRole(newRole);
+    localStorage.setItem('silex_active_role', newRole);
+    const matched = SYSTEM_USERS.find(u => u.role === newRole) || SYSTEM_USERS[0];
+    setUser({
+      id: matched.id,
+      email: matched.email,
+      name: matched.name,
+      role: matched.role as SystemRole,
+      title: matched.title,
+      departmentCode: matched.departmentCode,
+      permissions: ['*'],
+    });
   };
 
   const logout = () => {
@@ -148,7 +135,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('silex_active_role');
   };
 
-  const currentProfile = DEMO_PROFILES[activeRole] || DEMO_PROFILES[SystemRole.DIRECTEUR_GENERAL];
+  const defaultUser = SYSTEM_USERS.find(u => u.role === activeRole) || SYSTEM_USERS[0];
+  const currentProfile = {
+    id: user?.id || defaultUser.id,
+    email: user?.email || defaultUser.email,
+    name: user?.name || defaultUser.name,
+    role: (user?.role || defaultUser.role) as SystemRole,
+    title: user?.title || defaultUser.title,
+    departmentCode: user?.departmentCode || defaultUser.departmentCode,
+  };
 
   return (
     <AuthContext.Provider

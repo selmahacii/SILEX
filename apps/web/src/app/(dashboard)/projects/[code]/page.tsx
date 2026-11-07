@@ -486,11 +486,25 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
     }
   };
 
-  if (loading || !project) {
+  if (loading) {
     return (
       <div className="py-24 text-center text-xs text-slate-500 space-y-2">
         <Building className="w-8 h-8 text-slate-300 mx-auto animate-pulse" />
-        <div>Chargement des micro-détails du projet {resolvedParams.code}...</div>
+        <div>Chargement du projet {resolvedParams.code}...</div>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="py-24 text-center text-xs text-slate-500 space-y-3">
+        <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
+        <div className="font-bold text-slate-800 text-sm">Projet &quot;{resolvedParams.code}&quot; introuvable</div>
+        <p className="text-slate-500">Ce projet n&apos;existe pas dans la base de données vierge.</p>
+        <Link href="/projects" className="inline-flex items-center gap-2 px-4 py-2 bg-[#0B207D] text-white rounded-lg text-xs font-semibold hover:bg-[#07164D] transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          <span>Retour à la liste des projets</span>
+        </Link>
       </div>
     );
   }

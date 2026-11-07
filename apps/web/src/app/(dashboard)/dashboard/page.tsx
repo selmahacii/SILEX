@@ -75,12 +75,7 @@ export default function ExecutiveDashboardPage() {
       setKpis(kpisRes);
       setProjects(projectsRes);
       setPendingWorkflows(workflowsRes?.items || []);
-      setCostDistribution(distRes && distRes.length > 0 ? distRes : [
-        { name: 'Tuyauterie, Soudage & Matériaux', value: 45, color: '#0B207D' },
-        { name: 'Main d’œuvre & Soudeurs ASME', value: 30, color: '#0A7F7C' },
-        { name: 'Froid, HVAC & Électricité', value: 15, color: '#D99B35' },
-        { name: 'Sous-traitance & Contrôles CND', value: 10, color: '#E51A1A' },
-      ]);
+      setCostDistribution(Array.isArray(distRes) ? distRes : []);
     } catch (err) {
       console.error('Erreur chargement dashboard:', err);
     } finally {
@@ -314,26 +309,33 @@ export default function ExecutiveDashboardPage() {
             <p className="text-[11px] text-[#697789]">Imputations par corps d&apos;état</p>
           </div>
           <div className="h-60 mt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={costDistribution}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
-                  paddingAngle={3}
-                >
-                  {costDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(val: any) => [`${val}%`, 'Part']} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-              </PieChart>
-            </ResponsiveContainer>
+            {costDistribution.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-xs text-slate-400 text-center">
+                <Coins className="w-8 h-8 text-slate-300 mb-2" />
+                <span>Aucune dépense enregistrée pour le moment.</span>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={costDistribution}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={75}
+                    paddingAngle={3}
+                  >
+                    {costDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(val: any) => [`${val}%`, 'Part']} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
@@ -349,33 +351,43 @@ export default function ExecutiveDashboardPage() {
             </Link>
           </div>
           <div className="divide-y divide-slate-100">
-            {projects.slice(0, 5).map((p) => (
-              <Link
-                key={p.id}
-                href={`/projects/${p.code}`}
-                className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer group block"
-                title={`Accéder à la fiche complète du chantier ${p.code}`}
-              >
-                <div className="min-w-0 pr-4">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-[#0B207D] group-hover:underline flex items-center gap-1">
-                      {p.code}
-                      <ArrowRight className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#0B207D]" />
-                    </span>
-                    <StatusBadge status={p.status} type="project" />
-                    <StatusBadge status={p.riskLevel} type="risk" />
+            {projects.length === 0 ? (
+              <div className="py-12 text-center text-xs text-slate-400">
+                <Building2 className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <span className="block font-medium">Aucun projet enregistré. Base de données vierge.</span>
+                <Link href="/projects" className="inline-block mt-2 text-xs text-[#0B207D] font-bold hover:underline">
+                  + Créer le premier chantier
+                </Link>
+              </div>
+            ) : (
+              projects.slice(0, 5).map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/projects/${p.code}`}
+                  className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors cursor-pointer group block"
+                  title={`Accéder à la fiche complète du chantier ${p.code}`}
+                >
+                  <div className="min-w-0 pr-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-[#0B207D] group-hover:underline flex items-center gap-1">
+                        {p.code}
+                        <ArrowRight className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity text-[#0B207D]" />
+                      </span>
+                      <StatusBadge status={p.status} type="project" />
+                      <StatusBadge status={p.riskLevel} type="risk" />
+                    </div>
+                    <div className="text-xs font-semibold text-slate-800 truncate mt-1 group-hover:text-[#0B207D] transition-colors">{p.name}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">{p.clientName} • {p.siteLocation}</div>
                   </div>
-                  <div className="text-xs font-semibold text-slate-800 truncate mt-1 group-hover:text-[#0B207D] transition-colors">{p.name}</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">{p.clientName} • {p.siteLocation}</div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="text-xs font-bold text-slate-900">{formatCurrencyDA(p.contractAmount, false)}</div>
-                  <div className="text-[11px] text-emerald-700 font-semibold mt-0.5">
-                    Avanc. physique : {p.physicalProgress}%
+                  <div className="text-right shrink-0">
+                    <div className="text-xs font-bold text-slate-900">{formatCurrencyDA(p.contractAmount, false)}</div>
+                    <div className="text-[11px] text-emerald-700 font-semibold mt-0.5">
+                      Avanc. physique : {p.physicalProgress}%
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))
+            )}
           </div>
         </div>
 

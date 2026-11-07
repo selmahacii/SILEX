@@ -1,7 +1,8 @@
-import { SystemRole, DEMO_PROFILES } from '@silex/shared';
+import { SystemRole } from '@silex/shared';
 import { AuthResponseDto } from '@silex/contracts';
 import {
   mockStore,
+  SYSTEM_USERS,
   MOCK_COST_DISTRIBUTION,
 } from './mock-data';
 
@@ -78,8 +79,13 @@ class ApiClient {
         }
       }
 
-      // 1.2 Projects Actions (Progress, Milestones, ODS, Situations, Members, Costs, Updates)
-      if (clean.includes('/projects/')) {
+      // 1.2 Projects Actions (Creation, Progress, Milestones, ODS, Situations, Members, Updates)
+      if (clean.includes('/projects')) {
+        // Création d'un nouveau projet
+        if ((clean === '/projects' || clean === '/api/projects') && method === 'POST') {
+          return mockStore.addProject(body);
+        }
+
         // Avancement physique & dépenses
         if (clean.includes('/progress')) {
           const idMatch = endpoint.match(/\/projects\/([a-zA-Z0-9_-]+)\/progress/);
@@ -104,12 +110,6 @@ class ApiClient {
           if (idMatch) return mockStore.addWorkSituation(idMatch[1], body);
         }
 
-        // Imputation dépenses / frais
-        if (clean.includes('/costs')) {
-          const idMatch = endpoint.match(/\/projects\/([a-zA-Z0-9_-]+)\/costs/);
-          if (idMatch) return mockStore.addCost(idMatch[1], body);
-        }
-
         // Affectation collaborateur
         if (clean.includes('/members')) {
           const idMatch = endpoint.match(/\/projects\/([a-zA-Z0-9_-]+)\/members/);
@@ -123,37 +123,63 @@ class ApiClient {
         }
       }
 
-      // 1.3 Procurement (Création DA)
+      // 1.3 Procurement (Création DA & BC & Fournisseurs)
       if (clean.includes('/procurement')) {
         return mockStore.createProcurementRequest(body);
       }
+      if (clean.includes('/suppliers')) {
+        return mockStore.addSupplier(body);
+      }
+      if (clean.includes('/purchase-orders')) {
+        return mockStore.createPurchaseOrder(body);
+      }
 
-      // 1.4 Stocks & Mouvements
-      if (clean.includes('/inventory')) {
+      // 1.4 Stocks & Entrepôts
+      if (clean.includes('/warehouses')) {
+        return mockStore.addWarehouse(body);
+      }
+      if (clean.includes('/inventory') || clean.includes('/items')) {
+        if (method === 'POST' && (clean === '/inventory' || clean === '/items')) {
+          return mockStore.addInventoryItem(body);
+        }
         return mockStore.addInventoryMovement(body);
       }
 
-      // 1.5 Auth Login / Demo Switch
+      // 1.5 RH & Collaborateurs
+      if (clean.includes('/employees') || clean.includes('/hr')) {
+        return mockStore.addEmployee(body);
+      }
+
+      // 1.6 Parc Matériel & Maintenance
+      if (clean.includes('/fleet') || clean.includes('/assets')) {
+        return mockStore.addAsset(body);
+      }
+
+      // 1.7 Qualité & Non-Conformités
+      if (clean.includes('/quality') || clean.includes('/non-conformities')) {
+        return mockStore.addNonConformity(body);
+      }
+
+      // 1.8 Auth Login
       if (clean.includes('/auth/login') || clean.includes('/auth/demo-switch')) {
         let role: SystemRole = SystemRole.DIRECTEUR_GENERAL;
         if (body.role) {
           role = body.role;
         } else if (body.email) {
-          const found = Object.values(DEMO_PROFILES).find(p => p.email.toLowerCase() === body.email.toLowerCase());
-          if (found) role = found.role;
+          const found = SYSTEM_USERS.find(p => p.email.toLowerCase() === body.email.toLowerCase());
+          if (found) role = found.role as SystemRole;
         }
-        const profile = DEMO_PROFILES[role] || DEMO_PROFILES[SystemRole.DIRECTEUR_GENERAL];
+        const user = SYSTEM_USERS.find(u => u.role === role) || SYSTEM_USERS[0];
         return {
-          accessToken: 'silex_demo_token_' + profile.role,
+          accessToken: 'silex_jwt_session_' + user.role,
           user: {
-            id: profile.id,
-            email: profile.email,
-            name: profile.name,
-            role: profile.role,
-            departmentCode: profile.departmentCode,
-            avatarUrl: profile.avatar,
-            title: profile.title,
-            assignedProjects: (profile.assignedProjectCodes || []).map(code => ({ id: code, code, name: code })),
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            role: user.role,
+            departmentCode: user.departmentCode,
+            title: user.title,
+            assignedProjects: [],
             permissions: ['*'],
           },
         };
@@ -171,16 +197,15 @@ class ApiClient {
     // 2.1 Auth /me
     if (clean.includes('/auth/me')) {
       const savedRole = (typeof window !== 'undefined' ? localStorage.getItem('silex_active_role') : null) as SystemRole || SystemRole.DIRECTEUR_GENERAL;
-      const profile = DEMO_PROFILES[savedRole] || DEMO_PROFILES[SystemRole.DIRECTEUR_GENERAL];
+      const user = SYSTEM_USERS.find(u => u.role === savedRole) || SYSTEM_USERS[0];
       return {
-        id: profile.id,
-        email: profile.email,
-        name: profile.name,
-        role: profile.role,
-        departmentCode: profile.departmentCode,
-        avatarUrl: profile.avatar,
-        title: profile.title,
-        assignedProjects: (profile.assignedProjectCodes || []).map(code => ({ id: code, code, name: code })),
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        departmentCode: user.departmentCode,
+        title: user.title,
+        assignedProjects: [],
         permissions: ['*'],
       };
     }
@@ -226,34 +251,47 @@ class ApiClient {
     if (clean.includes('/stock-movements') || clean.includes('/movements')) {
       return mockStore.getStockMovements();
     }
-    if (clean.includes('/inventory')) {
+    if (clean.includes('/inventory') || clean.includes('/items')) {
       return mockStore.getInventoryItems();
     }
 
-    // 2.7 HR & Utilisateurs
-    if (clean.includes('/employees') || clean.includes('/users') || clean.includes('/hr')) {
+    // 2.7 Utilisateurs & HR
+    if (clean.includes('/users')) {
+      return SYSTEM_USERS;
+    }
+    if (clean.includes('/employees') || clean.includes('/hr')) {
       return mockStore.getEmployees();
     }
 
-    // 2.8 Finance
+    // 2.8 Parc & Maintenance
+    if (clean.includes('/fleet') || clean.includes('/assets')) {
+      return mockStore.getAssets();
+    }
+
+    // 2.9 Qualité & QHSE
+    if (clean.includes('/quality') || clean.includes('/non-conformities')) {
+      return mockStore.getNonConformities();
+    }
+
+    // 2.10 Finance
     if (clean.includes('/finance')) {
       return {
         kpis: mockStore.getKpis(),
         summary: {
-          totalBilled: 125000000,
-          totalCollected: 98000000,
-          pendingCollection: 27000000,
-          warrantyHeld: 8500000,
-          treasuryBalance: 42500000,
+          totalBilled: 0,
+          totalCollected: 0,
+          pendingCollection: 0,
+          warrantyHeld: 0,
+          treasuryBalance: 0,
         },
-        distribution: MOCK_COST_DISTRIBUTION,
+        distribution: [],
         projects: mockStore.getProjects().map(p => ({
           ...p,
-          marginRate: 25.1,
-          contractAmount: p.contractAmount || 145000000,
-          billedAmount: 45000000,
-          paidAmount: 38000000,
-          warrantyAmount: 7250000,
+          marginRate: 0,
+          contractAmount: p.contractAmount || 0,
+          billedAmount: 0,
+          paidAmount: 0,
+          warrantyAmount: 0,
         })),
       };
     }
@@ -267,12 +305,7 @@ class ApiClient {
     const baseUrl = this.getBaseUrl();
     const primaryUrl = endpoint.startsWith('http') ? endpoint : `${baseUrl}/api${cleanEndpoint}`;
 
-    // Si le token en cours est un token démo mock, renvoyer directement le mock
     const currentToken = this.getToken();
-    if (currentToken && currentToken.startsWith('silex_demo_token_')) {
-      return this.getMockFallback(cleanEndpoint, options) as T;
-    }
-
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
@@ -289,13 +322,13 @@ class ApiClient {
       });
 
       if (!response.ok) {
-        console.warn(`[SILEX API] Réponse HTTP ${response.status} sur ${endpoint}. Bascule automatique vers le mode démo résilient.`);
+        console.warn(`[SILEX API] Réponse HTTP ${response.status} sur ${endpoint}. Utilisation du store résilient.`);
         return this.getMockFallback(cleanEndpoint, options) as T;
       }
 
       return await response.json();
     } catch (err: any) {
-      console.warn(`[SILEX API] Échec réseau sur ${endpoint}. Bascule automatique vers le mode démo résilient :`, err?.message || err);
+      console.warn(`[SILEX API] Échec réseau sur ${endpoint}. Utilisation du store résilient :`, err?.message || err);
       return this.getMockFallback(cleanEndpoint, options) as T;
     }
   }

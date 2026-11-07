@@ -52,10 +52,15 @@ async function bootstrap(): Promise<INestApplication> {
     customSiteTitle: 'SILEX ERP API Docs',
   });
 
-  const port = process.env.PORT || 4000;
-  await app.listen(port, '0.0.0.0');
-  logger.log(`🚀 SILEX ERP API démarrée sur http://0.0.0.0:${port}/api`);
-  logger.log(`📚 Documentation Swagger disponible sur http://localhost:${port}/api/docs`);
+  if (process.env.VERCEL) {
+    await app.init();
+    logger.log('🚀 SILEX ERP API initialisée en mode Vercel Serverless');
+  } else {
+    const port = process.env.PORT || 4000;
+    await app.listen(port, '0.0.0.0');
+    logger.log(`🚀 SILEX ERP API démarrée sur http://0.0.0.0:${port}/api`);
+    logger.log(`📚 Documentation Swagger disponible sur http://localhost:${port}/api/docs`);
+  }
 
   return app;
 }
