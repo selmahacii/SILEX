@@ -248,7 +248,7 @@ export default function FinancePage() {
         <div className="bg-white p-4 rounded-xl border border-[#E1E6ED] shadow-2xs">
           <div className="text-xs font-medium text-[#697789]">Marge Globale Prévisionnelle</div>
           <div className="text-lg font-bold text-emerald-700 mt-1">
-            +{financeData?.totals?.globalMarginRate || '23.1'}%
+            +{financeData?.totals?.globalMarginRate ?? '0.0'}%
           </div>
           <div className="text-[11px] text-emerald-600 font-semibold mt-1">Conforme aux objectifs 2026</div>
         </div>

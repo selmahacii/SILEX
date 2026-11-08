@@ -134,7 +134,7 @@ export default function ReportsPage() {
             Total Marchés Contractuels
           </div>
           <div className="text-lg font-black text-[#07164D] mt-1">
-            {formatCurrencyDA(totalContract > 0 ? totalContract : 1472000000, false)}
+            {formatCurrencyDA(totalContract, false)}
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">
             Engagements clients fermes ({projects.length} chantiers)
@@ -146,7 +146,7 @@ export default function ReportsPage() {
             Budgets Prévus Alloués
           </div>
           <div className="text-lg font-black text-[#0B207D] mt-1">
-            {formatCurrencyDA(totalBudget > 0 ? totalBudget : 1131500000, false)}
+            {formatCurrencyDA(totalBudget, false)}
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">
             Enveloppe opérationnelle chantiers
@@ -158,7 +158,7 @@ export default function ReportsPage() {
             Engagements Bons de Commande
           </div>
           <div className="text-lg font-black text-[#0A7F7C] mt-1">
-            {formatCurrencyDA(totalCommitted > 0 ? totalCommitted : 150302000, false)}
+            {formatCurrencyDA(totalCommitted, false)}
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">
             Dépenses contractées fermes
@@ -311,10 +311,10 @@ export default function ReportsPage() {
                   Totaux Consolidés SILEX SERVICES :
                 </td>
                 <td className="py-3 px-3 text-right text-[#07164D] font-black">
-                  {formatCurrencyDA(totalContract > 0 ? totalContract : 1472000000, false)}
+                  {formatCurrencyDA(totalContract, false)}
                 </td>
                 <td className="py-3 px-3 text-right text-slate-700">
-                  {formatCurrencyDA(totalBudget > 0 ? totalBudget : 1131500000, false)}
+                  {formatCurrencyDA(totalBudget, false)}
                 </td>
                 <td className="py-3 px-3 text-right text-[#0A7F7C] font-black">
                   {formatCurrencyDA(totalActual, false)}

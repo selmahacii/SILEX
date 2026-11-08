@@ -41,8 +41,6 @@ export function Header() {
           <span>Fuseau : <strong className="text-slate-700">Africa/Algiers</strong></span>
           <span>•</span>
           <span>Devise : <strong className="text-[#0B207D] font-bold">Dinar algérien (DA)</strong></span>
-          <span>•</span>
-          <span>TVA : <strong className="text-slate-700">19%</strong></span>
         </div>
       </div>
 

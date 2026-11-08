@@ -372,13 +372,19 @@ export const dbBridge = {
         const totalSpent = Number(agg._sum.actualCost || 0);
         const totalCommitted = Number(agg._sum.committedCost || 0);
 
+        const marginDA = Math.max(0, totalContracted - totalBudget);
+        const projectedMarginRate = totalContracted > 0 ? ((marginDA / totalContracted) * 100).toFixed(1) : '0.0';
+        const pendingWfs = (serverStore.workflows || []).filter((w: any) => w.status === 'PENDING').length;
+
         return {
           totalProjects,
           activeProjects,
           activeProjectsCount: activeProjects,
+          totalTurnover: totalContracted,
           totalContractValue: totalContracted,
           totalContracted,
           totalBudgetAllocated: totalBudget,
+          totalProjectBudgets: totalBudget,
           totalBudget,
           totalSpent,
           totalActualCosts: totalSpent,
@@ -386,6 +392,8 @@ export const dbBridge = {
           totalCommittedCosts: totalCommitted,
           monthlyExpenditure: totalSpent,
           avgPhysicalProgress: 0,
+          projectedMarginRate,
+          pendingApprovalsCount: pendingWfs,
           clientReceivables: 0,
           supplierPayables: 0,
         };
@@ -1245,7 +1253,102 @@ export const dbBridge = {
   },
 
   async getFinanceOverview() {
-    return serverStore.getFinanceOverview();
+    let projs: any[] = [];
+    if (hasDb) {
+      try {
+        projs = await prisma.project.findMany({
+          include: { workSituations: true, milestones: true },
+          orderBy: { createdAt: 'desc' },
+        });
+      } catch (err) {
+        projs = serverStore.getProjects();
+      }
+    } else {
+      projs = serverStore.getProjects();
+    }
+
+    let totalContractAmount = 0;
+    let totalBudgetAmount = 0;
+    let totalCommittedCost = 0;
+    let totalActualCost = 0;
+    let totalBilled = 0;
+    let totalWarrantyHeld = 0;
+
+    const projectOverviews = (projs || []).map((p: any) => {
+      const contractAmount = Number(p.contractAmount || 0);
+      const budgetAmount = Number(p.budgetAmount || 0);
+      const committedCost = Number(p.committedCost || 0);
+      const actualCost = Number(p.actualCost || 0);
+
+      totalContractAmount += contractAmount;
+      totalBudgetAmount += budgetAmount;
+      totalCommittedCost += committedCost;
+      totalActualCost += actualCost;
+
+      const wsList = Array.isArray(p.workSituations) ? p.workSituations : [];
+      const projectBilled = wsList.reduce((sum: number, s: any) => sum + Number(s.amountHT || 0), 0);
+      const projectWarranty = wsList.reduce((sum: number, s: any) => sum + Number(s.retenueGarantie || (Number(s.amountHT || 0) * 0.05)), 0);
+
+      totalBilled += projectBilled;
+      totalWarrantyHeld += projectWarranty;
+
+      const projectPaid = (serverStore.financePayments || [])
+        .filter((pay: any) => pay.projectId === p.id)
+        .reduce((sum: number, pay: any) => sum + Number(pay.amount || 0), 0);
+
+      const marginDA = Math.max(0, contractAmount - budgetAmount);
+      const marginRate = contractAmount > 0 ? ((marginDA / contractAmount) * 100).toFixed(1) : '0.0';
+
+      return {
+        id: p.id,
+        code: p.code,
+        name: p.name,
+        clientName: p.clientName,
+        contractAmount,
+        budgetAmount,
+        committedCost,
+        actualCost,
+        billedAmount: projectBilled,
+        paidAmount: projectPaid,
+        pendingAmount: Math.max(0, projectBilled - projectPaid),
+        warrantyHeld: projectWarranty,
+        marginDA,
+        marginRate,
+        status: p.status,
+      };
+    });
+
+    const totalCollected = (serverStore.financePayments || []).reduce((sum: number, pay: any) => sum + Number(pay.amount || 0), 0);
+    const pendingCollection = Math.max(0, totalBilled - totalCollected);
+    const globalMarginDA = Math.max(0, totalContractAmount - totalBudgetAmount);
+    const globalMarginRate = totalContractAmount > 0 ? ((globalMarginDA / totalContractAmount) * 100).toFixed(1) : '0.0';
+
+    const totals = {
+      contractAmount: totalContractAmount,
+      budgetAmount: totalBudgetAmount,
+      committedCost: totalCommittedCost,
+      actualCost: totalActualCost,
+      globalMarginRate,
+      totalBilled,
+      totalCollected,
+      pendingCollection,
+      warrantyHeld: totalWarrantyHeld,
+    };
+
+    return {
+      totals,
+      kpis: {
+        totalContracted: totalContractAmount,
+        totalBilled,
+        totalCollected,
+        pendingCollection,
+        warrantyHeld: totalWarrantyHeld,
+        treasuryBalance: totalCollected - totalCommittedCost,
+      },
+      summary: totals,
+      projects: projectOverviews,
+      distribution: serverStore.getCostDistribution(),
+    };
   },
 
   async getCostDistribution() {
