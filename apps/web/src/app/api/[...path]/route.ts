@@ -215,6 +215,11 @@ export async function POST(
   }
 
   // 3. Projects
+  if (clean.includes('/members')) {
+    const projId = resolvedParams.path[1];
+    const member = await dbBridge.assignMemberToProject(projId, body.userId, null);
+    return NextResponse.json(member, { status: 201, headers: corsHeaders() });
+  }
   if (clean === '/projects') {
     const newProj = await dbBridge.createProject(body);
     return NextResponse.json(newProj, { status: 201, headers: corsHeaders() });
@@ -367,6 +372,20 @@ export async function PATCH(
   return NextResponse.json({ success: true }, { headers: corsHeaders() });
 }
 
-export async function DELETE() {
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ path: string[] }> },
+) {
+  const resolvedParams = await params;
+  const path = '/' + (resolvedParams.path || []).join('/');
+  const clean = path.toLowerCase();
+
+  if (clean.includes('/members')) {
+    const projId = resolvedParams.path[1];
+    const userId = resolvedParams.path[3];
+    await dbBridge.removeMemberFromProject(projId, userId, null);
+    return NextResponse.json({ success: true }, { headers: corsHeaders() });
+  }
+
   return NextResponse.json({ success: true }, { headers: corsHeaders() });
 }

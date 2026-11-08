@@ -295,6 +295,41 @@ class ServerStore {
     return project;
   }
 
+    assignMemberToProject(codeOrId: string, userId: string) {
+    const project = this.getProject(codeOrId);
+    if (!project) return null;
+    if (!project.assignedUsers) project.assignedUsers = [];
+    const u = this.users.find(usr => usr.id === userId);
+    const existing = project.assignedUsers.find((a: any) => a.userId === userId);
+    if (existing) return existing;
+    const assignment = {
+      id: `asgn-${Date.now()}`,
+      userId,
+      projectId: project.id,
+      user: u || { id: userId, name: 'Collaborateur', role: 'OPERATIONS' },
+      assignedAt: new Date().toISOString(),
+    };
+    project.assignedUsers.push(assignment);
+    if (Array.isArray(project.members)) project.members.push(assignment);
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('ASSIGN_PROJECT_MEMBER', 'PROJECT', project.code, `Affectation de ${assignment.user?.name || userId} au projet ${project.code}`);
+    return assignment;
+  }
+
+  removeMemberFromProject(codeOrId: string, userId: string) {
+    const project = this.getProject(codeOrId);
+    if (!project) return { success: false };
+    if (project.assignedUsers) {
+      project.assignedUsers = project.assignedUsers.filter((a: any) => a.userId !== userId && a.user?.id !== userId);
+    }
+    if (project.members) {
+      project.members = project.members.filter((a: any) => a.userId !== userId && a.id !== userId);
+    }
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('REMOVE_PROJECT_MEMBER', 'PROJECT', project.code, `Retrait du collaborateur ${userId} du projet ${project.code}`);
+    return { success: true };
+  }
+
   addMilestone(codeOrId: string, data: any) {
     const project = this.getProject(codeOrId);
     if (!project) return null;

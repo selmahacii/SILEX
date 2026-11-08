@@ -126,10 +126,13 @@ export const dbBridge = {
             ],
           },
           include: {
+            manager: true,
             milestones: true,
             serviceOrders: true,
             workSituations: true,
-            assignedUsers: true,
+            assignedUsers: {
+              include: { user: true },
+            },
           },
         });
         if (project) return project;
@@ -192,9 +195,22 @@ export const dbBridge = {
               contractAmount: data.contractAmount !== undefined ? Number(data.contractAmount) : undefined,
               budgetAmount: data.budgetAmount !== undefined ? Number(data.budgetAmount) : undefined,
               description: data.description !== undefined ? data.description : undefined,
+              objectives: data.objectives !== undefined ? data.objectives : undefined,
+              managerId: data.managerId !== undefined ? data.managerId : undefined,
+              startDate: data.contractStartDate || data.startDate ? new Date(data.contractStartDate || data.startDate) : undefined,
+              contractEndDate: data.contractEndDate ? new Date(data.contractEndDate) : undefined,
+            },
+            include: {
+              manager: true,
+              milestones: true,
+              serviceOrders: true,
+              workSituations: true,
+              assignedUsers: {
+                include: { user: true },
+              },
             },
           });
-          await this.logAudit('UPDATE_PROJECT', 'PROJECT', updated.code, `Mise à jour du projet ${updated.code}`, data.user);
+          await this.logAudit('UPDATE_PROJECT', 'PROJECT', updated.code, `Mise à jour du projet ${updated.code} (Responsable: ${updated.manager?.name || updated.managerId})`, data.user);
           return updated;
         }
       } catch (err) {
@@ -203,6 +219,64 @@ export const dbBridge = {
     }
     const res = serverStore.updateProject(codeOrId, data);
     await this.logAudit('UPDATE_PROJECT', 'PROJECT', codeOrId, `Mise à jour du projet ${codeOrId}`, data.user);
+    return res;
+  },
+
+  async assignMemberToProject(projectIdOrCode: string, userId: string, user?: any) {
+    if (hasDb) {
+      try {
+        const proj = await prisma.project.findFirst({
+          where: { OR: [{ id: projectIdOrCode }, { code: projectIdOrCode }] },
+        });
+        if (proj) {
+          const assignment = await prisma.userProjectAssignment.upsert({
+            where: {
+              userId_projectId: {
+                userId,
+                projectId: proj.id,
+              },
+            },
+            create: {
+              userId,
+              projectId: proj.id,
+            },
+            update: {},
+            include: { user: true },
+          });
+          await this.logAudit('ASSIGN_PROJECT_MEMBER', 'PROJECT', proj.code, `Affectation de ${assignment.user?.name || userId} au projet ${proj.code}`, user);
+          return assignment;
+        }
+      } catch (err) {
+        console.warn('[DB Bridge] Error assigning member in DB:', err);
+      }
+    }
+    const res = serverStore.assignMemberToProject(projectIdOrCode, userId);
+    await this.logAudit('ASSIGN_PROJECT_MEMBER', 'PROJECT', projectIdOrCode, `Affectation du collaborateur ${userId} au projet ${projectIdOrCode}`, user);
+    return res;
+  },
+
+  async removeMemberFromProject(projectIdOrCode: string, userId: string, user?: any) {
+    if (hasDb) {
+      try {
+        const proj = await prisma.project.findFirst({
+          where: { OR: [{ id: projectIdOrCode }, { code: projectIdOrCode }] },
+        });
+        if (proj) {
+          await prisma.userProjectAssignment.deleteMany({
+            where: {
+              userId,
+              projectId: proj.id,
+            },
+          });
+          await this.logAudit('REMOVE_PROJECT_MEMBER', 'PROJECT', proj.code, `Retrait du collaborateur ${userId} du projet ${proj.code}`, user);
+          return { success: true };
+        }
+      } catch (err) {
+        console.warn('[DB Bridge] Error removing member in DB:', err);
+      }
+    }
+    const res = serverStore.removeMemberFromProject(projectIdOrCode, userId);
+    await this.logAudit('REMOVE_PROJECT_MEMBER', 'PROJECT', projectIdOrCode, `Retrait du collaborateur ${userId} du projet ${projectIdOrCode}`, user);
     return res;
   },
 

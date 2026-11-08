@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
+import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api-client';
 import { formatCurrencyDA, formatDateDZ, ServiceOrderType } from '@silex/shared';
 import { StatusBadge } from '@/components/shared/status-badge';
@@ -119,9 +120,9 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
   const [milestoneLivrable, setMilestoneLivrable] = useState('Rapport d\'interprétation des clichés radiographiques agréé');
   const [milestoneWeight, setMilestoneWeight] = useState<number>(15);
   const [milestoneControlOrg, setMilestoneControlOrg] = useState('Bureau Veritas Algérie');
-  const [milestoneSupervisor, setMilestoneSupervisor] = useState('Sofiane Belkacem (Ingénieur Chef de Chantier SILEX)');
-  const [milestoneSupervisorContact, setMilestoneSupervisorContact] = useState('+213 (0) 560 21 88 44');
-  const [milestoneSupervisorEmail, setMilestoneSupervisorEmail] = useState('s.belkacem@silex-services.dz');
+  const [milestoneSupervisor, setMilestoneSupervisor] = useState('');
+  const [milestoneSupervisorContact, setMilestoneSupervisorContact] = useState('');
+  const [milestoneSupervisorEmail, setMilestoneSupervisorEmail] = useState('');
   const [milestoneStartDate, setMilestoneStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [milestoneTargetDate, setMilestoneTargetDate] = useState('2026-11-20');
   const [milestoneParticipants, setMilestoneParticipants] = useState<string[]>([
@@ -752,7 +753,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                   Responsable & Équipe Chantier
                 </h2>
                 <button
-                  onClick={handleOpenEdit}
+                  onClick={handleOpenManagerModal}
                   className="text-[11px] text-[#0B207D] font-semibold hover:underline cursor-pointer"
                 >
                   Changer
@@ -760,42 +761,66 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
               </div>
 
               {/* Fiche Responsable & Contacts Directs */}
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#0B207D] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                    {project.manager?.name ? project.manager.name.split(' ').map((n: string) => n[0]).join('') : 'CP'}
+              {project.manager ? (
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-[#0B207D] text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+                      {project.manager.name ? project.manager.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'RP'}
+                    </div>
+                    <div className="overflow-hidden">
+                      <div className="text-xs font-bold text-slate-900 truncate">{project.manager.name}</div>
+                      <div className="text-[11px] text-[#0A7F7C] font-semibold">{project.manager.title || (project.manager.role ? project.manager.role.replace(/_/g, ' ') : 'Responsable Projet')}</div>
+                    </div>
                   </div>
-                  <div className="overflow-hidden">
-                    <div className="text-xs font-bold text-slate-900 truncate">{project.manager?.name || 'Sofiane Belkacem'}</div>
-                    <div className="text-[11px] text-[#0A7F7C] font-semibold">{project.manager?.title || 'Ingénieur Conduite de Travaux & CND'}</div>
-                  </div>
-                </div>
 
-                <div className="pt-2 border-t border-slate-200 space-y-1 text-xs">
-                  <div className="flex items-center gap-2">
-                    <a
-                      href="tel:+213560218844"
-                      className="inline-flex items-center gap-1 text-[11px] text-[#0B207D] font-bold hover:underline"
-                    >
-                      <Phone className="w-3 h-3 text-[#0A7F7C]" />
-                      +213 (0) 560 21 88 44
-                    </a>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={`mailto:${project.manager?.email || 's.belkacem@silex-services.dz'}`}
-                      className="inline-flex items-center gap-1 text-[11px] text-slate-600 hover:text-slate-900 truncate"
-                    >
-                      <Mail className="w-3 h-3 text-slate-400" />
-                      {project.manager?.email || 's.belkacem@silex-services.dz'}
-                    </a>
-                  </div>
-                  <div className="text-[10px] text-slate-500 flex items-center gap-1">
-                    <MapPin className="w-2.5 h-2.5 text-slate-400" />
-                    Base Opérationnelle : Hassi Messaoud (Ouargla)
+                  <div className="pt-2 border-t border-slate-200 space-y-1 text-xs">
+                    {project.manager.phone && (
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`tel:${project.manager.phone}`}
+                          className="inline-flex items-center gap-1 text-[11px] text-[#0B207D] font-bold hover:underline"
+                        >
+                          <Phone className="w-3 h-3 text-[#0A7F7C]" />
+                          {project.manager.phone}
+                        </a>
+                      </div>
+                    )}
+                    {project.manager.email && (
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`mailto:${project.manager.email}`}
+                          className="inline-flex items-center gap-1 text-[11px] text-slate-600 hover:text-slate-900 truncate"
+                        >
+                          <Mail className="w-3 h-3 text-slate-400" />
+                          {project.manager.email}
+                        </a>
+                      </div>
+                    )}
+                    <div className="text-[10px] text-slate-500 flex items-center gap-1">
+                      <MapPin className="w-2.5 h-2.5 text-slate-400" />
+                      Base Opérationnelle : {project.siteLocation || 'Site Industriel Algérie'}
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="p-4 bg-slate-50 rounded-lg border border-dashed border-slate-300 text-center space-y-2">
+                  <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-500 mx-auto flex items-center justify-center font-bold text-xs">
+                    NR
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-slate-800">Aucun Responsable Assigné</div>
+                    <div className="text-[11px] text-slate-500">Veuillez désigner le Chef de Projet / Responsable Chantier.</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleOpenManagerModal}
+                    className="px-3 py-1.5 bg-[#0B207D] text-white text-xs font-semibold rounded hover:bg-[#07164D] transition-colors cursor-pointer inline-flex items-center gap-1"
+                  >
+                    <User className="w-3.5 h-3.5" />
+                    + Désigner le Responsable
+                  </button>
+                </div>
+              )}
 
               {/* Équipe participante & Bouton Affecter */}
               <div className="space-y-2 pt-2 border-t border-slate-100">
@@ -857,7 +882,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                   Dates Contractuelles & Délais
                 </h2>
                 <button
-                  onClick={handleOpenEdit}
+                  onClick={handleOpenDatesModal}
                   className="text-[11px] text-[#0B207D] font-semibold hover:underline cursor-pointer"
                 >
                   Modifier
@@ -2877,6 +2902,156 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
           </div>
         );
       })()}
+    
+      {/* ========================================================================= */}
+      {/* MODALE : DÉSIGNER / CHANGER LE RESPONSABLE DU PROJET */}
+      {/* ========================================================================= */}
+      {showChangeManagerModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150 backdrop-blur-xs">
+          <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <User className="w-5 h-5 text-[#0B207D]" />
+                <h3 className="text-sm font-bold text-[#07164D]">Désigner le Responsable de Chantier</h3>
+              </div>
+              <button onClick={() => setShowChangeManagerModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveManager} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Sélectionner le Chef de Projet / Responsable *
+                </label>
+                <select
+                  value={selectedManagerId}
+                  onChange={e => setSelectedManagerId(e.target.value)}
+                  className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-semibold"
+                  required
+                >
+                  <option value="">-- Choisir un responsable --</option>
+                  {(Array.isArray(usersList) ? usersList : []).map(u => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} — {u.title || u.role} ({u.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="p-3 bg-blue-50/60 rounded border border-blue-200 text-[11px] text-blue-900 space-y-1">
+                <div className="font-bold flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#0B207D]" />
+                  Habilitation & Rôle Directeur / Direction
+                </div>
+                <div>Le collaborateur désigné sera le garant de l'exécution QCD, du suivi des métrés et de la validation des pointages sur ce chantier.</div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowChangeManagerModal(false)}
+                  className="px-3 py-1.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={!selectedManagerId}
+                  className="px-4 py-1.5 bg-[#0B207D] text-white font-semibold rounded hover:bg-[#07164D] disabled:opacity-50 cursor-pointer"
+                >
+                  Confirmer la Désignation
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODALE : MODIFIER LES DATES CONTRACTUELLES & DÉLAIS */}
+      {/* ========================================================================= */}
+      {showChangeDatesModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150 backdrop-blur-xs">
+          <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-[#0B207D]" />
+                <h3 className="text-sm font-bold text-[#07164D]">Modifier le Calendrier Contractuel</h3>
+              </div>
+              <button onClick={() => setShowChangeDatesModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveDates} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Date de Notification / Démarrage Chantier *
+                </label>
+                <input
+                  type="date"
+                  value={dateNotification}
+                  onChange={e => setDateNotification(e.target.value)}
+                  className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-semibold"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-semibold mb-1">
+                  Date de Fin Contractuelle Prévue *
+                </label>
+                <input
+                  type="date"
+                  value={dateFinContractuelle}
+                  onChange={e => setDateFinContractuelle(e.target.value)}
+                  className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-semibold"
+                  required
+                />
+              </div>
+
+              {dateFinContractuelle && (
+                <div className="p-3 bg-slate-50 rounded border border-slate-200 text-xs">
+                  {(() => {
+                    const days = Math.ceil(
+                      (new Date(dateFinContractuelle).getTime() - Date.now()) / (1000 * 3600 * 24)
+                    );
+                    return days > 0 ? (
+                      <div className="text-emerald-700 font-bold flex items-center gap-1.5">
+                        <Clock className="w-4 h-4" />
+                        Nouveau Délai Restant : {days} jours
+                      </div>
+                    ) : (
+                      <div className="text-red-700 font-bold flex items-center gap-1.5">
+                        <AlertCircle className="w-4 h-4" />
+                        Date échue : +{Math.abs(days)} jours de dépassement
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowChangeDatesModal(false)}
+                  className="px-3 py-1.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-[#0B207D] text-white font-semibold rounded hover:bg-[#07164D] cursor-pointer"
+                >
+                  Enregistrer les Nouvelles Dates
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
