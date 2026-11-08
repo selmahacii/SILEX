@@ -119,32 +119,10 @@ class ServerStore {
       permissions: ['*'],
     }));
 
-    // 2. Initialiser le Magasin Central de référence (infrastructure physique)
-    this.warehouses = [
-      {
-        id: 'wh-arzew-01',
-        code: 'MAG-ARZEW-01',
-        name: 'Magasin Central Arzew (ZI Ouest)',
-        location: 'Zone Industrielle Arzew, W. Oran',
-        type: 'CENTRAL',
-        capacityM2: 2500,
-        responsibleName: 'Tarek Meziani',
-        active: true,
-      },
-      {
-        id: 'wh-hassi-02',
-        code: 'MAG-HMD-02',
-        name: 'Base Logistique & Chantier Hassi Messaoud',
-        location: 'Zone Industrielle Irara, Hassi Messaoud, W. Ouargla',
-        type: 'CHANTIER',
-        capacityM2: 1200,
-        responsibleName: 'Yacine Khelifi',
-        active: true,
-      },
-    ];
+    // 2. Magasins physiques demarrent a zero (100% dynamiques)
+    this.warehouses = [];
 
-    // NOTE : TOUTES les autres tables (projets, DAs, BCs, fournisseurs, articles, mouvements,
-    // collaborateurs, pointages, OTs, FNCs, situations) démarrent à ZÉRO (0 MOCKDATA).
+    // NOTE: Toutes les tables demarrent a 0 mockdata.
   }
 
   // --- AUDIT ---

@@ -107,7 +107,7 @@ export const dbBridge = {
             workSituations: true,
           },
         });
-        if (projects && projects.length > 0) return projects;
+        return projects;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getProjects:', err);
       }
@@ -431,16 +431,18 @@ export const dbBridge = {
   async getProjectKpis() {
     if (hasDb) {
       try {
-        const totalProjects = await prisma.project.count();
-        const activeProjects = await prisma.project.count({ where: { status: 'IN_PROGRESS' } });
-        const agg = await prisma.project.aggregate({
-          _sum: {
-            contractAmount: true,
-            budgetAmount: true,
-            actualCost: true,
-            committedCost: true,
-          },
-        });
+        const [totalProjects, activeProjects, agg] = await Promise.all([
+          prisma.project.count(),
+          prisma.project.count({ where: { status: 'IN_PROGRESS' } }),
+          prisma.project.aggregate({
+            _sum: {
+              contractAmount: true,
+              budgetAmount: true,
+              actualCost: true,
+              committedCost: true,
+            },
+          }),
+        ]);
         const totalContracted = Number(agg._sum.contractAmount || 0);
         const totalBudget = Number(agg._sum.budgetAmount || 0);
         const totalSpent = Number(agg._sum.actualCost || 0);
@@ -491,12 +493,36 @@ export const dbBridge = {
 
   async approveWorkflow(id: string, notes: string = '', user?: any) {
     const res = serverStore.approveWorkflow(id, notes, user);
+    if (hasDb && res) {
+      try {
+        if (res.type === 'PURCHASE_REQUEST' && (res.targetId || res.targetCode)) {
+          await prisma.purchaseRequest.updateMany({
+            where: { OR: [{ id: res.targetId || '' }, { reference: res.targetCode || '' }] },
+            data: { status: 'APPROVED' },
+          });
+        }
+      } catch (e) {
+        console.warn('[DB Bridge] Error updating PR in DB on workflow approval:', e);
+      }
+    }
     await this.logAudit('APPROVE_WORKFLOW', 'WORKFLOW', id, `Dossier approuvé avec mention: ${notes || 'Validé'}`, user);
     return res;
   },
 
   async rejectWorkflow(id: string, reason: string = '', user?: any) {
     const res = serverStore.rejectWorkflow(id, reason, user);
+    if (hasDb && res) {
+      try {
+        if (res.type === 'PURCHASE_REQUEST' && (res.targetId || res.targetCode)) {
+          await prisma.purchaseRequest.updateMany({
+            where: { OR: [{ id: res.targetId || '' }, { reference: res.targetCode || '' }] },
+            data: { status: 'REJECTED' },
+          });
+        }
+      } catch (e) {
+        console.warn('[DB Bridge] Error updating PR in DB on workflow rejection:', e);
+      }
+    }
     await this.logAudit('REJECT_WORKFLOW', 'WORKFLOW', id, `Dossier rejeté. Motif: ${reason}`, user);
     return res;
   },
@@ -515,7 +541,7 @@ export const dbBridge = {
           include: { lines: { include: { item: true } }, project: true, createdBy: true },
           orderBy: { createdAt: 'desc' },
         });
-        if (prs && prs.length > 0) {
+        if (prs) {
           return prs.map((pr: any) => ({
             ...pr,
             code: pr.reference || pr.code,
@@ -641,7 +667,7 @@ export const dbBridge = {
     if (hasDb) {
       try {
         const supps = await prisma.supplier.findMany({ orderBy: { name: 'asc' } });
-        if (supps && supps.length > 0) return supps;
+        return supps;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getSuppliers:', err);
       }
@@ -684,7 +710,7 @@ export const dbBridge = {
           include: { supplier: true, project: true, lines: { include: { item: true } } },
           orderBy: { createdAt: 'desc' },
         });
-        if (pos && pos.length > 0) {
+        if (pos) {
           return pos.map((po: any) => ({
             ...po,
             code: po.orderNumber || po.code,
@@ -810,7 +836,7 @@ export const dbBridge = {
     if (hasDb) {
       try {
         const whs = await prisma.warehouse.findMany({ orderBy: { name: 'asc' } });
-        if (whs && whs.length > 0) return whs;
+        return whs;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getWarehouses:', err);
       }
@@ -847,7 +873,7 @@ export const dbBridge = {
     if (hasDb) {
       try {
         const items = await prisma.item.findMany({ orderBy: { name: 'asc' } });
-        if (items && items.length > 0) return items;
+        return items;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getInventoryItems:', err);
       }
@@ -898,10 +924,10 @@ export const dbBridge = {
     if (hasDb) {
       try {
         const mvts = await prisma.stockMovement.findMany({
-          include: { item: true, warehouse: true, project: true },
+          include: { item: true, warehouse: true, purchaseOrder: true },
           orderBy: { createdAt: 'desc' },
         });
-        if (mvts && mvts.length > 0) return mvts;
+        return mvts;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getStockMovements:', err);
       }
@@ -1004,7 +1030,7 @@ export const dbBridge = {
           include: { department: true, certifications: true },
           orderBy: { lastName: 'asc' },
         });
-        if (emps && emps.length > 0) return emps;
+        return emps;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getEmployees:', err);
       }
@@ -1059,7 +1085,7 @@ export const dbBridge = {
           include: { employee: true },
           orderBy: { expiryDate: 'asc' },
         });
-        if (certs && certs.length > 0) return certs;
+        return certs;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getCertifications:', err);
       }
@@ -1104,7 +1130,7 @@ export const dbBridge = {
           include: { employee: true, project: true },
           orderBy: { date: 'desc' },
         });
-        if (atts && atts.length > 0) return atts;
+        return atts;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getAttendances:', err);
       }
@@ -1162,7 +1188,7 @@ export const dbBridge = {
           include: { currentProject: true, maintenanceOrders: true },
           orderBy: { name: 'asc' },
         });
-        if (asts && asts.length > 0) return asts;
+        return asts;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getFleetAssets:', err);
       }
@@ -1212,7 +1238,7 @@ export const dbBridge = {
           include: { asset: true },
           orderBy: { scheduledDate: 'desc' },
         });
-        if (orders && orders.length > 0) return orders;
+        return orders;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getMaintenanceOrders:', err);
       }
@@ -1261,7 +1287,7 @@ export const dbBridge = {
           include: { project: true, actions: true },
           orderBy: { detectedDate: 'desc' },
         });
-        if (ncs && ncs.length > 0) return ncs;
+        return ncs;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getNonConformities:', err);
       }
@@ -1315,7 +1341,7 @@ export const dbBridge = {
           include: { project: true },
           orderBy: { createdAt: 'desc' },
         });
-        if (docs && docs.length > 0) return docs;
+        return docs;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getQualityDocuments:', err);
       }
