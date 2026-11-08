@@ -536,7 +536,7 @@ export default function WorkflowsPage() {
                         <span>— {item.projectName}</span>
                       </div>
                       <div className="text-[10px] text-slate-500">
-                        Client : <strong>{item.clientName || 'SONATRACH / Sites Industriels'}</strong> • Demandeur : <strong>{item.requesterName}</strong> ({item.department})
+                        Client : <strong>{item.clientName || '-'}</strong> • Demandeur : <strong>{item.requesterName}</strong> ({item.department})
                       </div>
                     </div>
                   </div>

@@ -16,8 +16,8 @@ export default function LoginPage() {
     }
   }, [user, authLoading, router]);
 
-  const [email, setEmail] = useState('k.mansouri@silex-services.dz');
-  const [password, setPassword] = useState('SilexDemo2026!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

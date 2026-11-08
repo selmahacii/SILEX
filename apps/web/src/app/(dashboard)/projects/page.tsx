@@ -42,59 +42,16 @@ export default function ProjectsListPage() {
   const [submitting, setSubmitting] = useState(false);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
-  const [clientName, setClientName] = useState('SONATRACH / DP Hassi Messaoud');
+  const [clientName, setClientName] = useState('');
   const [sector, setSector] = useState('OIL_AND_GAS');
-  const [siteLocation, setSiteLocation] = useState('Pôle Pétrolier Hassi Messaoud (Ouargla)');
-  const [contractAmount, setContractAmount] = useState<number>(85000000);
-  const [budgetAmount, setBudgetAmount] = useState<number>(68000000);
-  const [startDate, setStartDate] = useState('2026-04-01');
-  const [contractEndDate, setContractEndDate] = useState('2026-10-31');
-  const [description, setDescription] = useState('Travaux de préfabrication, pose de tuyauterie industrielle Schedule 40/80 et raccordements haute pression.');
+  const [siteLocation, setSiteLocation] = useState('');
+  const [contractAmount, setContractAmount] = useState<number>(0);
+  const [budgetAmount, setBudgetAmount] = useState<number>(0);
+  const [startDate, setStartDate] = useState('');
+  const [contractEndDate, setContractEndDate] = useState('');
+  const [description, setDescription] = useState('');
 
-  const CLIENT_PRESETS = [
-    {
-      name: 'SONATRACH / DP Hassi Messaoud',
-      sector: 'OIL_AND_GAS',
-      location: 'Pôle Pétrolier Hassi Messaoud (Ouargla)',
-      defaultTitle: 'Réseau Tuyauterie HP Schedule 80 & Collecteurs Gaz',
-      defaultDesc: 'Préfabrication et soudage ASME IX de spools 6" et 10" inox et acier carbone.',
-    },
-    {
-      name: 'SONATRACH / Raffinerie Arzew',
-      sector: 'OIL_AND_GAS',
-      location: 'Zone Industrielle Arzew (Oran)',
-      defaultTitle: 'Arrêt Technique Majeur Unité Reformage & Révision Pompes',
-      defaultDesc: 'Maintenance préventive et révision mécanique générale des compresseurs et turbines.',
-    },
-    {
-      name: 'FERTIAL Algérie',
-      sector: 'AUTRE_INDUSTRIE',
-      location: 'Complexe Ammoniac Arzew (Oran)',
-      defaultTitle: 'Rénovation Boucle Réfrigération Industrielle & HVAC Ammoniac',
-      defaultDesc: 'Installation condenseurs évaporatifs, compresseurs à vis et calorifugeage.',
-    },
-    {
-      name: 'TOSYALI Iron & Steel',
-      sector: 'SIDERURGIE',
-      location: 'Complexe Sidérurgique Béthioua (Oran)',
-      defaultTitle: 'Instrumentation & Câblage MT/BT Ligne de Laminage',
-      defaultDesc: 'Installation armoires d’automatisme, passage câbles armés et étalonnage capteurs.',
-    },
-    {
-      name: 'COSIDER Canalisations',
-      sector: 'ENERGIE',
-      location: 'Tracé Gazoduc Région Centre',
-      defaultTitle: 'Accompagnement Méthodes, Contrôle Qualité & Épreuves Hydrauliques',
-      defaultDesc: 'Coordination chantier, suivi planning QCD, supervision des contrôles CND 100%.',
-    },
-    {
-      name: 'GICA / Cimenterie Chlef',
-      sector: 'CIMENTERIE',
-      location: 'Usine de Ciment Oued Sly (Chlef)',
-      defaultTitle: 'Maintenance Mécanique Four Rotatif & Broyeurs à Ciment',
-      defaultDesc: 'Remplacement virole, réfection garniture et lignage laser des transmissions.',
-    },
-  ];
+  const CLIENT_PRESETS: any[] = [];
 
   const fetchProjects = async () => {
     try {
@@ -572,23 +529,25 @@ export default function ProjectsListPage() {
             </div>
 
             {/* Presets rapides clients industriels */}
-            <div>
-              <label className="block text-[11px] font-bold text-[#697789] uppercase tracking-wider mb-1.5">
-                Préréglages Clients Algériens (1 clic) :
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {CLIENT_PRESETS.map((preset, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleApplyPreset(preset)}
-                    className="text-[10px] px-2 py-1 rounded bg-slate-100 hover:bg-teal-50 hover:text-teal-900 border border-slate-200 transition-colors font-medium text-slate-700"
-                  >
-                    {preset.name.split('/')[0]}
-                  </button>
-                ))}
+            {CLIENT_PRESETS.length > 0 && (
+              <div>
+                <label className="block text-[11px] font-bold text-[#697789] uppercase tracking-wider mb-1.5">
+                  Préréglages Clients Algériens (1 clic) :
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {CLIENT_PRESETS.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleApplyPreset(preset)}
+                      className="text-[10px] px-2 py-1 rounded bg-slate-100 hover:bg-teal-50 hover:text-teal-900 border border-slate-200 transition-colors font-medium text-slate-700"
+                    >
+                      {preset.name.split('/')[0]}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             <form onSubmit={handleCreateProject} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

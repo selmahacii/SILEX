@@ -97,18 +97,18 @@ export default function InventoryPage() {
   const [transferSourceWhId, setTransferSourceWhId] = useState('');
   const [transferTargetWhId, setTransferTargetWhId] = useState('');
   const [transferItemId, setTransferItemId] = useState('');
-  const [transferQty, setTransferQty] = useState<number>(5);
-  const [transferDriver, setTransferDriver] = useState('Djamel Hamidi (Chauffeur SILEX)');
-  const [transferVehicle, setTransferVehicle] = useState('02450-116-30 (Plateau 10T)');
-  const [transferNotes, setTransferNotes] = useState('Transfert stock Magasin Arzew vers Base Logistique Hassi Messaoud pour chantier tuyauterie');
+  const [transferQty, setTransferQty] = useState<number>(0);
+  const [transferDriver, setTransferDriver] = useState('');
+  const [transferVehicle, setTransferVehicle] = useState('');
+  const [transferNotes, setTransferNotes] = useState('');
 
   // Formulaire Retour de Chantier (Surplus & Chutes)
   const [returnProjectId, setReturnProjectId] = useState('');
   const [returnWhId, setReturnWhId] = useState('');
   const [returnItemId, setReturnItemId] = useState('');
-  const [returnQty, setReturnQty] = useState<number>(3);
+  const [returnQty, setReturnQty] = useState<number>(0);
   const [returnCondition, setReturnCondition] = useState('BON_ETAT');
-  const [returnNotes, setReturnNotes] = useState('Réintégration des surplus de bobines et brides non consommées. Allègement des coûts réels du projet.');
+  const [returnNotes, setReturnNotes] = useState('');
 
   // Modal Visualisation & Impression A4 Bon de Sortie & Accusé
   const [showPrintBsModal, setShowPrintBsModal] = useState(false);
@@ -117,21 +117,21 @@ export default function InventoryPage() {
   // Formulaire Bon de Sortie Multi-produits & Transport
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState('');
-  const [driverName, setDriverName] = useState('Mourad Benali');
-  const [vehicleMatricule, setVehicleMatricule] = useState('01452-116-30');
-  const [workZone, setWorkZone] = useState('Zone Skids de Pompage P-101');
+  const [driverName, setDriverName] = useState('');
+  const [vehicleMatricule, setVehicleMatricule] = useState('');
+  const [workZone, setWorkZone] = useState('');
   const [recipientEmployeeId, setRecipientEmployeeId] = useState('');
   const [issueLines, setIssueLines] = useState<MultiIssueLine[]>([
-    { id: 'line-1', itemId: '', quantity: 5, batchNumber: 'LOT-TUB-2026-904' },
+    { id: 'line-1', itemId: '', quantity: 1, batchNumber: '' },
   ]);
 
   // Formulaire Réception Marchandise
   const [selectedPOId, setSelectedPOId] = useState('');
-  const [deliveryNoteNumber, setDeliveryNoteNumber] = useState('BL-FOURN-2026-884');
-  const [materialCertificate31, setMaterialCertificate31] = useState('CCPU-EN10204-3.1-AL77');
-  const [receiveDriver, setReceiveDriver] = useState('Rachid Meziani (Transporteur SARL TuboAlg)');
-  const [receiveVehicle, setReceiveVehicle] = useState('00789-115-31');
-  const [receiveQty, setReceiveQty] = useState<number>(10);
+  const [deliveryNoteNumber, setDeliveryNoteNumber] = useState('');
+  const [materialCertificate31, setMaterialCertificate31] = useState('');
+  const [receiveDriver, setReceiveDriver] = useState('');
+  const [receiveVehicle, setReceiveVehicle] = useState('');
+  const [receiveQty, setReceiveQty] = useState<number>(0);
   const [receiveQualityStatus, setReceiveQualityStatus] = useState<'CONFORME' | 'AVEC_RESERVES' | 'REJET'>('CONFORME');
   const [receiveReserveNotes, setReceiveReserveNotes] = useState('');
 
@@ -143,18 +143,18 @@ export default function InventoryPage() {
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [adjustItemId, setAdjustItemId] = useState('');
   const [adjustWarehouseId, setAdjustWarehouseId] = useState('');
-  const [adjustNewQty, setAdjustNewQty] = useState<number>(50);
-  const [adjustReason, setAdjustReason] = useState('Écart d’inventaire contradictoire (Recomptage annuel)');
-  const [adjustNotes, setAdjustNotes] = useState('Régularisation après inventaire physique contradictoire en présence du contrôleur de gestion.');
+  const [adjustNewQty, setAdjustNewQty] = useState<number>(0);
+  const [adjustReason, setAdjustReason] = useState('');
+  const [adjustNotes, setAdjustNotes] = useState('');
 
   // Formulaire Nouvel Article
   const [newItemName, setNewItemName] = useState('');
   const [newItemDesc, setNewItemDesc] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('TUYAUTERIE');
   const [newItemUnit, setNewItemUnit] = useState('UNITE');
-  const [newItemCost, setNewItemCost] = useState<number>(24500);
-  const [newItemMinStock, setNewItemMinStock] = useState<number>(10);
-  const [newItemCurrentStock, setNewItemCurrentStock] = useState<number>(50);
+  const [newItemCost, setNewItemCost] = useState<number>(0);
+  const [newItemMinStock, setNewItemMinStock] = useState<number>(0);
+  const [newItemCurrentStock, setNewItemCurrentStock] = useState<number>(0);
 
   // Formulaire Nouveau Magasin
   const [newWhName, setNewWhName] = useState('');
@@ -162,48 +162,7 @@ export default function InventoryPage() {
   const [newWhManager, setNewWhManager] = useState('');
 
   // Registre des Bons de Sortie avec Accusé de Réception (persisté en mémoire/local)
-  const [bonsSortieList, setBonsSortieList] = useState<IssuedBonDeSortie[]>([
-    {
-      id: 'bs-sample-001',
-      bonNumber: 'BS-2026-0089',
-      date: new Date().toISOString(),
-      senderCompany: `${COMPANY_NAME} — Magasin Central Arzew`,
-      warehouseName: 'Magasin Central Arzew (Zone Industrielle)',
-      projectId: 'prj-001',
-      projectCode: 'PRJ-2026-001',
-      projectName: 'Maintenance Arrêt Unité Raffinage U-100',
-      clientName: 'SONATRACH / Raffinerie Arzew',
-      siteLocation: 'Zone Industrielle Arzew (Oran)',
-      driverName: 'Mourad Benali',
-      vehicleMatricule: '01452-116-30',
-      workZone: 'Unité Reformage Catalytique R-102',
-      recipientName: 'Sofiane Belkacem (Chef de Chantier)',
-      items: [
-        {
-          code: 'ART-001',
-          name: 'Vanne à opercule acier forgé DN100 PN40',
-          quantity: 12,
-          unit: 'UNITE',
-          unitCost: 14000,
-          totalCost: 168000,
-          batchNumber: 'CCPU-EN10204-3.1-V44',
-        },
-        {
-          code: 'ART-002',
-          name: 'Bride à collerette WNRF 6" Sch 40 A105',
-          quantity: 24,
-          unit: 'UNITE',
-          unitCost: 8500,
-          totalCost: 204000,
-          batchNumber: 'LOT-BR-2026-12',
-        },
-      ],
-      totalAmountDA: 372000,
-      status: 'RECEPTIONNE_CONFORME',
-      receiptTimestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
-      receiverSignature: 'Sofiane Belkacem — Reçu conforme sans réserve',
-    },
-  ]);
+  const [bonsSortieList, setBonsSortieList] = useState<IssuedBonDeSortie[]>([]);
 
   const { activeRole } = useAuth();
   const [error, setError] = useState<string | null>(null);

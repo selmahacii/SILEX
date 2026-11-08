@@ -42,18 +42,18 @@ export default function FinancePage() {
   // Modale Encaissement Client (Virement BEA / Acompte)
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [payProjectId, setPayProjectId] = useState('');
-  const [payAmount, setPayAmount] = useState<number>(3800000);
-  const [payReference, setPayReference] = useState('VIR-BEA-2026-992');
-  const [payBank, setPayBank] = useState('Banque Extérieure d’Algérie (BEA Arzew)');
+  const [payAmount, setPayAmount] = useState<number>(0);
+  const [payReference, setPayReference] = useState('');
+  const [payBank, setPayBank] = useState('');
   const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
-  const [payNotes, setPayNotes] = useState('Règlement situation mensuelle validée après décompte métré contradictoire');
+  const [payNotes, setPayNotes] = useState('');
 
   // Modale Restitution Retenue de Garantie (5%)
   const [showWarrantyModal, setShowWarrantyModal] = useState(false);
   const [warrantyProjectId, setWarrantyProjectId] = useState('');
-  const [warrantyReference, setWarrantyReference] = useState('PV-RD-2026-044');
+  const [warrantyReference, setWarrantyReference] = useState('');
   const [warrantyDate, setWarrantyDate] = useState(new Date().toISOString().split('T')[0]);
-  const [warrantyNotes, setWarrantyNotes] = useState('Levée complète des réserves et réception définitive J+365 validée par le client');
+  const [warrantyNotes, setWarrantyNotes] = useState('');
 
   useEffect(() => {
     async function loadFinance() {

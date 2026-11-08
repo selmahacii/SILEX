@@ -193,7 +193,7 @@ export class FinanceService {
           reference: paymentRef,
           amountTTC: paymentAmount,
           date: new Date().toISOString(),
-          bank: data.bankName || 'BEA Arzew',
+          bank: data.bankName || '',
         },
       };
     });

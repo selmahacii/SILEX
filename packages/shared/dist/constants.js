@@ -91,7 +91,7 @@ exports.DEMO_PROFILES = {
         role: enums_js_1.SystemRole.RESPONSABLE_PROJET,
         departmentCode: enums_js_1.DepartmentCode.OPERATIONS_PROJETS,
         avatar: '/avatars/rp.webp',
-        assignedProjectCodes: ['PRJ-2026-001', 'PRJ-2026-003'],
+        assignedProjectCodes: [],
         description: 'Gestion des chantiers (Tuyauterie/Maintenance), demandes d’achat et situations.',
     },
     [enums_js_1.SystemRole.RESPONSABLE_ACHATS]: {

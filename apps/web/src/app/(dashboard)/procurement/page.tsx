@@ -117,23 +117,23 @@ export default function ProcurementPage() {
   const [selectedProjectId, setSelectedProjectId] = useState('');
   const [itemSelectionMode, setItemSelectionMode] = useState<'CATALOG' | 'CUSTOM'>('CATALOG');
   const [selectedItemId, setSelectedItemId] = useState('');
-  const [customItemName, setCustomItemName] = useState('Spool Tuyauterie Inox 316L DN150 Sch 40S avec 2 Brides WNRF Cl.300');
-  const [customNuance, setCustomNuance] = useState('ASTM A312 TP316L / EN 10216-5');
-  const [customIsoRef, setCustomIsoRef] = useState('ISO-PRJ-2026-DWG-04 / Spool S-02');
-  const [requestQty, setRequestQty] = useState<number>(50);
+  const [customItemName, setCustomItemName] = useState('');
+  const [customNuance, setCustomNuance] = useState('');
+  const [customIsoRef, setCustomIsoRef] = useState('');
+  const [requestQty, setRequestQty] = useState<number>(1);
   const [requestUnit, setRequestUnit] = useState<string>('UNITE');
-  const [customUnitPrice, setCustomUnitPrice] = useState<number>(24500);
+  const [customUnitPrice, setCustomUnitPrice] = useState<number>(0);
   const [procurementCategory, setProcurementCategory] = useState<string>('TUYAUTERIE');
-  const [requestUrgency, setRequestUrgency] = useState<'NORMAL' | 'HIGH' | 'CRITICAL'>('HIGH');
+  const [requestUrgency, setRequestUrgency] = useState<'NORMAL' | 'HIGH' | 'CRITICAL'>('NORMAL');
   const [desiredDeliveryDate, setDesiredDeliveryDate] = useState<string>(
     new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]
   );
-  const [deliveryLocation, setDeliveryLocation] = useState<string>('Magasin Central Arzew (Zone Industrielle Ouest)');
-  const [reqCertCcpu31, setReqCertCcpu31] = useState(true);
+  const [deliveryLocation, setDeliveryLocation] = useState<string>('');
+  const [reqCertCcpu31, setReqCertCcpu31] = useState(false);
   const [reqCndReport, setReqCndReport] = useState(false);
-  const [reqCoc, setReqCoc] = useState(true);
+  const [reqCoc, setReqCoc] = useState(false);
   const [reqAtexFds, setReqAtexFds] = useState(false);
-  const [requestJustification, setRequestJustification] = useState('Approvisionnement prioritaire pour épreuve hydraulique sous pression (150 bars) et raccordements HP.');
+  const [requestJustification, setRequestJustification] = useState('');
   const [prVatRate, setPrVatRate] = useState<number>(19); // Régime Fiscal DZ (19%, 9%, 0%)
 
   // Lignes multi-produits de la Demande d'Achat
@@ -142,23 +142,12 @@ export default function ProcurementPage() {
       id: '1',
       mode: 'CUSTOM',
       itemId: '',
-      customName: 'Spool Tuyauterie Inox 316L DN150 Sch 40S avec 2 Brides WNRF Cl.300',
-      customNuance: 'ASTM A312 TP316L / EN 10216-5',
-      customIsoRef: 'ISO-PRJ-2026-DWG-04 / Spool S-02',
-      quantity: 50,
-      unit: 'UNITE',
-      unitPrice: 22400,
-    },
-    {
-      id: '2',
-      mode: 'CATALOG',
-      itemId: '',
       customName: '',
       customNuance: '',
       customIsoRef: '',
-      quantity: 10,
+      quantity: 1,
       unit: 'UNITE',
-      unitPrice: 18500,
+      unitPrice: 0,
     },
   ]);
 
@@ -216,19 +205,16 @@ export default function ProcurementPage() {
 
   // Modal création Fournisseur Homologué (Exactement comme demandé par l'utilisateur)
   const [showCreateSupplierModal, setShowCreateSupplierModal] = useState(false);
-  const [newSupplierName, setNewSupplierName] = useState('Sarl Algérie Robinetterie Industrielle');
-  const [newSupplierContact, setNewSupplierContact] = useState('M. Sofiane Brahimi');
-  const [newSupplierPhone, setNewSupplierPhone] = useState('+213 29 73 00 00');
-  const [newSupplierEmail, setNewSupplierEmail] = useState('contact@fournisseur-dz.com');
-  const [newSupplierTaxId, setNewSupplierTaxId] = useState('001931029485761');
-  const [newSupplierRC, setNewSupplierRC] = useState('16/00-0987654B20');
-  const [newSupplierBankRIB, setNewSupplierBankRIB] = useState('002 00055 0552200123 45 (BEA Arzew)');
-  const [newSupplierAddress, setNewSupplierAddress] = useState('Zone Industrielle Ouest, BP 120, Arzew');
-  const [newSupplierSpecialties, setNewSupplierSpecialties] = useState('Tuyauterie Inox, Robinetterie Haute Pression, Raccords Forgés');
-  const [selectedSpecialtyTags, setSelectedSpecialtyTags] = useState<string[]>([
-    'Robinetterie Industrielle & Vannes HP',
-    'Tuyauterie & Raccords Forgés ASTM',
-  ]);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [newSupplierContact, setNewSupplierContact] = useState('');
+  const [newSupplierPhone, setNewSupplierPhone] = useState('');
+  const [newSupplierEmail, setNewSupplierEmail] = useState('');
+  const [newSupplierTaxId, setNewSupplierTaxId] = useState('');
+  const [newSupplierRC, setNewSupplierRC] = useState('');
+  const [newSupplierBankRIB, setNewSupplierBankRIB] = useState('');
+  const [newSupplierAddress, setNewSupplierAddress] = useState('');
+  const [newSupplierSpecialties, setNewSupplierSpecialties] = useState('');
+  const [selectedSpecialtyTags, setSelectedSpecialtyTags] = useState<string[]>([]);
 
   // Modal Ajout Variante / Offre Fournisseur
   const [showAddQuoteModal, setShowAddQuoteModal] = useState(false);

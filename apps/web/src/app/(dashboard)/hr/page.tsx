@@ -81,16 +81,11 @@ export default function HrPage() {
   // Modal Visite Médicale Aptitude
   const [showMedicalModal, setShowMedicalModal] = useState(false);
   const [medEmployeeId, setMedEmployeeId] = useState('');
-  const [medDoctor, setMedDoctor] = useState('Dr. K. Benmansour — Centre Médecine du Travail Arzew');
+  const [medDoctor, setMedDoctor] = useState('');
   const [medDate, setMedDate] = useState(new Date().toISOString().split('T')[0]);
   const [medStatus, setMedStatus] = useState<'APTE' | 'APTE_RESTRICTIONS' | 'INAPTE'>('APTE');
-  const [medRestrictions, setMedRestrictions] = useState<string[]>([
-    'Travail en hauteur (> 3 mètres)',
-    'Espaces confinés (Capacités & colonnes)',
-    'Climat saharien / Fortes chaleurs (> 40°C)',
-    'Port appareil respiratoire isolant (ARI)',
-  ]);
-  const [medNotes, setMedNotes] = useState('Examen clinique, audiométrie, spirométrie et ECG conformes aux exigences chantiers pétrochimiques.');
+  const [medRestrictions, setMedRestrictions] = useState<string[]>([]);
+  const [medNotes, setMedNotes] = useState('');
 
   const loadHrData = async () => {
     try {

@@ -105,7 +105,7 @@ export const DEMO_PROFILES: Record<SystemRole, DemoProfile> = {
     role: SystemRole.RESPONSABLE_PROJET,
     departmentCode: DepartmentCode.OPERATIONS_PROJETS,
     avatar: '/avatars/rp.webp',
-    assignedProjectCodes: ['PRJ-2026-001', 'PRJ-2026-003'],
+    assignedProjectCodes: [],
     description: 'Gestion des chantiers (Tuyauterie/Maintenance), demandes d’achat et situations.',
   },
   [SystemRole.RESPONSABLE_ACHATS]: {

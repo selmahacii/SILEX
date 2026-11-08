@@ -165,11 +165,11 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
   const [showOdsModal, setShowOdsModal] = useState(false);
   const [odsType, setOdsType] = useState<ServiceOrderType>(ServiceOrderType.DEMARRAGE);
   const [odsDate, setOdsDate] = useState(new Date().toISOString().split('T')[0]);
-  const [odsDescription, setOdsDescription] = useState('ODS de démarrage officiel des travaux suite à signature du contrat et mise à disposition des emprises par le Maître d\'Ouvrage Sonatrach.');
+  const [odsDescription, setOdsDescription] = useState('');
   const [odsDelay, setOdsDelay] = useState<number>(0);
   const [odsCostImpact, setOdsCostImpact] = useState<number>(0);
-  const [odsClientRef, setOdsClientRef] = useState('LETTRE-SONATRACH-DP-2026-192');
-  const [odsSignatory, setOdsSignatory] = useState('Direction Technique SILEX & Représentant Sonatrach');
+  const [odsClientRef, setOdsClientRef] = useState('');
+  const [odsSignatory, setOdsSignatory] = useState('');
   const [odsHseLoto, setOdsHseLoto] = useState(true);
   const [odsHseHotWork, setOdsHseHotWork] = useState(false);
   const [odsHsePermit, setOdsHsePermit] = useState(true);

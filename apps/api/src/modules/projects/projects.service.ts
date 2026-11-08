@@ -435,7 +435,7 @@ export class ProjectsService {
         clientName: data.clientName,
         sector: data.sector || 'AUTRE_INDUSTRIE',
         managerId,
-        siteLocation: data.siteLocation || 'Hassi Messaoud / Arzew',
+        siteLocation: data.siteLocation || '',
         startDate,
         contractEndDate,
         contractAmount: data.contractAmount || 0,
