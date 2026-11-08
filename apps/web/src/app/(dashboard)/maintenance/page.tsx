@@ -495,7 +495,7 @@ export default function MaintenancePage() {
 
       // Ventilation détaillée des pièces déstockées et main d'œuvre
       if (otSpareParts.length > 0) {
-        const partsSummary = otSpareParts.map(p => `${p.quantity}x ${p.name} (${formatCurrencyDA(p.quantity * p.unitCost, false)})`).join(', ');
+        const partsSummary = (Array.isArray(otSpareParts) ? otSpareParts : []).map(p => `${p.quantity}x ${p.name} (${formatCurrencyDA(p.quantity * p.unitCost, false)})`).join(', ');
         fullDescription += ` | Pièces Magasin: ${partsSummary}`;
       }
       fullDescription += ` | MO: ${laborHours}h (${formatCurrencyDA(calculatedLaborCost, false)})`;
@@ -803,7 +803,7 @@ export default function MaintenancePage() {
               >
                 <option value="ALL">Tous les Chantiers & Parcs</option>
                 <option value="CENTRAL">Parc Central Arzew</option>
-                {projects.map(p => (
+                {(Array.isArray(projects) ? projects : []).map(p => (
                   <option key={p.id} value={p.id}>
                     {p.code} — {p.name}
                   </option>
@@ -840,7 +840,7 @@ export default function MaintenancePage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredAssets.map(a => {
+              {(Array.isArray(filteredAssets) ? filteredAssets : []).map(a => {
                 const isOperational = a.status === 'OPERATIONAL';
                 const assetOrders = orders.filter(o => o.assetId === a.id);
                 return (
@@ -1112,7 +1112,7 @@ export default function MaintenancePage() {
                   <div className="font-semibold text-slate-700">Aucun ordre de travail ne correspond à votre filtre.</div>
                 </div>
               ) : (
-                filteredOrders.map(o => {
+                (Array.isArray(filteredOrders) ? filteredOrders : []).map(o => {
                   const isCompleted = o.status === 'COMPLETED';
                   const isInProgress = o.status === 'IN_PROGRESS';
                   return (
@@ -1406,7 +1406,7 @@ export default function MaintenancePage() {
                   </div>
                 ) : (
                   <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
-                    {assetOrders.map(o => {
+                    {(Array.isArray(assetOrders) ? assetOrders : []).map(o => {
                       const isCompleted = o.status === 'COMPLETED';
                       const isInProgress = o.status === 'IN_PROGRESS';
                       return (
@@ -1603,7 +1603,7 @@ export default function MaintenancePage() {
                     className="w-full p-2 border border-slate-300 rounded bg-white font-medium"
                   >
                     <option value="">Parc Central Arzew (Non assigné)</option>
-                    {projects.map(p => (
+                    {(Array.isArray(projects) ? projects : []).map(p => (
                       <option key={p.id} value={p.id}>
                         {p.code} — {p.name}
                       </option>
@@ -1694,7 +1694,7 @@ export default function MaintenancePage() {
                     className="w-full p-2 border border-slate-200 rounded bg-white text-xs font-medium"
                   >
                     <option value="">Parc Central (Non assigné)</option>
-                    {projects.map(p => (
+                    {(Array.isArray(projects) ? projects : []).map(p => (
                       <option key={p.id} value={p.id}>
                         {p.code} — {p.name}
                       </option>
@@ -1811,7 +1811,7 @@ export default function MaintenancePage() {
                     className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0B207D]"
                     required
                   >
-                    {assets.map(a => (
+                    {(Array.isArray(assets) ? assets : []).map(a => (
                       <option key={a.id} value={a.id}>
                         {a.assetTag} — {a.name} ({a.brand} {a.model}) • {a.status === 'OPERATIONAL' ? 'OPÉRATIONNEL' : 'EN MAINTENANCE'}
                       </option>
@@ -2376,7 +2376,7 @@ export default function MaintenancePage() {
 
                   {/* Liste des pièces */}
                   <div className="space-y-2">
-                    {otSpareParts.map((part, idx) => {
+                    {(Array.isArray(otSpareParts) ? otSpareParts : []).map((part, idx) => {
                       const stockItem = inventoryItems.find(i => i.id === part.itemId);
                       const partSubtotal = Number(part.quantity || 0) * Number(part.unitCost || 0);
 
@@ -2437,7 +2437,7 @@ export default function MaintenancePage() {
                                 onChange={e => updateOTSparePart(part.id, { itemId: e.target.value })}
                                 className="w-full p-1.5 border border-slate-300 rounded bg-white text-xs font-semibold text-slate-900"
                               >
-                                {inventoryItems.map(i => (
+                                {(Array.isArray(inventoryItems) ? inventoryItems : []).map(i => (
                                   <option key={i.id} value={i.id}>
                                     {i.code} — {i.name} (PMP: {formatCurrencyDA(i.unitCost, false)} • Stock: {Number(i.currentStock || 0)} {i.unit || 'U'})
                                   </option>

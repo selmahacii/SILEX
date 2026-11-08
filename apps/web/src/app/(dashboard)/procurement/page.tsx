@@ -387,7 +387,7 @@ export default function ProcurementPage() {
         urgencyLevel: requestUrgency,
         justification: requestJustification,
         desiredDate: new Date(desiredDeliveryDate).toISOString(),
-        lines: prLines.map((line, idx) => {
+        lines: (Array.isArray(prLines) ? prLines : []).map((line, idx) => {
           const itemDesc = line.mode === 'CUSTOM'
             ? `${line.customName || `Article sur-mesure #${idx + 1}`} [Matière: ${line.customNuance || 'Standard'}] [ISO: ${line.customIsoRef || 'N/A'}]`
             : (items.find(i => i.id === line.itemId)?.name || `Composant industriel #${idx + 1}`);
@@ -523,7 +523,7 @@ export default function ProcurementPage() {
         warrantyMonths: 12,
         paymentTerms: 'Virement bancaire 30j fin de mois',
         notes: `Offre ${s1.name} recommandée : conforme normes ASME/API, certificats 3.1 fournis.`,
-        lines: prLinesList.map((l: any) => ({
+        lines: (Array.isArray(prLinesList) ? prLinesList : []).map((l: any) => ({
           purchaseRequestLineId: l.id,
           unitPrice: Number(l.estimatedUnitPrice || 0),
         })),
@@ -542,7 +542,7 @@ export default function ProcurementPage() {
           warrantyMonths: 6,
           paymentTerms: '50% acompte, solde à réception',
           notes: `Offre concurrente ${s2.name} : sous réserve d'approvisionnement matière.`,
-          lines: prLinesList.map((l: any) => ({
+          lines: (Array.isArray(prLinesList) ? prLinesList : []).map((l: any) => ({
             purchaseRequestLineId: l.id,
             unitPrice: Math.round(Number(l.estimatedUnitPrice || 0) * 1.08),
           })),
@@ -899,7 +899,7 @@ export default function ProcurementPage() {
             </div>
 
             <div className="space-y-2">
-              {filteredPRs.map(pr => {
+              {(Array.isArray(filteredPRs) ? filteredPRs : []).map(pr => {
                 const isSelected = selectedPR?.id === pr.id;
                 const total = getPRTotal(pr);
 
@@ -1231,7 +1231,7 @@ export default function ProcurementPage() {
 
                   {selectedPR.quotes && selectedPR.quotes.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {selectedPR.quotes.map((quote: any, idx: number) => {
+                      {(Array.isArray(selectedPR?.quotes) ? selectedPR.quotes : []).map((quote: any, idx: number) => {
                         const isRec = quote.isRecommended || idx === 0;
                         const ht = Number(quote.totalAmountHT || 0);
                         const tva = Math.round(ht * 0.19);
@@ -1448,7 +1448,7 @@ export default function ProcurementPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredPOs.map(po => {
+                {(Array.isArray(filteredPOs) ? filteredPOs : []).map(po => {
                   const ht = Number(po.totalAmountHT || 0);
                   const tva = Math.round(ht * 0.19);
                   const ttc = ht + tva;
@@ -1552,7 +1552,7 @@ export default function ProcurementPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
-            {filteredSuppliers.map(s => (
+            {(Array.isArray(filteredSuppliers) ? filteredSuppliers : []).map(s => (
               <div
                 key={s.id}
                 className="bg-slate-50/50 border border-slate-200 rounded-lg p-4 space-y-3 hover:border-[#0B207D] transition-all shadow-2xs"
@@ -1854,7 +1854,7 @@ export default function ProcurementPage() {
                     className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0B207D]"
                     required
                   >
-                    {projects.map(p => (
+                    {(Array.isArray(projects) ? projects : []).map(p => (
                       <option key={p.id} value={p.id}>
                         {p.code} — {p.name} ({p.clientName})
                       </option>
@@ -1976,7 +1976,7 @@ export default function ProcurementPage() {
 
                   {/* Liste des lignes multi-produits */}
                   <div className="space-y-3">
-                    {prLines.map((line, idx) => {
+                    {(Array.isArray(prLines) ? prLines : []).map((line, idx) => {
                       const lineItem = items.find(i => i.id === line.itemId);
                       const lineSubtotal = Number(line.quantity || 0) * Number(line.unitPrice || 0);
 
@@ -2059,7 +2059,7 @@ export default function ProcurementPage() {
                                 className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#0B207D]"
                                 required
                               >
-                                {items.map(i => (
+                                {(Array.isArray(items) ? items : []).map(i => (
                                   <option key={i.id} value={i.id}>
                                     {i.code} — {i.name} (PMP: {formatCurrencyDA(i.unitCost, false)} • Stock: {Number(i.currentStock || 0)} {i.unit || 'U'})
                                   </option>
@@ -2581,7 +2581,7 @@ export default function ProcurementPage() {
                   className="w-full p-2 border border-slate-200 rounded bg-white text-xs font-medium"
                   required
                 >
-                  {suppliers.map(s => (
+                  {(Array.isArray(suppliers) ? suppliers : []).map(s => (
                     <option key={s.id} value={s.id}>
                       {s.code} — {s.name} ({s.contactName})
                     </option>
@@ -3071,7 +3071,7 @@ export default function ProcurementPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {selectedPoForPrint.lines && selectedPoForPrint.lines.length > 0 ? (
-                      selectedPoForPrint.lines.map((l: any, i: number) => (
+                      (Array.isArray(selectedPoForPrint?.lines) ? selectedPoForPrint.lines : []).map((l: any, i: number) => (
                         <tr key={i}>
                           <td className="p-2.5 font-medium text-slate-900">
                             <div>{l.description}</div>

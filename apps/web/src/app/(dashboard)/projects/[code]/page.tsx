@@ -841,7 +841,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                   </div>
                 ) : (
                   <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                    {project.assignedUsers.map((a: any) => (
+                    {(Array.isArray(project.assignedUsers) ? project.assignedUsers : []).map((a: any) => (
                       <div
                         key={a.id || a.userId}
                         className="text-xs flex items-center justify-between p-2 rounded bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors"
@@ -1130,7 +1130,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                   Aucune écriture de coût direct enregistrée. Les coûts sont consolidés depuis les sorties de stocks et commandes fournisseurs.
                 </div>
               ) : (
-                project.costEntries.map((ce: any) => (
+                (Array.isArray(project.costEntries) ? project.costEntries : []).map((ce: any) => (
                   <div key={ce.id} className="p-3.5 flex items-center justify-between hover:bg-slate-50">
                     <div>
                       <div className="font-semibold text-slate-900">{ce.description || 'Imputation analytique'}</div>
@@ -1260,7 +1260,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                     </div>
                     {po.lines && po.lines.length > 0 && (
                       <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-100">
-                        {po.lines.map((l: any, i: number) => (
+                        {(Array.isArray(po.lines) ? po.lines : []).map((l: any, i: number) => (
                           <div key={i} className="flex justify-between py-0.5">
                             <span>• {l.quantity}x {l.item?.name || 'Fourniture industrielle'}</span>
                             <span className="font-medium">{formatCurrencyDA(l.totalPrice, false)}</span>
@@ -1491,7 +1491,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                   {fnc.actions && fnc.actions.length > 0 && (
                     <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 space-y-1">
                       <div className="font-bold text-slate-800">Actions Correctives :</div>
-                      {fnc.actions.map((act: any, i: number) => (
+                      {(Array.isArray(fnc.actions) ? fnc.actions : []).map((act: any, i: number) => (
                         <div key={i}>• {act.actionText} ({act.status})</div>
                       ))}
                     </div>
@@ -2716,7 +2716,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {sitLines.map(l => (
+                        {(Array.isArray(sitLines) ? sitLines : []).map(l => (
                           <tr key={l.id} className="hover:bg-slate-50">
                             <td className="p-2">
                               <input

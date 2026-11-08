@@ -404,7 +404,7 @@ export default function ProjectsListPage() {
       {/* Projects Display: Cards or Detailed Table */}
       {viewMode === 'cards' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredProjects.map(p => (
+          {(Array.isArray(filteredProjects) ? filteredProjects : []).map(p => (
             <Link
               key={p.id}
               href={`/projects/${p.code}`}
@@ -490,7 +490,7 @@ export default function ProjectsListPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredProjects.map(p => (
+                {(Array.isArray(filteredProjects) ? filteredProjects : []).map(p => (
                   <tr key={p.id} className="hover:bg-slate-50 transition-colors">
                     <td className="py-3 px-3 font-mono font-bold text-[#142B45] whitespace-nowrap">
                       {p.code}

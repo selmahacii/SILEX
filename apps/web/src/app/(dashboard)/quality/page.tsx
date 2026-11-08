@@ -426,7 +426,7 @@ export default function QualityPage() {
             {filteredDocs.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400">Aucun document trouvé.</div>
             ) : (
-              filteredDocs.map(doc => (
+              (Array.isArray(filteredDocs) ? filteredDocs : []).map(doc => (
                 <div key={doc.id} className="p-3 hover:bg-slate-50 transition-colors flex items-center justify-between text-xs">
                   <div>
                     <div className="flex items-center gap-2">
@@ -479,7 +479,7 @@ export default function QualityPage() {
             {filteredNCs.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400">Aucune non-conformité enregistrée.</div>
             ) : (
-              filteredNCs.map(nc => {
+              (Array.isArray(filteredNCs) ? filteredNCs : []).map(nc => {
                 const isClosed = nc.status === 'CLOSED';
                 return (
                   <div key={nc.id} className="p-3 hover:bg-slate-50 transition-colors space-y-2 text-xs">
@@ -568,7 +568,7 @@ export default function QualityPage() {
                     {nc.actions && nc.actions.length > 0 && (
                       <div className="mt-1 p-2 bg-slate-50 border border-slate-200 rounded text-[11px] space-y-1">
                         <div className="font-bold text-slate-700">Actions correctives engagées :</div>
-                        {nc.actions.map((act: any) => (
+                        {(Array.isArray(nc?.actions) ? nc.actions : []).map((act: any) => (
                           <div key={act.id} className="text-slate-600 flex justify-between">
                             <span>• {act.description} ({act.responsible})</span>
                             <span className="font-semibold text-teal-700">{act.status}</span>
@@ -652,7 +652,7 @@ export default function QualityPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredWelds.map(w => (
+                {(Array.isArray(filteredWelds) ? filteredWelds : []).map(w => (
                   <tr key={w.id} className="hover:bg-slate-50">
                     <td className="p-2.5 font-mono font-bold text-[#0B207D]">{w.jointNumber}</td>
                     <td className="p-2.5 font-mono text-slate-700">{w.lineIso}</td>
@@ -801,7 +801,7 @@ export default function QualityPage() {
                   className="w-full p-2 border border-slate-200 rounded bg-white text-xs font-medium"
                   required
                 >
-                  {projects.map(p => (
+                  {(Array.isArray(projects) ? projects : []).map(p => (
                     <option key={p.id} value={p.id}>
                       {p.code} — {p.name}
                     </option>

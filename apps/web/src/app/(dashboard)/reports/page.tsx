@@ -67,7 +67,7 @@ export default function ReportsPage() {
       'Niveau de Risque',
     ];
 
-    const rows = projects.map(p => [
+    const rows = (Array.isArray(projects) ? projects : []).map(p => [
       p.code,
       `"${(p.name || '').replace(/"/g, '""')}"`,
       `"${(p.clientName || '').replace(/"/g, '""')}"`,
@@ -245,7 +245,7 @@ export default function ReportsPage() {
                   </td>
                 </tr>
               ) : (
-                projects.map((p, idx) => {
+                (Array.isArray(projects) ? projects : []).map((p, idx) => {
                   const contract = Number(p.contractAmount || 0);
                   const budget = Number(p.budgetAmount || 0);
                   const marginPct = contract > 0 ? (((contract - budget) / contract) * 100).toFixed(1) : '20.0';

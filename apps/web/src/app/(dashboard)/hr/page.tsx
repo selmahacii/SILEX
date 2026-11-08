@@ -246,7 +246,7 @@ export default function HrPage() {
   };
 
   // Calcul dynamique de la paie à partir des pointages réels en base PostgreSQL
-  const payrollSummary = employees.map(emp => {
+  const payrollSummary = (Array.isArray(employees) ? employees : []).map(emp => {
     const empAtts = attendances.filter(a => a.employeeId === emp.id);
     const totalNormal = empAtts.reduce((acc, curr) => acc + Number(curr.hoursWorked || 0), 0) || 160;
     const totalOvertime = empAtts.reduce((acc, curr) => acc + Number(curr.overtimeHours || 0), 0) || (empAtts.length > 0 ? 0 : 20);
@@ -421,7 +421,7 @@ export default function HrPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredEmployees.map(emp => {
+                {(Array.isArray(filteredEmployees) ? filteredEmployees : []).map(emp => {
                   const empCerts = certifications.filter(c => c.employeeId === emp.id || c.employee?.id === emp.id);
                   const certsCount = empCerts.length > 0 ? empCerts.length : (emp._count?.certifications || (emp.certifications?.length || 1));
 
@@ -521,7 +521,7 @@ export default function HrPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredCerts.map(cert => {
+                {(Array.isArray(filteredCerts) ? filteredCerts : []).map(cert => {
                   const expiry = new Date(cert.expiryDate).getTime();
                   const now = Date.now();
                   const daysLeft = Math.round((expiry - now) / (1000 * 60 * 60 * 24));
@@ -618,7 +618,7 @@ export default function HrPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {attendances.map(a => (
+                {(Array.isArray(attendances) ? attendances : []).map(a => (
                   <tr key={a.id} className="hover:bg-slate-50 transition-colors">
                     <td className="py-3 px-3 font-medium text-slate-800 whitespace-nowrap">
                       {formatDateDZ(a.date)}
@@ -698,7 +698,7 @@ export default function HrPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {payrollSummary.map(row => (
+                {(Array.isArray(payrollSummary) ? payrollSummary : []).map(row => (
                   <tr key={row.id} className="hover:bg-slate-50">
                     <td className="py-2.5 px-3 font-mono font-bold text-[#142B45]">{row.reg}</td>
                     <td className="py-2.5 px-3 font-semibold text-slate-800">
@@ -920,7 +920,7 @@ export default function HrPage() {
                   className="w-full p-2 border border-slate-200 rounded bg-white text-xs font-medium"
                   required
                 >
-                  {employees.map(emp => (
+                  {(Array.isArray(employees) ? employees : []).map(emp => (
                     <option key={emp.id} value={emp.id}>
                       {emp.firstName} {emp.lastName} — {emp.title} ({emp.registrationNumber})
                     </option>
@@ -1039,7 +1039,7 @@ export default function HrPage() {
                     className="w-full p-2 border border-slate-200 rounded bg-white text-xs font-medium"
                     required
                   >
-                    {employees.map(emp => (
+                    {(Array.isArray(employees) ? employees : []).map(emp => (
                       <option key={emp.id} value={emp.id}>
                         {emp.firstName} {emp.lastName} ({emp.title})
                       </option>
@@ -1056,7 +1056,7 @@ export default function HrPage() {
                     className="w-full p-2 border border-slate-200 rounded bg-white text-xs font-medium"
                     required
                   >
-                    {projects.map(p => (
+                    {(Array.isArray(projects) ? projects : []).map(p => (
                       <option key={p.id} value={p.id}>
                         {p.code} — {p.name}
                       </option>
@@ -1335,7 +1335,7 @@ export default function HrPage() {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {empCerts.map((cert) => {
+                      {(Array.isArray(empCerts) ? empCerts : []).map((cert) => {
                         const expiry = new Date(cert.expiryDate).getTime();
                         const now = Date.now();
                         const daysLeft = Math.round((expiry - now) / (1000 * 60 * 60 * 24));
@@ -1556,7 +1556,7 @@ export default function HrPage() {
                     className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-[#0B207D]"
                     required
                   >
-                    {employees.map(emp => (
+                    {(Array.isArray(employees) ? employees : []).map(emp => (
                       <option key={emp.id} value={emp.id}>
                         {emp.registrationNumber} — {emp.firstName} {emp.lastName} ({emp.title})
                       </option>

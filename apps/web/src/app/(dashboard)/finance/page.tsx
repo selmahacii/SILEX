@@ -303,7 +303,7 @@ export default function FinancePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredProjects.map((p: any) => {
+              {(Array.isArray(filteredProjects) ? filteredProjects : []).map((p: any) => {
                 const margin = Number(p.marginRate || 0);
                 return (
                   <tr key={p.id} className="hover:bg-slate-50 transition-colors">

@@ -304,7 +304,7 @@ export default function InventoryPage() {
   };
 
   // Compute total amount and stock validity
-  const issueLinesComputed = issueLines.map(line => {
+  const issueLinesComputed = (Array.isArray(issueLines) ? issueLines : []).map(line => {
     const item = items.find(i => i.id === line.itemId);
     const available = Number(item?.currentStock || 0);
     const requested = Number(line.quantity || 0);
@@ -371,7 +371,7 @@ export default function InventoryPage() {
         vehicleMatricule: vehicleMatricule || 'Matricule Véhicule',
         workZone: workZone || 'Zone Travaux',
         recipientName: activeRecipientEmp ? `${activeRecipientEmp.firstName} ${activeRecipientEmp.lastName} (${activeRecipientEmp.title})` : 'Chef de Chantier',
-        items: issueLinesComputed.map(l => ({
+        items: (Array.isArray(issueLinesComputed) ? issueLinesComputed : []).map(l => ({
           code: l.item?.code || 'ART',
           name: l.item?.name || 'Article',
           quantity: l.requested,
@@ -877,7 +877,7 @@ export default function InventoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredItems.map(i => {
+                {(Array.isArray(filteredItems) ? filteredItems : []).map(i => {
                   const current = Number(i.currentStock || 0);
                   const min = Number(i.minStockLevel || 0);
                   const isLow = current <= min;
@@ -998,7 +998,7 @@ export default function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredBonsSortie.map(bs => (
+                  {(Array.isArray(filteredBonsSortie) ? filteredBonsSortie : []).map(bs => (
                     <tr key={bs.id} className="hover:bg-slate-50 transition-colors">
                       <td className="py-3 px-3 font-mono font-bold text-[#E51A1A] whitespace-nowrap">
                         {bs.bonNumber}
@@ -1278,7 +1278,7 @@ export default function InventoryPage() {
       {/* TAB 3: DÉPÔTS & MAGASINS */}
       {activeTab === 'warehouses' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {warehouses.map(w => (
+          {(Array.isArray(warehouses) ? warehouses : []).map(w => (
             <div key={w.id} className="bg-white p-4 rounded-xl border border-[#E1E6ED] shadow-2xs space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-xs font-bold text-[#0B207D]">{w.code}</span>
@@ -1326,7 +1326,7 @@ export default function InventoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {movements.map(m => {
+                {(Array.isArray(movements) ? movements : []).map(m => {
                   const isReceive = m.movementType === StockMovementType.PURCHASE_RECEIPT || m.movementType === 'RECEIPT';
                   return (
                     <tr key={m.id} className="hover:bg-slate-50 transition-colors">
@@ -1407,7 +1407,7 @@ export default function InventoryPage() {
                     className="w-full p-2 border border-slate-200 rounded bg-white text-xs font-medium"
                     required
                   >
-                    {warehouses.map(w => (
+                    {(Array.isArray(warehouses) ? warehouses : []).map(w => (
                       <option key={w.id} value={w.id}>
                         {w.code} — {w.name} ({w.location})
                       </option>
@@ -1425,7 +1425,7 @@ export default function InventoryPage() {
                     className="w-full p-2 border border-slate-200 rounded bg-white text-xs font-semibold text-[#0B207D]"
                     required
                   >
-                    {projects.map(p => (
+                    {(Array.isArray(projects) ? projects : []).map(p => (
                       <option key={p.id} value={p.id}>
                         {p.code} — {p.clientName} ({p.name})
                       </option>
@@ -1506,7 +1506,7 @@ export default function InventoryPage() {
                 </div>
 
                 <div className="border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-200">
-                  {issueLinesComputed.map((line, idx) => (
+                  {(Array.isArray(issueLinesComputed) ? issueLinesComputed : []).map((line, idx) => (
                     <div key={line.id} className="p-3 bg-white space-y-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-bold text-slate-700">Ligne #{idx + 1}</span>
@@ -1531,7 +1531,7 @@ export default function InventoryPage() {
                             className="w-full p-1.5 border border-slate-200 rounded bg-white text-xs"
                             required
                           >
-                            {items.map(i => (
+                            {(Array.isArray(items) ? items : []).map(i => (
                               <option key={i.id} value={i.id}>
                                 {i.code} — {i.name} (Dispo : {i.currentStock} {i.unit})
                               </option>
@@ -1765,7 +1765,7 @@ export default function InventoryPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {selectedBsForPrint.items.map((it, idx) => (
+                    {(Array.isArray(selectedBsForPrint?.items) ? selectedBsForPrint.items : []).map((it, idx) => (
                       <tr key={idx}>
                         <td className="py-2 px-3 text-slate-500">{idx + 1}</td>
                         <td className="py-2 px-3 font-mono font-bold text-slate-900">{it.code}</td>
@@ -1882,7 +1882,7 @@ export default function InventoryPage() {
                   className="w-full p-2 border border-slate-200 rounded bg-white text-xs font-semibold text-[#0B207D]"
                   required
                 >
-                  {purchaseOrders.map(po => (
+                  {(Array.isArray(purchaseOrders) ? purchaseOrders : []).map(po => (
                     <option key={po.id} value={po.id}>
                       {po.orderNumber} — Fournisseur : {po.supplier?.name} ({po.project?.code})
                     </option>
@@ -1900,7 +1900,7 @@ export default function InventoryPage() {
                   className="w-full p-2 border border-slate-200 rounded bg-white text-xs font-medium"
                   required
                 >
-                  {warehouses.map(w => (
+                  {(Array.isArray(warehouses) ? warehouses : []).map(w => (
                     <option key={w.id} value={w.id}>
                       {w.code} — {w.name} ({w.location})
                     </option>
@@ -2401,7 +2401,7 @@ export default function InventoryPage() {
                   className="w-full p-2 border border-slate-200 rounded font-semibold text-slate-900 bg-white"
                   required
                 >
-                  {items.map(it => (
+                  {(Array.isArray(items) ? items : []).map(it => (
                     <option key={it.id} value={it.id}>
                       {it.code} — {it.name} (Stock actuel: {it.currentStock} {it.unit})
                     </option>
@@ -2419,7 +2419,7 @@ export default function InventoryPage() {
                   className="w-full p-2 border border-slate-200 rounded font-medium bg-white"
                   required
                 >
-                  {warehouses.map(w => (
+                  {(Array.isArray(warehouses) ? warehouses : []).map(w => (
                     <option key={w.id} value={w.id}>
                       {w.code} — {w.name} ({w.location})
                     </option>
@@ -2525,7 +2525,7 @@ export default function InventoryPage() {
                     className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-[#0B207D]"
                     required
                   >
-                    {warehouses.map(w => (
+                    {(Array.isArray(warehouses) ? warehouses : []).map(w => (
                       <option key={w.id} value={w.id}>
                         {w.name} ({w.location})
                       </option>
@@ -2542,7 +2542,7 @@ export default function InventoryPage() {
                     className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-[#0B207D]"
                     required
                   >
-                    {warehouses.map(w => (
+                    {(Array.isArray(warehouses) ? warehouses : []).map(w => (
                       <option key={w.id} value={w.id}>
                         {w.name} ({w.location})
                       </option>
@@ -2562,7 +2562,7 @@ export default function InventoryPage() {
                     className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-[#0B207D]"
                     required
                   >
-                    {items.map(it => (
+                    {(Array.isArray(items) ? items : []).map(it => (
                       <option key={it.id} value={it.id}>
                         {it.code} — {it.name} (Stock actuel: {it.currentStock} {it.unit})
                       </option>
@@ -2681,7 +2681,7 @@ export default function InventoryPage() {
                     className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-[#0B207D]"
                     required
                   >
-                    {projects.map(p => (
+                    {(Array.isArray(projects) ? projects : []).map(p => (
                       <option key={p.id} value={p.id}>
                         {p.code} — {p.name}
                       </option>
@@ -2698,7 +2698,7 @@ export default function InventoryPage() {
                     className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-[#0B207D]"
                     required
                   >
-                    {warehouses.map(w => (
+                    {(Array.isArray(warehouses) ? warehouses : []).map(w => (
                       <option key={w.id} value={w.id}>
                         {w.name} ({w.location})
                       </option>
@@ -2718,7 +2718,7 @@ export default function InventoryPage() {
                     className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-[#0B207D]"
                     required
                   >
-                    {items.map(it => (
+                    {(Array.isArray(items) ? items : []).map(it => (
                       <option key={it.id} value={it.id}>
                         {it.code} — {it.name} ({formatCurrencyDA(it.unitCost, false)}/{it.unit})
                       </option>

@@ -355,7 +355,7 @@ export default function AdminPage() {
                     Aucun utilisateur enregistré.
                   </div>
                 ) : (
-                  usersList.map(u => (
+                  (Array.isArray(usersList) ? usersList : []).map(u => (
                     <div key={u.id} className="p-3.5 flex items-center justify-between hover:bg-slate-50 transition-colors text-xs">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-[#EFF3FB] border border-[#CBD5E1] text-[#0B207D] flex items-center justify-center font-bold text-xs shrink-0">
@@ -420,7 +420,7 @@ export default function AdminPage() {
               </div>
 
               <div className="divide-y divide-slate-100 flex-1 overflow-y-auto max-h-[540px] p-2">
-                {auditLogs.map(log => (
+                {(Array.isArray(auditLogs) ? auditLogs : []).map(log => (
                   <div key={log.id} className="p-2.5 text-xs space-y-1 hover:bg-slate-50 rounded">
                     <div className="flex items-center justify-between">
                       <span className="font-mono font-bold text-[#142B45] text-[10px]">{log.action}</span>

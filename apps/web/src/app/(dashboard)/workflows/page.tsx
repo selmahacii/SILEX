@@ -319,7 +319,7 @@ export default function WorkflowsPage() {
               Toutes les approbations sont à jour. Aucun arbitrage en attente.
             </div>
           ) : (
-            filteredItems.map(item => {
+            (Array.isArray(filteredItems) ? filteredItems : []).map(item => {
               const ht = Number(item.amountHT || 0);
               const tva = Math.round(ht * 0.19);
               const ttc = ht + tva;
@@ -605,7 +605,7 @@ export default function WorkflowsPage() {
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
                         {item.lines && item.lines.length > 0 ? (
-                          item.lines.map((l: any, i: number) => (
+                          (Array.isArray(item?.lines) ? item.lines : []).map((l: any, i: number) => (
                             <tr key={i} className="hover:bg-slate-50">
                               <td className="p-2.5 font-medium text-slate-900">
                                 <div className="font-bold">{l.description}</div>
