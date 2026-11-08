@@ -665,6 +665,59 @@ class ServerStore {
     return milestone;
   }
 
+  updateMilestone(codeOrId: string, milestoneId: string, data: any) {
+    const project = this.getProject(codeOrId);
+    if (!project) return null;
+    if (!project.milestones) project.milestones = [];
+    const milestone = project.milestones.find((m: any) => m.id === milestoneId);
+    if (!milestone) return null;
+
+    if (data.status) milestone.status = data.status;
+    if (data.status === 'COMPLETED' || data.completed === true) {
+      milestone.status = 'COMPLETED';
+      milestone.completed = true;
+      milestone.completedDate = data.completedDate || new Date().toISOString();
+    }
+    if (data.title) milestone.title = data.title;
+    if (data.description !== undefined) milestone.description = data.description;
+    if (data.targetDate) milestone.targetDate = data.targetDate;
+
+    // Recalcul avancement physique basé sur les jalons
+    if (project.milestones.length > 0) {
+      const completedCount = project.milestones.filter((m: any) => m.status === 'COMPLETED' || m.completed).length;
+      const progressPercent = Math.round((completedCount / project.milestones.length) * 100);
+      project.physicalProgress = Math.max(project.physicalProgress, progressPercent);
+    }
+
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog(
+      'UPDATE_MILESTONE',
+      'PROJECT_MILESTONE',
+      milestoneId,
+      `Jalon '${milestone.title}' validé et marqué COMPLETED sur projet ${project.code}`
+    );
+    return milestone;
+  }
+
+  addCostEntry(codeOrId: string, data: any) {
+    const project = this.getProject(codeOrId);
+    if (!project) return null;
+    if (!project.costEntries) project.costEntries = [];
+    const entry = {
+      id: `cst-${Date.now()}`,
+      category: data.category || 'AUTRE',
+      amount: Number(data.amount || 0),
+      description: data.description || '',
+      sourceModule: data.sourceModule || 'MANUAL',
+      date: new Date().toISOString(),
+    };
+    project.costEntries.push(entry);
+    project.spentBudget += entry.amount;
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('ADD_COST', 'PROJECT', project.code, `Frais imputé (${entry.category}): ${entry.amount} DA`);
+    return entry;
+  }
+
   addServiceOrder(codeOrId: string, data: any) {
     const project = this.getProject(codeOrId);
     if (!project) return null;

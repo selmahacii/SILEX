@@ -247,6 +247,11 @@ export async function POST(
     const sit = await dbBridge.addWorkSituation(projCode, body);
     return NextResponse.json(sit, { status: 201, headers: corsHeaders() });
   }
+  if (clean.includes('/costs')) {
+    const projCode = resolvedParams.path[1];
+    const cost = await dbBridge.addCostEntry(projCode, body);
+    return NextResponse.json(cost, { status: 201, headers: corsHeaders() });
+  }
 
   // 4. Workflows Decisions (Approve, Reject, Revise)
   if (clean.includes('/workflows/')) {
@@ -359,7 +364,15 @@ export async function PATCH(
     // ignore
   }
 
-  // 1. Progress
+  // 1. Milestones Update (/projects/:projectId/milestones/:milestoneId)
+  if (clean.includes('/milestones/')) {
+    const projCode = resolvedParams.path[1];
+    const milestoneId = resolvedParams.path[3];
+    const updated = await dbBridge.updateMilestone(projCode, milestoneId, body);
+    return NextResponse.json(updated, { headers: corsHeaders() });
+  }
+
+  // 2. Progress
   if (clean.includes('/progress')) {
     const projCode = resolvedParams.path[1];
     const updated = await dbBridge.updateProgress(

@@ -323,15 +323,15 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
   const calculatedTVA = calculatedSitTotalHT * (sitTvaRate / 100);
   const calculatedNetTTC = calculatedSitTotalHT - calculatedRetenueGarantie + calculatedTVA;
 
-  const fetchProject = async () => {
+  const fetchProject = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const data = await api.get<any>(`/projects/${resolvedParams.code}`);
       setProject(data);
     } catch (err: any) {
       alert(err.message || 'Erreur chargement projet');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -479,15 +479,24 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
 
   const handleValidateMilestone = async (milestoneId: string) => {
     try {
+      setProject((prev: any) => {
+        if (!prev) return prev;
+        const updatedMilestones = (prev.milestones || []).map((m: any) =>
+          m.id === milestoneId ? { ...m, status: 'COMPLETED', completed: true, completedDate: new Date().toISOString() } : m
+        );
+        return { ...prev, milestones: updatedMilestones };
+      });
+
       await api.patch(`/projects/${project.id}/milestones/${milestoneId}`, {
         status: 'COMPLETED',
         completedDate: new Date().toISOString(),
       });
       setNotification('Jalon contractuel validé et marqué franchi ! Recalcul de l\'avancement physique opéré.');
       setTimeout(() => setNotification(null), 5000);
-      await fetchProject();
+      await fetchProject(true);
     } catch (err: any) {
       alert(err.message || 'Erreur validation jalon');
+      await fetchProject(true);
     }
   };
 
@@ -1099,7 +1108,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
               </div>
             ) : (
               project.milestones?.map((m: any, idx: number) => {
-                const isCompleted = m.status === 'COMPLETED';
+                const isCompleted = m.status === 'COMPLETED' || m.completed === true || m.status === 'FRANCHI' || m.status === 'VALIDE';
                 return (
                   <div
                     key={m.id}

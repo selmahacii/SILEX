@@ -399,6 +399,98 @@ export const dbBridge = {
     return res;
   },
 
+  async updateMilestone(codeOrId: string, milestoneId: string, data: any) {
+    if (hasDb) {
+      try {
+        const updateData: any = {};
+        if (data.status) updateData.status = data.status;
+        if (data.status === 'COMPLETED' || data.completed === true) {
+          updateData.status = 'COMPLETED';
+          updateData.completedDate = data.completedDate ? new Date(data.completedDate) : new Date();
+        }
+        if (data.title) updateData.title = data.title;
+        if (data.description !== undefined) updateData.description = data.description;
+        if (data.targetDate) updateData.targetDate = new Date(data.targetDate);
+
+        const updated = await prisma.projectMilestone.update({
+          where: { id: milestoneId },
+          data: updateData,
+        });
+
+        // Recalcul avancement physique projet
+        const allMilestones = await prisma.projectMilestone.findMany({
+          where: { projectId: updated.projectId },
+        });
+        if (allMilestones.length > 0) {
+          const completedCount = allMilestones.filter((m) => m.status === 'COMPLETED').length;
+          const progressPercent = Math.round((completedCount / allMilestones.length) * 100);
+          await prisma.project.update({
+            where: { id: updated.projectId },
+            data: { physicalProgress: progressPercent },
+          });
+        }
+
+        await this.logAudit(
+          'UPDATE_MILESTONE',
+          'PROJECT_MILESTONE',
+          milestoneId,
+          `Jalon '${updated.title}' marqué COMPLETED (franchi) avec succès`,
+          data.user
+        );
+        return updated;
+      } catch (err) {
+        console.warn('[DB Bridge] Error updating milestone in DB:', err);
+      }
+    }
+    const res = serverStore.updateMilestone(codeOrId, milestoneId, data);
+    await this.logAudit(
+      'UPDATE_MILESTONE',
+      'PROJECT_MILESTONE',
+      milestoneId,
+      `Jalon franchi : ${milestoneId}`,
+      data.user
+    );
+    return res;
+  },
+
+  async addCostEntry(codeOrId: string, data: any) {
+    if (hasDb) {
+      try {
+        const project = await prisma.project.findFirst({
+          where: { OR: [{ code: codeOrId }, { id: codeOrId }] },
+        });
+        if (project) {
+          const amt = Number(data.amount || 0);
+          const updated = await prisma.project.update({
+            where: { id: project.id },
+            data: {
+              actualCost: { increment: amt },
+            },
+          });
+          await this.logAudit(
+            'ADD_COST',
+            'PROJECT',
+            project.code,
+            `Dépense imputée (${data.category || 'CHEF_PROJET'}) : ${amt} DA`,
+            data.user
+          );
+          return { success: true, amount: amt, project: updated };
+        }
+      } catch (err) {
+        console.warn('[DB Bridge] Error adding cost entry in DB:', err);
+      }
+    }
+    const res = serverStore.addCostEntry(codeOrId, data);
+    await this.logAudit(
+      'ADD_COST',
+      'PROJECT',
+      codeOrId,
+      `Dépense imputée : ${data.amount} DA`,
+      data.user
+    );
+    return res;
+  },
+
   async addServiceOrder(codeOrId: string, data: any) {
     if (hasDb) {
       try {
