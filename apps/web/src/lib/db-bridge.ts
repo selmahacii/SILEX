@@ -1165,16 +1165,14 @@ export const dbBridge = {
           const created = await prisma.employeeCertification.create({
             data: {
               employeeId: emp.id,
-              name: data.name,
-              certificateNumber: data.certificateNumber || data.certNumber || `CERT-${Date.now()}`,
-              standard: data.standard || 'ASME IX',
+              certName: data.name || data.certName || 'Qualification Soudage CQS',
               issuingBody: data.issuingBody || 'Bureau Veritas',
-              issuedDate: data.issuedDate ? new Date(data.issuedDate) : new Date(),
+              issueDate: data.issuedDate ? new Date(data.issuedDate) : new Date(),
               expiryDate: data.expiryDate ? new Date(data.expiryDate) : new Date(Date.now() + 365 * 86400000),
-              status: 'VALID',
+              status: 'VALIDE',
             },
           });
-          await this.logAudit('CREATE_CERTIFICATION', 'HR', created.certificateNumber, `Certification enregistrée : ${created.name}`, data.user);
+          await this.logAudit('CREATE_CERTIFICATION', 'HR', created.id, `Certification enregistrée : ${created.certName}`, data.user);
           return created;
         }
       } catch (err) {
@@ -1402,7 +1400,7 @@ export const dbBridge = {
       try {
         const docs = await prisma.document.findMany({
           include: { project: true },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { issueDate: 'desc' },
         });
         return docs;
       } catch (err) {
@@ -1422,13 +1420,15 @@ export const dbBridge = {
           const created = await prisma.document.create({
             data: {
               projectId: proj.id,
-              name: data.title || data.name || 'Document Qualité',
+              docNumber,
+              title: data.title || data.name || 'Document Qualité',
+              category: (data.category || 'PROCEDURE') as any,
+              author: data.author || 'SILEX QHSE',
               fileUrl: data.fileUrl || '/docs/sample.pdf',
-              documentType: (data.category || 'PROCEDURE') as any,
-              uploadedById: 'usr-dg-001',
+              status: 'VALIDE',
             },
           });
-          await this.logAudit('CREATE_DOCUMENT', 'QUALITY', docNumber, `Document qualité déposé : ${created.name}`, data.user);
+          await this.logAudit('CREATE_DOCUMENT', 'QUALITY', docNumber, `Document qualité déposé : ${created.title}`, data.user);
           return created;
         }
       } catch (err) {

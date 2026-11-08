@@ -31,6 +31,11 @@ import {
 
 export default function FinancePage() {
   const { activeRole, currentProfile } = useAuth();
+  const canManageFinances =
+    activeRole === SystemRole.RESPONSABLE_FINANCIER ||
+    activeRole === SystemRole.DIRECTEUR_GENERAL ||
+    activeRole === SystemRole.ADMINISTRATEUR;
+
   const [financeData, setFinanceData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -150,6 +150,7 @@ export interface StoredProject {
   serviceOrders: any[];
   workSituations: any[];
   members: any[];
+  assignedUsers?: any[];
   costEntries: any[];
   documents: any[];
   createdAt: string;
@@ -195,7 +196,7 @@ export interface StoredWorkflow {
 class ServerStore {
   private users: ServerUser[] = [];
   private projects: StoredProject[] = [];
-  private workflows: StoredWorkflow[] = [];
+  public workflows: StoredWorkflow[] = [];
   private purchaseRequests: any[] = [];
   private purchaseOrders: any[] = [];
   private suppliers: any[] = [];
@@ -209,7 +210,7 @@ class ServerStore {
   private maintenanceOrders: any[] = [];
   private nonConformities: any[] = [];
   private qualityDocuments: any[] = [];
-  private financePayments: any[] = [];
+  public financePayments: any[] = [];
   private auditLogs: any[] = [];
   private rolePermissions: Record<string, any> = {};
 
@@ -847,7 +848,7 @@ class ServerStore {
     wf.decisionNotes = notes || 'Approbation Direction Générale accordée.';
     wf.history.push({
       action: 'APPROBATION',
-      actor: wf.decidedBy,
+      actor: wf.decidedBy || 'Direction Générale',
       role: user?.role || 'DIRECTEUR_GENERAL',
       timestamp: new Date().toISOString(),
       notes: wf.decisionNotes,
@@ -899,7 +900,7 @@ class ServerStore {
     wf.decisionNotes = reason;
     wf.history.push({
       action: 'REJET',
-      actor: wf.decidedBy,
+      actor: wf.decidedBy || 'Direction Générale',
       role: user?.role || 'DIRECTEUR_GENERAL',
       timestamp: new Date().toISOString(),
       notes: reason,
