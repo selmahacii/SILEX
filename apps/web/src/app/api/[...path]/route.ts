@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SystemRole } from '@silex/shared';
-import { serverStore } from '@/lib/server-store';
+import { dbBridge } from '@/lib/db-bridge';
 
 function corsHeaders() {
   return {
@@ -27,109 +27,124 @@ export async function GET(
     const authHeader = req.headers.get('Authorization') || '';
     const match = authHeader.match(/silex_auth_token_([A-Z_]+)/);
     const role = (match ? match[1] : SystemRole.DIRECTEUR_GENERAL) as SystemRole;
-    const user = serverStore.getUserByRole(role);
+    const user = await dbBridge.getUserByRole(role);
     return NextResponse.json(user, { headers: corsHeaders() });
   }
 
   // 2. Users & Audit
   if (clean === '/users') {
-    return NextResponse.json(serverStore.getUsers(), { headers: corsHeaders() });
-  }
-  if (clean.startsWith('/users/')) {
-    const userId = resolvedParams.path[1];
-    const user = serverStore.getUserById(userId);
-    if (!user) return NextResponse.json({ error: 'Utilisateur introuvable' }, { status: 404, headers: corsHeaders() });
-    return NextResponse.json(user, { headers: corsHeaders() });
+    const users = await dbBridge.getUsers();
+    return NextResponse.json(users, { headers: corsHeaders() });
   }
   if (clean.includes('/audit')) {
-    return NextResponse.json(serverStore.getAuditLogs(), { headers: corsHeaders() });
+    const logs = await dbBridge.getAuditLogs();
+    return NextResponse.json(logs, { headers: corsHeaders() });
   }
 
   // 3. Projects
   if (clean === '/projects/kpis') {
-    return NextResponse.json(serverStore.getProjectKpis(), { headers: corsHeaders() });
+    const kpis = await dbBridge.getProjectKpis();
+    return NextResponse.json(kpis, { headers: corsHeaders() });
   }
   if (clean.startsWith('/projects/')) {
     const code = resolvedParams.path[1];
     if (code === 'kpis') {
-      return NextResponse.json(serverStore.getProjectKpis(), { headers: corsHeaders() });
+      const kpis = await dbBridge.getProjectKpis();
+      return NextResponse.json(kpis, { headers: corsHeaders() });
     }
-    const proj = serverStore.getProject(code);
+    const proj = await dbBridge.getProject(code);
     if (!proj) {
       return NextResponse.json({ error: 'Projet introuvable' }, { status: 404, headers: corsHeaders() });
     }
     return NextResponse.json(proj, { headers: corsHeaders() });
   }
   if (clean === '/projects') {
-    return NextResponse.json(serverStore.getProjects(), { headers: corsHeaders() });
+    const projects = await dbBridge.getProjects();
+    return NextResponse.json(projects, { headers: corsHeaders() });
   }
 
   // 4. Workflows (QCD Circuit)
   if (clean.includes('/workflows')) {
-    const wfs = serverStore.getWorkflows();
+    const wfs = await dbBridge.getWorkflows();
     return NextResponse.json({ items: wfs, total: wfs.length }, { headers: corsHeaders() });
   }
 
   // 5. Procurement (DA, BC, Fournisseurs)
   if (clean.includes('/procurement/purchase-requests') || clean === '/procurement') {
-    return NextResponse.json(serverStore.getPurchaseRequests(), { headers: corsHeaders() });
+    const prs = await dbBridge.getPurchaseRequests();
+    return NextResponse.json(prs, { headers: corsHeaders() });
   }
   if (clean.includes('/procurement/purchase-orders') || clean.includes('/purchase-orders')) {
-    return NextResponse.json(serverStore.getPurchaseOrders(), { headers: corsHeaders() });
+    const pos = await dbBridge.getPurchaseOrders();
+    return NextResponse.json(pos, { headers: corsHeaders() });
   }
   if (clean.includes('/procurement/suppliers') || clean.includes('/suppliers')) {
-    return NextResponse.json(serverStore.getSuppliers(), { headers: corsHeaders() });
+    const supps = await dbBridge.getSuppliers();
+    return NextResponse.json(supps, { headers: corsHeaders() });
   }
 
   // 6. Inventory (Articles, Magasins, Mouvements)
   if (clean.includes('/inventory/warehouses') || clean.includes('/warehouses')) {
-    return NextResponse.json(serverStore.getWarehouses(), { headers: corsHeaders() });
+    const whs = await dbBridge.getWarehouses();
+    return NextResponse.json(whs, { headers: corsHeaders() });
   }
   if (clean.includes('/inventory/stock-movements') || clean.includes('/stock-movements')) {
-    return NextResponse.json(serverStore.getStockMovements(), { headers: corsHeaders() });
+    const mvts = await dbBridge.getStockMovements();
+    return NextResponse.json(mvts, { headers: corsHeaders() });
   }
   if (clean.includes('/inventory/items') || clean.includes('/inventory')) {
-    return NextResponse.json(serverStore.getInventoryItems(), { headers: corsHeaders() });
+    const items = await dbBridge.getInventoryItems();
+    return NextResponse.json(items, { headers: corsHeaders() });
   }
 
   // 7. HR
   if (clean.includes('/hr/certifications')) {
-    return NextResponse.json(serverStore.getCertifications(), { headers: corsHeaders() });
+    const certs = await dbBridge.getCertifications();
+    return NextResponse.json(certs, { headers: corsHeaders() });
   }
   if (clean.includes('/hr/attendances')) {
-    return NextResponse.json(serverStore.getAttendances(), { headers: corsHeaders() });
+    const atts = await dbBridge.getAttendances();
+    return NextResponse.json(atts, { headers: corsHeaders() });
   }
   if (clean.includes('/hr/employees') || clean.includes('/employees') || clean === '/hr') {
-    return NextResponse.json(serverStore.getEmployees(), { headers: corsHeaders() });
+    const emps = await dbBridge.getEmployees();
+    return NextResponse.json(emps, { headers: corsHeaders() });
   }
 
   // 8. Fleet & Maintenance
   if (clean.includes('/fleet/maintenance-orders') || clean.includes('/maintenance/work-orders')) {
-    return NextResponse.json(serverStore.getMaintenanceOrders(), { headers: corsHeaders() });
+    const orders = await dbBridge.getMaintenanceOrders();
+    return NextResponse.json(orders, { headers: corsHeaders() });
   }
   if (clean.includes('/fleet/assets') || clean.includes('/fleet') || clean.includes('/assets')) {
-    return NextResponse.json(serverStore.getFleetAssets(), { headers: corsHeaders() });
+    const assets = await dbBridge.getFleetAssets();
+    return NextResponse.json(assets, { headers: corsHeaders() });
   }
 
   // 9. Quality & QHSE
   if (clean.includes('/quality/documents')) {
-    return NextResponse.json(serverStore.getQualityDocuments(), { headers: corsHeaders() });
+    const docs = await dbBridge.getQualityDocuments();
+    return NextResponse.json(docs, { headers: corsHeaders() });
   }
   if (clean.includes('/quality/non-conformities') || clean.includes('/quality')) {
-    return NextResponse.json(serverStore.getNonConformities(), { headers: corsHeaders() });
+    const ncs = await dbBridge.getNonConformities();
+    return NextResponse.json(ncs, { headers: corsHeaders() });
   }
 
   // 10. Finance
   if (clean.includes('/finance/distribution')) {
-    return NextResponse.json(serverStore.getCostDistribution(), { headers: corsHeaders() });
+    const dist = await dbBridge.getCostDistribution();
+    return NextResponse.json(dist, { headers: corsHeaders() });
   }
   if (clean.includes('/finance/overview') || clean.includes('/finance')) {
-    return NextResponse.json(serverStore.getFinanceOverview(), { headers: corsHeaders() });
+    const fin = await dbBridge.getFinanceOverview();
+    return NextResponse.json(fin, { headers: corsHeaders() });
   }
 
   // 11. Reports
   if (clean.includes('/reports')) {
-    return NextResponse.json(serverStore.getProjectKpis(), { headers: corsHeaders() });
+    const kpis = await dbBridge.getProjectKpis();
+    return NextResponse.json(kpis, { headers: corsHeaders() });
   }
 
   return NextResponse.json([], { headers: corsHeaders() });
@@ -156,11 +171,11 @@ export async function POST(
     let role = (body.role || SystemRole.DIRECTEUR_GENERAL) as SystemRole;
 
     if (email) {
-      const found = serverStore.getUserByEmail(email);
-      if (found) role = found.role;
+      const found = await dbBridge.getUserByEmail(email);
+      if (found) role = found.role as SystemRole;
     }
 
-    const user = serverStore.getUserByRole(role);
+    const user = await dbBridge.getUserByRole(role);
     const token = `silex_auth_token_${user.role}_${Date.now()}`;
     const payload = {
       accessToken: token,
@@ -171,8 +186,8 @@ export async function POST(
         role: user.role,
         departmentCode: user.departmentCode,
         title: user.title,
-        avatarUrl: user.avatar,
-        assignedProjects: user.assignedProjects || [],
+        avatarUrl: (user as any).avatar,
+        assignedProjects: (user as any).assignedProjects || [],
         permissions: ['*'],
       },
     };
@@ -182,34 +197,29 @@ export async function POST(
 
   // 2. Users
   if (clean === '/users') {
-    const newUser = serverStore.createUser(body);
+    const newUser = await dbBridge.createUser(body);
     return NextResponse.json(newUser, { status: 201, headers: corsHeaders() });
   }
 
   // 3. Projects
   if (clean === '/projects') {
-    const newProj = serverStore.createProject(body);
+    const newProj = await dbBridge.createProject(body);
     return NextResponse.json(newProj, { status: 201, headers: corsHeaders() });
   }
   if (clean.includes('/milestones')) {
     const projCode = resolvedParams.path[1];
-    const mls = serverStore.addMilestone(projCode, body);
+    const mls = await dbBridge.addMilestone(projCode, body);
     return NextResponse.json(mls, { status: 201, headers: corsHeaders() });
   }
   if (clean.includes('/service-orders')) {
     const projCode = resolvedParams.path[1];
-    const ods = serverStore.addServiceOrder(projCode, body);
+    const ods = await dbBridge.addServiceOrder(projCode, body);
     return NextResponse.json(ods, { status: 201, headers: corsHeaders() });
   }
   if (clean.includes('/work-situations')) {
     const projCode = resolvedParams.path[1];
-    const sit = serverStore.addWorkSituation(projCode, body);
+    const sit = await dbBridge.addWorkSituation(projCode, body);
     return NextResponse.json(sit, { status: 201, headers: corsHeaders() });
-  }
-  if (clean.includes('/members')) {
-    const projCode = resolvedParams.path[1];
-    const mbr = serverStore.addMember(projCode, body);
-    return NextResponse.json(mbr, { status: 201, headers: corsHeaders() });
   }
 
   // 4. Workflows Decisions (Approve, Reject, Revise)
@@ -217,88 +227,88 @@ export async function POST(
     const wfId = resolvedParams.path[1];
     const action = resolvedParams.path[2];
     if (action === 'approve') {
-      const res = serverStore.approveWorkflow(wfId, body.notes);
+      const res = await dbBridge.approveWorkflow(wfId, body.notes);
       return NextResponse.json(res, { headers: corsHeaders() });
     }
     if (action === 'reject') {
-      const res = serverStore.rejectWorkflow(wfId, body.reason);
+      const res = await dbBridge.rejectWorkflow(wfId, body.reason);
       return NextResponse.json(res, { headers: corsHeaders() });
     }
     if (action === 'request-revision') {
-      const res = serverStore.requestRevisionWorkflow(wfId, body.instructions);
+      const res = await dbBridge.requestRevisionWorkflow(wfId, body.instructions);
       return NextResponse.json(res, { headers: corsHeaders() });
     }
   }
 
   // 5. Procurement
   if (clean.includes('/procurement/purchase-requests') || clean === '/procurement') {
-    const pr = serverStore.createPurchaseRequest(body);
+    const pr = await dbBridge.createPurchaseRequest(body);
     return NextResponse.json(pr, { status: 201, headers: corsHeaders() });
   }
   if (clean.includes('/procurement/suppliers') || clean.includes('/suppliers')) {
-    const supp = serverStore.createSupplier(body);
+    const supp = await dbBridge.createSupplier(body);
     return NextResponse.json(supp, { status: 201, headers: corsHeaders() });
   }
   if (clean.includes('/procurement/purchase-orders') || clean.includes('/purchase-orders')) {
-    const po = serverStore.createPurchaseOrder(body);
+    const po = await dbBridge.createPurchaseOrder(body);
     return NextResponse.json(po, { status: 201, headers: corsHeaders() });
   }
 
   // 6. Inventory
   if (clean.includes('/inventory/warehouses') || clean.includes('/warehouses')) {
-    const wh = serverStore.createWarehouse(body);
+    const wh = await dbBridge.createWarehouse(body);
     return NextResponse.json(wh, { status: 201, headers: corsHeaders() });
   }
   if (clean.includes('/inventory/stock-movements') || clean.includes('/stock-movements')) {
-    const mvt = serverStore.recordStockMovement(body);
+    const mvt = await dbBridge.recordStockMovement(body);
     return NextResponse.json(mvt, { status: 201, headers: corsHeaders() });
   }
   if (clean.includes('/inventory/items') || clean.includes('/inventory')) {
     if (body.type && (body.type === 'ENTRY' || body.type === 'EXIT' || body.type === 'RECEPTION')) {
-      const mvt = serverStore.recordStockMovement(body);
+      const mvt = await dbBridge.recordStockMovement(body);
       return NextResponse.json(mvt, { status: 201, headers: corsHeaders() });
     }
-    const item = serverStore.createInventoryItem(body);
+    const item = await dbBridge.createInventoryItem(body);
     return NextResponse.json(item, { status: 201, headers: corsHeaders() });
   }
 
   // 7. HR
   if (clean.includes('/hr/employees') || clean.includes('/employees') || clean === '/hr') {
-    const emp = serverStore.createEmployee(body);
+    const emp = await dbBridge.createEmployee(body);
     return NextResponse.json(emp, { status: 201, headers: corsHeaders() });
   }
   if (clean.includes('/hr/certifications')) {
-    const cert = serverStore.createCertification(body);
+    const cert = await dbBridge.createCertification(body);
     return NextResponse.json(cert, { status: 201, headers: corsHeaders() });
   }
   if (clean.includes('/hr/attendances')) {
-    const att = serverStore.recordAttendance(body);
+    const att = await dbBridge.recordAttendance(body);
     return NextResponse.json(att, { status: 201, headers: corsHeaders() });
   }
 
   // 8. Fleet & Maintenance
   if (clean.includes('/fleet/assets') || clean.includes('/fleet') || clean.includes('/assets')) {
-    const ast = serverStore.createFleetAsset(body);
+    const ast = await dbBridge.createFleetAsset(body);
     return NextResponse.json(ast, { status: 201, headers: corsHeaders() });
   }
   if (clean.includes('/fleet/maintenance-orders') || clean.includes('/maintenance/work-orders')) {
-    const ot = serverStore.createMaintenanceOrder(body);
+    const ot = await dbBridge.createMaintenanceOrder(body);
     return NextResponse.json(ot, { status: 201, headers: corsHeaders() });
   }
 
   // 9. Quality & QHSE
   if (clean.includes('/quality/documents')) {
-    const doc = serverStore.createQualityDocument(body);
+    const doc = await dbBridge.createQualityDocument(body);
     return NextResponse.json(doc, { status: 201, headers: corsHeaders() });
   }
   if (clean.includes('/quality/non-conformities') || clean.includes('/quality')) {
-    const nc = serverStore.createNonConformity(body);
+    const nc = await dbBridge.createNonConformity(body);
     return NextResponse.json(nc, { status: 201, headers: corsHeaders() });
   }
 
   // 10. Finance
   if (clean.includes('/finance/payments')) {
-    const pay = serverStore.recordPayment(body);
+    const pay = await dbBridge.recordPayment(body);
     return NextResponse.json(pay, { status: 201, headers: corsHeaders() });
   }
   if (clean.includes('/finance/warranty-release')) {
@@ -326,7 +336,7 @@ export async function PATCH(
   // 1. Progress
   if (clean.includes('/progress')) {
     const projCode = resolvedParams.path[1];
-    const updated = serverStore.updateProgress(
+    const updated = await dbBridge.updateProgress(
       projCode,
       Number(body.physicalProgress || 0),
       Number(body.financialProgress || 0),
@@ -337,23 +347,13 @@ export async function PATCH(
   // 2. Project Update
   if (clean.startsWith('/projects/')) {
     const projCode = resolvedParams.path[1];
-    const updated = serverStore.updateProject(projCode, body);
-    return NextResponse.json(updated, { headers: corsHeaders() });
-  }
-
-  // 3. User Update
-  if (clean.startsWith('/users/')) {
-    const userId = resolvedParams.path[1];
-    const updated = serverStore.updateUser(userId, body);
+    const updated = await dbBridge.updateProject(projCode, body);
     return NextResponse.json(updated, { headers: corsHeaders() });
   }
 
   return NextResponse.json({ success: true }, { headers: corsHeaders() });
 }
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ path: string[] }> },
-) {
+export async function DELETE() {
   return NextResponse.json({ success: true }, { headers: corsHeaders() });
 }
