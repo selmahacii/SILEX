@@ -1,5 +1,4 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm --filter @silex/shared build && pnpm --filter @silex/contracts build && pnpm --filter @silex/validation build && pnpm --filter @silex/web build",
-  "outputDirectory": "apps/web/.next"
+  "buildCommand": "pnpm --filter @silex/shared build && pnpm --filter @silex/contracts build && pnpm --filter @silex/validation build && pnpm --filter @silex/web build"
 }
