@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { SystemRole } from '@silex/shared';
 import { dbBridge } from '@/lib/db-bridge';
 
+export const dynamic = 'force-dynamic';
+
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
