@@ -77,7 +77,7 @@ export const dbBridge = {
             milestones: true,
             serviceOrders: true,
             workSituations: true,
-            members: true,
+            assignedUsers: true,
           },
           orderBy: { createdAt: 'desc' },
         });
@@ -100,7 +100,7 @@ export const dbBridge = {
             milestones: true,
             serviceOrders: true,
             workSituations: true,
-            members: true,
+            assignedUsers: true,
           },
         });
         if (project) return project;
@@ -130,6 +130,7 @@ export const dbBridge = {
             startDate: data.startDate ? new Date(data.startDate) : new Date(),
             contractEndDate: data.contractEndDate ? new Date(data.contractEndDate) : new Date(Date.now() + 90 * 86400000),
             description: data.description || '',
+            managerId: data.managerId || 'usr-rp-002',
           },
         });
         return created;
@@ -207,6 +208,7 @@ export const dbBridge = {
               orderIndex: count + 1,
               title: data.title,
               description: data.description || '',
+            managerId: data.managerId || 'usr-rp-002',
               weight: Number(data.weight || 10),
               targetDate: data.targetDate ? new Date(data.targetDate) : new Date(),
               completed: false,
@@ -236,6 +238,7 @@ export const dbBridge = {
               orderNumber,
               type: data.type || 'DEMARRAGE',
               description: data.description || '',
+            managerId: data.managerId || 'usr-rp-002',
               delayDays: Number(data.delayDays || 0),
               costImpact: Number(data.costImpact || 0),
               clientRef: data.clientRef || '',
@@ -348,7 +351,7 @@ export const dbBridge = {
     if (hasDb) {
       try {
         const wfs = await prisma.workflowInstance.findMany({
-          orderBy: { createdAt: 'desc' },
+          orderBy: { detectedDate: 'desc' },
         });
         if (wfs && wfs.length > 0) return wfs;
       } catch (err) {
@@ -463,7 +466,7 @@ export const dbBridge = {
     if (hasDb) {
       try {
         const prs = await prisma.purchaseRequest.findMany({
-          include: { items: true, project: true },
+          include: { lines: true, project: true },
           orderBy: { createdAt: 'desc' },
         });
         return prs;
@@ -551,6 +554,7 @@ export const dbBridge = {
             tradeRegistryNumber: data.tradeRegistryNumber || '',
             bankRIB: data.bankRIB || '',
             address: data.address || '',
+            specialties: 'Fournitures Industrielles',
           },
         });
         return created;
@@ -624,7 +628,7 @@ export const dbBridge = {
             code,
             name: data.name,
             location: data.location || '',
-            type: data.type || 'CHANTIER',
+            managerName: data.managerName || data.responsibleName || 'Gestionnaire Magasin',
             active: true,
           },
         });
@@ -639,7 +643,7 @@ export const dbBridge = {
   async getInventoryItems() {
     if (hasDb) {
       try {
-        const items = await prisma.inventoryItem.findMany({ orderBy: { name: 'asc' } });
+        const items = await prisma.item.findMany({ orderBy: { name: 'asc' } });
         return items;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getInventoryItems:', err);
@@ -658,6 +662,7 @@ export const dbBridge = {
             code,
             name: data.name,
             description: data.description || '',
+            managerId: data.managerId || 'usr-rp-002',
             category: data.category || 'TUYAUTERIE',
             unit: data.unit || 'UNITE',
             unitCost: Number(data.unitCost || 0),
@@ -769,7 +774,7 @@ export const dbBridge = {
   async getCertifications() {
     if (hasDb) {
       try {
-        const certs = await prisma.certification.findMany({ orderBy: { expiryDate: 'asc' } });
+        const certs = await prisma.employeeCertification.findMany({ orderBy: { expiryDate: 'asc' } });
         return certs;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getCertifications:', err);
@@ -878,7 +883,7 @@ export const dbBridge = {
       try {
         const orders = await prisma.maintenanceOrder.findMany({
           include: { asset: true },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { scheduledDate: 'desc' },
         });
         return orders;
       } catch (err) {
@@ -901,6 +906,7 @@ export const dbBridge = {
             priority: data.priority || 'MEDIUM',
             status: 'PLANIFIE',
             description: data.description || '',
+            managerId: data.managerId || 'usr-rp-002',
             scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : new Date(),
             estimatedCost: Number(data.orderCost || data.estimatedCost || 0),
           },
@@ -919,7 +925,7 @@ export const dbBridge = {
       try {
         const ncs = await prisma.nonConformity.findMany({
           include: { project: true },
-          orderBy: { createdAt: 'desc' },
+          orderBy: { detectedDate: 'desc' },
         });
         return ncs;
       } catch (err) {
@@ -939,6 +945,7 @@ export const dbBridge = {
             code,
             title: data.title,
             description: data.description || '',
+            managerId: data.managerId || 'usr-rp-002',
             severity: data.severity || 'MAJEURE',
             status: 'OUVERTE',
             detectedBy: data.detectedBy || 'Inspecteur CND SILEX',
@@ -957,7 +964,7 @@ export const dbBridge = {
   async getQualityDocuments() {
     if (hasDb) {
       try {
-        const docs = await prisma.qualityDocument.findMany({ orderBy: { createdAt: 'desc' } });
+        const docs = await prisma.document.findMany({ orderBy: { uploadDate: 'desc' } });
         return docs;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getQualityDocuments:', err);

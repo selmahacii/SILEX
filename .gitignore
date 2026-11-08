@@ -64,3 +64,4 @@ infrastructure/backups/
 .vscode/
 *.swp
 *.swo
+.neon
