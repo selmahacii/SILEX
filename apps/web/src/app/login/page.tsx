@@ -178,30 +178,30 @@ export default function LoginPage() {
             <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">
               Comptes d&apos;Accès Opérationnels SILEX (Connexion Immédiate)
             </p>
-            <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-              <button
-                type="button"
-                onClick={() => setDemoAccount('k.mansouri@silex-services.dz')}
-                className="p-2 text-left border border-slate-200 rounded-lg hover:border-[#0B207D] hover:bg-blue-50/50 transition-colors cursor-pointer"
-              >
-                <span className="font-bold text-slate-900 block truncate">K. Mansouri</span>
-                <span className="text-[#0B207D] font-medium">Directeur Général</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDemoAccount('s.belkacem@silex-services.dz')}
-                className="p-2 text-left border border-slate-200 rounded-lg hover:border-[#0B207D] hover:bg-blue-50/50 transition-colors cursor-pointer"
-              >
-                <span className="font-bold text-slate-900 block truncate">S. Belkacem</span>
-                <span className="text-[#0B207D] font-medium">Chef de Projets & Chantiers</span>
-              </button>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[10px]">
               <button
                 type="button"
                 onClick={() => setDemoAccount('a.benali@silex-services.dz')}
                 className="p-2 text-left border border-slate-200 rounded-lg hover:border-[#0B207D] hover:bg-blue-50/50 transition-colors cursor-pointer"
               >
                 <span className="font-bold text-slate-900 block truncate">A. Benali</span>
-                <span className="text-[#0B207D] font-medium">Achats & Approvisionnements</span>
+                <span className="text-[#0B207D] font-medium block truncate">Directeur Général</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDemoAccount('k.mansouri@silex-services.dz')}
+                className="p-2 text-left border border-slate-200 rounded-lg hover:border-[#0B207D] hover:bg-blue-50/50 transition-colors cursor-pointer"
+              >
+                <span className="font-bold text-slate-900 block truncate">K. Mansouri</span>
+                <span className="text-[#0B207D] font-medium block truncate">Chef de Projets</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDemoAccount('f.brahimi@silex-services.dz')}
+                className="p-2 text-left border border-slate-200 rounded-lg hover:border-[#0B207D] hover:bg-blue-50/50 transition-colors cursor-pointer"
+              >
+                <span className="font-bold text-slate-900 block truncate">F. Brahimi</span>
+                <span className="text-[#0B207D] font-medium block truncate">Responsable Achats</span>
               </button>
               <button
                 type="button"
@@ -209,7 +209,23 @@ export default function LoginPage() {
                 className="p-2 text-left border border-slate-200 rounded-lg hover:border-[#0B207D] hover:bg-blue-50/50 transition-colors cursor-pointer"
               >
                 <span className="font-bold text-slate-900 block truncate">T. Meziani</span>
-                <span className="text-[#0B207D] font-medium">Magasin & Logistique</span>
+                <span className="text-[#0B207D] font-medium block truncate">Magasin Central</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDemoAccount('r.bouzid@silex-services.dz')}
+                className="p-2 text-left border border-slate-200 rounded-lg hover:border-[#0B207D] hover:bg-blue-50/50 transition-colors cursor-pointer"
+              >
+                <span className="font-bold text-slate-900 block truncate">R. Bouzid</span>
+                <span className="text-[#0B207D] font-medium block truncate">Directeur Financier</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDemoAccount('s.haddad@silex-services.dz')}
+                className="p-2 text-left border border-slate-200 rounded-lg hover:border-[#0B207D] hover:bg-blue-50/50 transition-colors cursor-pointer"
+              >
+                <span className="font-bold text-slate-900 block truncate">S. Haddad</span>
+                <span className="text-[#0B207D] font-medium block truncate">Responsable RH</span>
               </button>
             </div>
             <p className="text-[10px] text-slate-500 mt-2 text-center">

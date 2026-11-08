@@ -170,12 +170,13 @@ export async function POST(
     const email = (body.email || '').toLowerCase().trim();
     let role = (body.role || SystemRole.DIRECTEUR_GENERAL) as SystemRole;
 
+    let user: any = null;
     if (email) {
-      const found = await dbBridge.getUserByEmail(email);
-      if (found) role = found.role as SystemRole;
+      user = await dbBridge.getUserByEmail(email);
     }
-
-    const user = await dbBridge.getUserByRole(role);
+    if (!user) {
+      user = await dbBridge.getUserByRole(role);
+    }
     const token = `silex_auth_token_${user.role}_${Date.now()}`;
     const payload = {
       accessToken: token,
