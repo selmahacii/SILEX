@@ -55,23 +55,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
         } catch (e) {
-          console.warn('[AUTH] Token expiré ou invalide, rafraîchissement de la session...');
+          console.warn('[AUTH] Token expiré ou invalide, réinitialisation session');
+          api.setToken(null);
         }
       }
 
-      // Connexion initiale automatique via le compte de démonstration en base
-      const savedRole = (localStorage.getItem('silex_active_role') as SystemRole) || SystemRole.DIRECTEUR_GENERAL;
-      try {
-        const demoAuth = await api.switchDemoRole(savedRole);
-        if (demoAuth && demoAuth.user) {
-          setUser(demoAuth.user as AuthUser);
-          setActiveRole(demoAuth.user.role as SystemRole);
-          localStorage.setItem('silex_active_role', demoAuth.user.role);
-        }
-      } catch (demoErr) {
-        console.error('[AUTH] Impossible d’initialiser le compte démo en base :', demoErr);
-        setUser(null);
-      }
+      // Aucun token actif : l'utilisateur doit impérativement s'authentifier sur /login
+      setUser(null);
     } catch (err) {
       console.error('[AUTH] Erreur initialisation session :', err);
       setUser(null);
@@ -116,6 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     api.setToken(null);
     setUser(null);
     localStorage.removeItem('silex_active_role');
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
   };
 
   const currentProfile = {
