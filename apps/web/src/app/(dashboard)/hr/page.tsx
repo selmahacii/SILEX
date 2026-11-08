@@ -126,7 +126,7 @@ export default function HrPage() {
   }, [activeRole]);
 
   // Calcul du débours journalier estimé dans la modale Pointage
-  const selectedEmpForAtt = employees.find(e => e.id === attEmployeeId);
+  const selectedEmpForAtt = (Array.isArray(employees) ? employees : []).find(e => e.id === attEmployeeId);
   const dailyBaseRate = Number(selectedEmpForAtt?.dailyBaseRate || 5000);
   const hourlyBaseRate = dailyBaseRate / 8;
   const overtimeRate = hourlyBaseRate * 1.5;
@@ -537,7 +537,7 @@ export default function HrPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            const found = employees.find(e => e.id === cert.employeeId || e.id === cert.employee?.id);
+                            const found = (Array.isArray(employees) ? employees : []).find(e => e.id === cert.employeeId || e.id === cert.employee?.id);
                             if (found) setSelectedEmployeeForDetail(found);
                           }}
                           className="text-left font-semibold text-[#0B207D] hover:underline cursor-pointer group-hover:text-[#0B207D]"
@@ -627,7 +627,7 @@ export default function HrPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          const found = employees.find(e => e.id === a.employeeId || e.id === a.employee?.id);
+                          const found = (Array.isArray(employees) ? employees : []).find(e => e.id === a.employeeId || e.id === a.employee?.id);
                           if (found) setSelectedEmployeeForDetail(found);
                         }}
                         className="text-left font-semibold text-[#0B207D] hover:underline cursor-pointer"
@@ -705,7 +705,7 @@ export default function HrPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          const found = employees.find(e => e.id === row.id);
+                          const found = (Array.isArray(employees) ? employees : []).find(e => e.id === row.id);
                           if (found) setSelectedEmployeeForDetail(found);
                         }}
                         className="text-left font-semibold text-[#0B207D] hover:underline cursor-pointer"

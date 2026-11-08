@@ -272,9 +272,9 @@ export default function InventoryPage() {
   }, 0);
 
   // Selected project for issue
-  const activeIssueProject = projects.find(p => p.id === selectedProjectId);
-  const activeWarehouse = warehouses.find(w => w.id === selectedWarehouseId);
-  const activeRecipientEmp = employees.find(e => e.id === recipientEmployeeId);
+  const activeIssueProject = (Array.isArray(projects) ? projects : []).find(p => p.id === selectedProjectId);
+  const activeWarehouse = (Array.isArray(warehouses) ? warehouses : []).find(w => w.id === selectedWarehouseId);
+  const activeRecipientEmp = (Array.isArray(employees) ? employees : []).find(e => e.id === recipientEmployeeId);
 
   // Add line to Bon de Sortie
   const handleAddIssueLine = () => {
@@ -305,7 +305,7 @@ export default function InventoryPage() {
 
   // Compute total amount and stock validity
   const issueLinesComputed = (Array.isArray(issueLines) ? issueLines : []).map(line => {
-    const item = items.find(i => i.id === line.itemId);
+    const item = (Array.isArray(items) ? items : []).find(i => i.id === line.itemId);
     const available = Number(item?.currentStock || 0);
     const requested = Number(line.quantity || 0);
     const unitCost = Number(item?.unitCost || 0);
@@ -433,7 +433,7 @@ export default function InventoryPage() {
   const handleReceiveGoods = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const selectedPO = purchaseOrders.find(p => p.id === selectedPOId);
+      const selectedPO = (Array.isArray(purchaseOrders) ? purchaseOrders : []).find(p => p.id === selectedPOId);
       if (!selectedPO || !selectedPO.lines || selectedPO.lines.length === 0) {
         alert('Bon de commande non valide ou sans ligne');
         return;
@@ -475,7 +475,7 @@ export default function InventoryPage() {
   const handleAdjustStock = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const itm = items.find(i => i.id === adjustItemId);
+      const itm = (Array.isArray(items) ? items : []).find(i => i.id === adjustItemId);
       if (!itm) {
         alert('Veuillez sélectionner un article');
         return;
@@ -2395,7 +2395,7 @@ export default function InventoryPage() {
                   value={adjustItemId}
                   onChange={e => {
                     setAdjustItemId(e.target.value);
-                    const it = items.find(i => i.id === e.target.value);
+                    const it = (Array.isArray(items) ? items : []).find(i => i.id === e.target.value);
                     if (it) setAdjustNewQty(Number(it.currentStock || 0));
                   }}
                   className="w-full p-2 border border-slate-200 rounded font-semibold text-slate-900 bg-white"

@@ -191,7 +191,7 @@ export default function MaintenancePage() {
         if (p.id !== id) return p;
         const updated = { ...p, ...updates };
         if (updates.itemId && updates.itemId !== p.itemId) {
-          const itm = inventoryItems.find(i => i.id === updates.itemId);
+          const itm = (Array.isArray(inventoryItems) ? inventoryItems : []).find(i => i.id === updates.itemId);
           if (itm) {
             updated.name = itm.name;
             updated.unitCost = Number(itm.unitCost || 0);
@@ -1160,7 +1160,7 @@ export default function MaintenancePage() {
                           <span>Équipement :</span>
                           <button
                             onClick={() => {
-                              const matchingAsset = assets.find(a => a.id === o.assetId) || o.asset;
+                              const matchingAsset = (Array.isArray(assets) ? assets : []).find(a => a.id === o.assetId) || o.asset;
                               if (matchingAsset) setSelectedAssetForDetail(matchingAsset);
                             }}
                             className="text-[#0B207D] hover:underline font-bold flex items-center gap-1 cursor-pointer"
@@ -1253,7 +1253,7 @@ export default function MaintenancePage() {
         const isOperational = a.status === 'OPERATIONAL';
         const assetOrders = orders.filter(o => o.assetId === a.id || o.asset?.id === a.id);
         const totalAssetExpense = assetOrders.reduce((acc, o) => acc + Number(o.cost || 0), 0);
-        const activeProject = projects.find(p => p.id === a.currentProjectId) || a.currentProject;
+        const activeProject = (Array.isArray(projects) ? projects : []).find(p => p.id === a.currentProjectId) || a.currentProject;
 
         return (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 backdrop-blur-xs animate-in fade-in duration-150">
@@ -1769,7 +1769,7 @@ export default function MaintenancePage() {
       {/* MODALE CRÉATION ORDRE DE TRAVAIL (OT) — MULTI-MODES & ULTRA-DÉTAILLÉE */}
       {/* ========================================================================= */}
       {showOrderModal && (() => {
-        const activeSelectedAsset = assets.find(a => a.id === orderAssetId) || (assets.length > 0 ? assets[0] : null);
+        const activeSelectedAsset = (Array.isArray(assets) ? assets : []).find(a => a.id === orderAssetId) || (assets.length > 0 ? assets[0] : null);
         const isAssetOperational = activeSelectedAsset?.status === 'OPERATIONAL';
 
         return (
@@ -2377,7 +2377,7 @@ export default function MaintenancePage() {
                   {/* Liste des pièces */}
                   <div className="space-y-2">
                     {(Array.isArray(otSpareParts) ? otSpareParts : []).map((part, idx) => {
-                      const stockItem = inventoryItems.find(i => i.id === part.itemId);
+                      const stockItem = (Array.isArray(inventoryItems) ? inventoryItems : []).find(i => i.id === part.itemId);
                       const partSubtotal = Number(part.quantity || 0) * Number(part.unitCost || 0);
 
                       return (

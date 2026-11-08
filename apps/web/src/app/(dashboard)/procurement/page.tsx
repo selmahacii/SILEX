@@ -191,7 +191,7 @@ export default function ProcurementPage() {
         if (l.id !== id) return l;
         const updated = { ...l, ...updates };
         if (updates.itemId && updates.itemId !== l.itemId) {
-          const itm = items.find(i => i.id === updates.itemId);
+          const itm = (Array.isArray(items) ? items : []).find(i => i.id === updates.itemId);
           if (itm) {
             updated.unit = itm.unit || updated.unit;
             updated.unitPrice = Number(itm.unitCost || 0);
@@ -307,7 +307,7 @@ export default function ProcurementPage() {
       }
 
       if (prs.length > 0) {
-        const prToSelect = selectedPR ? prs.find(p => p.id === selectedPR.id) || prs[0] : prs[0];
+        const prToSelect = selectedPR ? (Array.isArray(prs) ? prs : []).find(p => p.id === selectedPR.id) || prs[0] : prs[0];
         const fullPR = await api.get<any>(`/procurement/purchase-requests/${prToSelect.id}`);
         setSelectedPR(fullPR);
       }
@@ -332,8 +332,8 @@ export default function ProcurementPage() {
   };
 
   // Calculs dynamiques pour le modal Création DA
-  const chosenProject = projects.find(p => p.id === selectedProjectId) || (projects.length > 0 ? projects[0] : null);
-  const chosenItem = items.find(i => i.id === selectedItemId) || (items.length > 0 ? items[0] : null);
+  const chosenProject = (Array.isArray(projects) ? projects : []).find(p => p.id === selectedProjectId) || (projects.length > 0 ? projects[0] : null);
+  const chosenItem = (Array.isArray(items) ? items : []).find(i => i.id === selectedItemId) || (items.length > 0 ? items[0] : null);
   const effectiveUnitPrice = itemSelectionMode === 'CUSTOM' ? Number(customUnitPrice || 0) : Number(chosenItem?.unitCost || 18500);
   const totalLineHT = requestQty * effectiveUnitPrice;
   const tvaAmount = Math.round(totalLineHT * 0.19); // TVA Algérie 19%
@@ -390,7 +390,7 @@ export default function ProcurementPage() {
         lines: (Array.isArray(prLines) ? prLines : []).map((line, idx) => {
           const itemDesc = line.mode === 'CUSTOM'
             ? `${line.customName || `Article sur-mesure #${idx + 1}`} [Matière: ${line.customNuance || 'Standard'}] [ISO: ${line.customIsoRef || 'N/A'}]`
-            : (items.find(i => i.id === line.itemId)?.name || `Composant industriel #${idx + 1}`);
+            : ((Array.isArray(items) ? items : []).find(i => i.id === line.itemId)?.name || `Composant industriel #${idx + 1}`);
 
           const fullTechnicalSpecs = `Pôle: ${procurementCategory} | Lieu: ${deliveryLocation}${qualitySpecs ? ` | Qualité: ${qualitySpecs}` : ''}${line.customIsoRef ? ` | Repère ISO: ${line.customIsoRef}` : ''}`;
 
@@ -1805,7 +1805,7 @@ export default function ProcurementPage() {
 
       {/* MODAL CRÉATION DEMANDE D'ACHAT — ULTRA-DÉTAILLÉE & ORIENTÉE CHANTIERS */}
       {showCreateModal && (() => {
-        const activeProj = projects.find(p => p.id === (selectedProjectId || projects[0]?.id)) || projects[0];
+        const activeProj = (Array.isArray(projects) ? projects : []).find(p => p.id === (selectedProjectId || projects[0]?.id)) || projects[0];
         const projBudget = Number(activeProj?.budgetAmount || activeProj?.contractAmount || 120000000);
         const projCommitted = Number(activeProj?.committedCost || activeProj?.actualCost || 34500000);
         const projRemaining = Math.max(0, projBudget - projCommitted);
@@ -1977,7 +1977,7 @@ export default function ProcurementPage() {
                   {/* Liste des lignes multi-produits */}
                   <div className="space-y-3">
                     {(Array.isArray(prLines) ? prLines : []).map((line, idx) => {
-                      const lineItem = items.find(i => i.id === line.itemId);
+                      const lineItem = (Array.isArray(items) ? items : []).find(i => i.id === line.itemId);
                       const lineSubtotal = Number(line.quantity || 0) * Number(line.unitPrice || 0);
 
                       return (

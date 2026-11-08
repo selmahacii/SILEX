@@ -100,18 +100,33 @@ class StatefulProductionStore {
     try {
       // Si la version vierge n'est pas encore enregistrée, on purge tout résidu factice
       const slateVersion = localStorage.getItem('silex_slate_version');
-      if (slateVersion !== 'v2_clean_slate') {
-        localStorage.removeItem('silex_mock_projects');
-        localStorage.removeItem('silex_mock_workflows');
-        localStorage.removeItem('silex_mock_kpis');
-        localStorage.removeItem('silex_mock_procurement');
-        localStorage.removeItem('silex_mock_inventory');
-        localStorage.removeItem('silex_mock_suppliers');
-        localStorage.removeItem('silex_mock_orders');
-        localStorage.removeItem('silex_mock_employees');
-        localStorage.removeItem('silex_mock_assets');
-        localStorage.removeItem('silex_mock_nc');
-        localStorage.setItem('silex_slate_version', 'v2_clean_slate');
+      if (slateVersion !== 'v3_clean_slate_2026') {
+        const keysToRemove = [
+          'silex_mock_projects',
+          'silex_mock_workflows',
+          'silex_mock_kpis',
+          'silex_mock_procurement',
+          'silex_mock_inventory',
+          'silex_mock_suppliers',
+          'silex_mock_orders',
+          'silex_mock_employees',
+          'silex_mock_assets',
+          'silex_mock_nc',
+          'silex_prod_projects',
+          'silex_prod_workflows',
+          'silex_prod_kpis',
+          'silex_prod_procurement',
+          'silex_prod_inventory',
+          'silex_prod_suppliers',
+          'silex_prod_orders',
+          'silex_prod_warehouses',
+          'silex_prod_employees',
+          'silex_prod_movements',
+          'silex_prod_assets',
+          'silex_prod_nc',
+        ];
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+        localStorage.setItem('silex_slate_version', 'v3_clean_slate_2026');
       }
 
       const p = localStorage.getItem('silex_prod_projects');
@@ -667,9 +682,13 @@ class StatefulProductionStore {
     this.kpis = {
       activeProjectsCount: this.projects.length,
       totalContractValue: totalContract,
+      totalProjectBudgets: totalContract,
       committedCost: committed,
+      totalCommittedCosts: committed,
       actualCost: actual,
+      totalActualCosts: actual,
       grossMargin: Number(margin.toFixed(1)),
+      projectedMarginRate: Number(margin.toFixed(1)),
       pendingApprovalsCount: this.workflows.filter(w => w.status === 'PENDING_APPROVAL').length,
       averageProgress: Number(avgProg.toFixed(1)),
     };
