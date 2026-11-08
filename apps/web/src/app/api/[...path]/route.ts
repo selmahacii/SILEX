@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SystemRole } from '@silex/shared';
 import { dbBridge } from '@/lib/db-bridge';
+import { parseUserFromToken, generateAuthToken } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,10 +27,14 @@ export async function GET(
 
   // 1. Auth Me
   if (clean.includes('/auth/me')) {
-    const authHeader = req.headers.get('Authorization') || '';
-    const match = authHeader.match(/silex_auth_token_([A-Z_]+)/);
-    const role = (match ? match[1] : SystemRole.DIRECTEUR_GENERAL) as SystemRole;
-    const user = await dbBridge.getUserByRole(role);
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Session introuvable ou jeton expiré' },
+        { status: 401, headers: corsHeaders() }
+      );
+    }
     return NextResponse.json(user, { headers: corsHeaders() });
   }
 
@@ -201,7 +206,7 @@ export async function POST(
         title: 'Directeur Général',
       };
     }
-    const token = `silex_auth_token_${user.role}_${Date.now()}`;
+    const token = generateAuthToken(user);
     const payload = {
       accessToken: token,
       user: {

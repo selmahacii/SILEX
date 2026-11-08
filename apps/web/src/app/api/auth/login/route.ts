@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SystemRole } from '@silex/shared';
 import { dbBridge } from '@/lib/db-bridge';
+import { generateAuthToken } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    const token = `silex_auth_token_${user.id}_${user.role}_${Date.now()}`;
+    const token = generateAuthToken(user);
     const payload = {
       accessToken: token,
       user: {

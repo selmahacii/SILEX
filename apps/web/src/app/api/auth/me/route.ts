@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SystemRole } from '@silex/shared';
-import { dbBridge } from '@/lib/db-bridge';
+import { parseUserFromToken } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,31 +17,13 @@ export async function OPTIONS() {
 
 export async function GET(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('Authorization') || '';
-    const rawToken = authHeader.replace(/^Bearer\s+/i, '').trim();
-
-    let user: any = null;
-
-    // 1. Tenter l'extraction avec id : silex_auth_token_<userId>_<role>_<timestamp>
-    const matchFull = rawToken.match(/^silex_auth_token_([a-zA-Z0-9_-]+)_([A-Z_]+)_\d+$/);
-    if (matchFull) {
-      const userId = matchFull[1];
-      const role = matchFull[2] as SystemRole;
-      user = await dbBridge.getUserById(userId);
-      if (!user) {
-        user = await dbBridge.getUserByRole(role);
-      }
-    } else {
-      // 2. Format historique : silex_auth_token_<role>_<timestamp>
-      const matchRole = rawToken.match(/silex_auth_token_([A-Z_]+)/);
-      const role = (matchRole ? matchRole[1] : SystemRole.DIRECTEUR_GENERAL) as SystemRole;
-      user = await dbBridge.getUserByRole(role);
-    }
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Session introuvable' },
-        { status: 404, headers: corsHeaders() }
+        { error: 'Session introuvable ou jeton expiré' },
+        { status: 401, headers: corsHeaders() }
       );
     }
 
