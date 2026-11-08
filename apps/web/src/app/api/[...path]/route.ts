@@ -76,6 +76,14 @@ export async function GET(
   }
 
   // 5. Procurement (DA, BC, Fournisseurs)
+  if (clean.includes('/procurement/purchase-requests/') && resolvedParams.path.length >= 3) {
+    const prId = resolvedParams.path[2];
+    const pr = await dbBridge.getPurchaseRequest(prId);
+    if (!pr) {
+      return NextResponse.json({ error: 'Demande d\'Achat introuvable' }, { status: 404, headers: corsHeaders() });
+    }
+    return NextResponse.json(pr, { headers: corsHeaders() });
+  }
   if (clean.includes('/procurement/purchase-requests') || clean === '/procurement') {
     const prs = await dbBridge.getPurchaseRequests();
     return NextResponse.json(prs, { headers: corsHeaders() });

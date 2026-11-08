@@ -168,6 +168,7 @@ export const dbBridge = {
             milestones: true,
             serviceOrders: true,
             workSituations: true,
+            costEntries: true,
           },
         });
         return projects;
@@ -193,6 +194,7 @@ export const dbBridge = {
             milestones: true,
             serviceOrders: true,
             workSituations: true,
+            costEntries: { orderBy: { recordedAt: 'desc' } },
             assignedUsers: {
               include: { user: true },
             },
@@ -693,21 +695,42 @@ export const dbBridge = {
     if (hasDb) {
       try {
         const prs = await prisma.purchaseRequest.findMany({
-          include: { lines: { include: { item: true } }, project: true, createdBy: true },
+          include: {
+            lines: { include: { item: true } },
+            project: true,
+            createdBy: true,
+            quotes: { include: { supplier: true } },
+            purchaseOrders: { include: { supplier: true } },
+          },
           orderBy: { createdAt: 'desc' },
         });
         if (prs) {
-          return prs.map((pr: any) => ({
-            ...pr,
-            code: pr.reference || pr.code,
-            reference: pr.reference || pr.code,
-            amountHT: Number(pr.totalEstimatedAmount || pr.amountHT || 0),
-            totalHT: Number(pr.totalEstimatedAmount || pr.amountHT || 0),
-            amountTVA: Number(pr.totalEstimatedAmount || 0) * 0.19,
-            amountTTC: Number(pr.totalEstimatedAmount || 0) * 1.19,
-            desiredDeliveryDate: pr.desiredDate || pr.desiredDeliveryDate,
-            urgency: pr.urgencyLevel || pr.urgency || 'NORMAL',
-          }));
+          return prs.map((pr: any) => {
+            const linesHT = (pr.lines || []).reduce(
+              (acc: number, l: any) => acc + (Number(l.quantity || 1) * Number(l.estimatedUnitPrice || l.unitPrice || 0)),
+              0
+            );
+            const totalHT = Number(pr.totalEstimatedAmount) > 0 ? Number(pr.totalEstimatedAmount) : linesHT;
+            const vatRate = Number(pr.vatRate !== undefined ? pr.vatRate : 19);
+            const amountTVA = totalHT * (vatRate / 100);
+            const amountTTC = totalHT + amountTVA;
+
+            return {
+              ...pr,
+              code: pr.reference || pr.code,
+              reference: pr.reference || pr.code,
+              amountHT: totalHT,
+              totalHT,
+              vatRate,
+              amountTVA,
+              amountTTC,
+              desiredDeliveryDate: pr.desiredDate || pr.desiredDeliveryDate,
+              urgency: pr.urgencyLevel || pr.urgency || 'NORMAL',
+              urgencyLevel: pr.urgencyLevel || pr.urgency || 'NORMAL',
+              requester: pr.createdBy || { name: 'Chef de Projets SILEX' },
+              department: pr.project?.name ? `Projet ${pr.project.code}` : 'Direction Projets Chantiers',
+            };
+          });
         }
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getPurchaseRequests:', err);
@@ -716,13 +739,63 @@ export const dbBridge = {
     return serverStore.getPurchaseRequests();
   },
 
+  async getPurchaseRequest(idOrCode: string) {
+    if (hasDb) {
+      try {
+        const pr = await prisma.purchaseRequest.findFirst({
+          where: { OR: [{ id: idOrCode }, { reference: idOrCode }] },
+          include: {
+            lines: { include: { item: true } },
+            project: true,
+            createdBy: true,
+            quotes: { include: { supplier: true } },
+            purchaseOrders: { include: { supplier: true } },
+          },
+        });
+        if (pr) {
+          const linesHT = (pr.lines || []).reduce(
+            (acc: number, l: any) => acc + (Number(l.quantity || 1) * Number(l.estimatedUnitPrice || l.unitPrice || 0)),
+            0
+          );
+          const totalHT = Number(pr.totalEstimatedAmount) > 0 ? Number(pr.totalEstimatedAmount) : linesHT;
+          const vatRate = Number((pr as any).vatRate !== undefined ? (pr as any).vatRate : 19);
+          const amountTVA = totalHT * (vatRate / 100);
+          const amountTTC = totalHT + amountTVA;
+
+          return {
+            ...pr,
+            code: pr.reference || pr.id,
+            reference: pr.reference || pr.id,
+            amountHT: totalHT,
+            totalHT,
+            vatRate,
+            amountTVA,
+            amountTTC,
+            desiredDeliveryDate: pr.desiredDate,
+            urgency: pr.urgencyLevel || 'NORMAL',
+            urgencyLevel: pr.urgencyLevel || 'NORMAL',
+            requester: pr.createdBy || { name: 'Chef de Projets SILEX' },
+            department: pr.project?.name ? `Projet ${pr.project.code}` : 'Direction Projets Chantiers',
+          };
+        }
+      } catch (err) {
+        console.warn('[DB Bridge] Error fetching purchase request:', err);
+      }
+    }
+    return serverStore.getPurchaseRequest(idOrCode);
+  },
+
   async createPurchaseRequest(data: any) {
     if (hasDb) {
       try {
         const count = await prisma.purchaseRequest.count();
         const code = `DA-2026-${String(count + 1).padStart(4, '0')}`;
-        const amountHT = Number(data.totalHT || data.amountHT || data.estimatedAmount || 0);
-        const vatRate = Number(data.vatRate || 19);
+        const rawLines = Array.isArray(data.items) ? data.items : (Array.isArray(data.lines) ? data.lines : []);
+        let amountHT = Number(data.totalHT || data.amountHT || data.estimatedAmount || 0);
+        if (amountHT === 0 && rawLines.length > 0) {
+          amountHT = rawLines.reduce((acc: number, l: any) => acc + (Number(l.quantity || 1) * Number(l.estimatedUnitPrice !== undefined ? l.estimatedUnitPrice : (l.unitPrice || 0))), 0);
+        }
+        const vatRate = Number(data.vatRate !== undefined ? data.vatRate : 19);
         const vatAmount = amountHT * (vatRate / 100);
         const totalTTC = amountHT + vatAmount;
 
@@ -740,7 +813,6 @@ export const dbBridge = {
         });
 
         // Lignes de DA
-        const rawLines = Array.isArray(data.items) ? data.items : (Array.isArray(data.lines) ? data.lines : []);
         if (rawLines.length > 0) {
           let defaultItem = await prisma.item.findFirst();
           if (!defaultItem) {
@@ -761,7 +833,7 @@ export const dbBridge = {
 
           for (const line of rawLines) {
             const lineQty = Number(line.quantity || 1);
-            const linePrice = Number(line.unitPrice || 0);
+            const linePrice = Number(line.estimatedUnitPrice !== undefined ? line.estimatedUnitPrice : (line.unitPrice || 0));
             let resolvedItemId = defaultItem.id;
             if (line.itemId) {
               const itemExists = await prisma.item.findUnique({ where: { id: line.itemId } }).catch(() => null);

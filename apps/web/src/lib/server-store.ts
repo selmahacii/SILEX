@@ -988,6 +988,10 @@ class ServerStore {
     return this.purchaseRequests;
   }
 
+  getPurchaseRequest(idOrCode: string) {
+    return this.purchaseRequests.find(p => p.id === idOrCode || p.code === idOrCode || p.reference === idOrCode) || null;
+  }
+
   createPurchaseRequest(data: any) {
     const code = `DA-2026-${String(this.purchaseRequests.length + 1).padStart(4, '0')}`;
     const project = this.getProject(data.projectId);

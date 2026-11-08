@@ -462,18 +462,35 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       return;
     }
     try {
+      const amt = Number(costAmount);
+      const newEntry = {
+        id: `cst-${Date.now()}`,
+        category: costCategory,
+        amount: amt,
+        description: costDescription || 'Imputation analytique',
+        sourceModule: 'MANUAL',
+        recordedAt: new Date().toISOString(),
+      };
+      setProject((prev: any) => {
+        if (!prev) return prev;
+        const entries = [newEntry, ...(prev.costEntries || [])];
+        const newActualCost = Number(prev.actualCost || 0) + amt;
+        return { ...prev, costEntries: entries, actualCost: newActualCost };
+      });
+
       await api.post(`/projects/${project.id}/costs`, {
         category: costCategory,
-        amount: Number(costAmount),
+        amount: amt,
         description: costDescription,
         sourceModule: 'MANUAL',
       });
       setShowCostModal(false);
-      setNotification(`Dépense de ${formatCurrencyDA(Number(costAmount), false)} imputée au coût réel du chantier !`);
+      setNotification(`Dépense de ${formatCurrencyDA(amt, false)} imputée au coût réel du chantier !`);
       setTimeout(() => setNotification(null), 5000);
-      await fetchProject();
+      await fetchProject(true);
     } catch (err: any) {
       alert(err.message || 'Erreur imputation frais');
+      await fetchProject(true);
     }
   };
 

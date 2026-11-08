@@ -311,7 +311,7 @@ export default function ProcurementPage() {
   const handleSelectPR = async (prId: string) => {
     try {
       const fullPR = await api.get<any>(`/procurement/purchase-requests/${prId}`);
-      setSelectedPR(fullPR);
+      setSelectedPR(Array.isArray(fullPR) ? fullPR[0] : fullPR);
     } catch (err: any) {
       alert(err.message);
     }
@@ -373,6 +373,11 @@ export default function ProcurementPage() {
         urgencyLevel: requestUrgency,
         justification: requestJustification,
         desiredDate: new Date(desiredDeliveryDate).toISOString(),
+        vatRate: Number(prVatRate),
+        totalHT: totalPRLinesHT,
+        amountHT: totalPRLinesHT,
+        amountTVA: totalPRTva,
+        amountTTC: totalPRLinesTTC,
         lines: (Array.isArray(prLines) ? prLines : []).map((line, idx) => {
           const itemDesc = line.mode === 'CUSTOM'
             ? `${line.customName || `Article sur-mesure #${idx + 1}`} [Matière: ${line.customNuance || 'Standard'}] [ISO: ${line.customIsoRef || 'N/A'}]`
@@ -391,6 +396,7 @@ export default function ProcurementPage() {
             unit: line.unit || 'UNITE',
             technicalSpecs: fullTechnicalSpecs,
             estimatedUnitPrice: Number(line.unitPrice),
+            unitPrice: Number(line.unitPrice),
           };
         }),
       });
@@ -1109,10 +1115,11 @@ export default function ProcurementPage() {
                   </div>
                 </div>
 
-                {/* Synthèse financière avec TVA 19% */}
+                {/* Synthèse financière avec TVA dynamique */}
                 {(() => {
                   const ht = getPRTotal(selectedPR);
-                  const tva = Math.round(ht * 0.19);
+                  const vr = Number(selectedPR.vatRate !== undefined ? selectedPR.vatRate : 19);
+                  const tva = Math.round(ht * (vr / 100));
                   const ttc = ht + tva;
                   return (
                     <div className="grid grid-cols-3 gap-3 p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs">
@@ -1122,7 +1129,7 @@ export default function ProcurementPage() {
                         <div className="text-[10px] text-slate-400">Dépense estimée</div>
                       </div>
                       <div>
-                        <div className="text-[10px] text-slate-500 font-bold uppercase">TVA Légale (19%)</div>
+                        <div className="text-[10px] text-slate-500 font-bold uppercase">TVA Légale ({Number(selectedPR.vatRate !== undefined ? selectedPR.vatRate : 19)}%)</div>
                         <div className="text-sm font-extrabold text-slate-700 mt-0.5">+{formatCurrencyDA(tva, false)}</div>
                         <div className="text-[10px] text-slate-400">Régime fiscal DZ</div>
                       </div>
@@ -2187,10 +2194,10 @@ export default function ProcurementPage() {
                     </span>
                   </div>
 
-                  {/* Choix Régime Fiscal DZ */}
-                  <div className="flex items-center justify-between pt-1">
+                  {/* Choix Régime Fiscal DZ avec Saisie Manuelle */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
                     <span className="text-slate-600 font-medium">Régime Fiscal DZ & Taux de TVA :</span>
-                    <div className="flex gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {[
                         { rate: 19, label: '19% (Droit Commun)' },
                         { rate: 9, label: '9% (Taux Réduit)' },
@@ -2209,6 +2216,21 @@ export default function ProcurementPage() {
                           {r.label}
                         </button>
                       ))}
+                      {/* Saisie Manuelle du Taux de Taxe */}
+                      <div className="flex items-center gap-1 ml-1 pl-2 border-l border-slate-300">
+                        <span className="text-[10px] text-slate-500 font-bold">Autre :</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step={0.1}
+                          value={prVatRate}
+                          onChange={e => setPrVatRate(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                          className="w-14 px-1.5 py-0.5 border border-slate-300 rounded text-center text-xs font-bold text-[#07164D] bg-white focus:outline-none focus:ring-1 focus:ring-[#0B207D]"
+                          placeholder="%"
+                        />
+                        <span className="text-xs font-bold text-slate-700">%</span>
+                      </div>
                     </div>
                   </div>
 
