@@ -42,6 +42,10 @@ export async function GET(
     const logs = await dbBridge.getAuditLogs();
     return NextResponse.json(logs, { headers: corsHeaders() });
   }
+  if (clean === '/admin/rbac') {
+    const rbac = await dbBridge.getRolePermissions();
+    return NextResponse.json(rbac, { headers: corsHeaders() });
+  }
 
   // 3. Projects
   if (clean === '/projects/kpis') {
@@ -213,6 +217,10 @@ export async function POST(
     const newUser = await dbBridge.createUser(body);
     return NextResponse.json(newUser, { status: 201, headers: corsHeaders() });
   }
+  if (clean === '/admin/rbac') {
+    const updated = await dbBridge.updateRolePermissions(body.role, body.permissions);
+    return NextResponse.json(updated, { status: 200, headers: corsHeaders() });
+  }
 
   // 3. Projects
   if (clean.includes('/members')) {
@@ -369,6 +377,13 @@ export async function PATCH(
     return NextResponse.json(updated, { headers: corsHeaders() });
   }
 
+  // 3. User Update
+  if (clean.startsWith('/users/')) {
+    const userId = resolvedParams.path[1];
+    const updated = await dbBridge.updateUser(userId, body);
+    return NextResponse.json(updated, { headers: corsHeaders() });
+  }
+
   return NextResponse.json({ success: true }, { headers: corsHeaders() });
 }
 
@@ -384,6 +399,12 @@ export async function DELETE(
     const projId = resolvedParams.path[1];
     const userId = resolvedParams.path[3];
     await dbBridge.removeMemberFromProject(projId, userId, null);
+    return NextResponse.json({ success: true }, { headers: corsHeaders() });
+  }
+
+  if (clean.startsWith('/users/')) {
+    const userId = resolvedParams.path[1];
+    await dbBridge.deleteUser(userId);
     return NextResponse.json({ success: true }, { headers: corsHeaders() });
   }
 

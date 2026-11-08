@@ -1,4 +1,116 @@
-import { SystemRole, DepartmentCode, DEMO_PROFILES, ProjectStatus } from '@silex/shared';
+
+const DEFAULT_RBAC_MATRIX: Record<string, Record<string, { read: boolean; create: boolean; update: boolean; delete: boolean; approve: boolean; export: boolean }>> = {
+  DIRECTEUR_GENERAL: {
+    dashboard: { read: true, create: false, update: false, delete: false, approve: true, export: true },
+    projects: { read: true, create: true, update: true, delete: true, approve: true, export: true },
+    procurement: { read: true, create: true, update: true, delete: true, approve: true, export: true },
+    inventory: { read: true, create: true, update: true, delete: false, approve: true, export: true },
+    hr: { read: true, create: true, update: true, delete: false, approve: true, export: true },
+    finance: { read: true, create: true, update: true, delete: false, approve: true, export: true },
+    maintenance: { read: true, create: true, update: true, delete: false, approve: true, export: true },
+    quality: { read: true, create: true, update: true, delete: false, approve: true, export: true },
+    workflows: { read: true, create: true, update: true, delete: true, approve: true, export: true },
+    admin: { read: true, create: true, update: true, delete: false, approve: true, export: true },
+  },
+  RESPONSABLE_PROJET: {
+    dashboard: { read: true, create: false, update: false, delete: false, approve: false, export: true },
+    projects: { read: true, create: true, update: true, delete: false, approve: false, export: true },
+    procurement: { read: true, create: true, update: true, delete: false, approve: false, export: false },
+    inventory: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    hr: { read: true, create: true, update: false, delete: false, approve: false, export: false },
+    finance: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    maintenance: { read: true, create: true, update: false, delete: false, approve: false, export: false },
+    quality: { read: true, create: true, update: true, delete: false, approve: false, export: false },
+    workflows: { read: true, create: true, update: false, delete: false, approve: false, export: false },
+    admin: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+  },
+  RESPONSABLE_ACHATS: {
+    dashboard: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    projects: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    procurement: { read: true, create: true, update: true, delete: false, approve: true, export: true },
+    inventory: { read: true, create: true, update: true, delete: false, approve: false, export: false },
+    hr: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    finance: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    maintenance: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    quality: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    workflows: { read: true, create: true, update: false, delete: false, approve: false, export: false },
+    admin: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+  },
+  RESPONSABLE_MAGASIN: {
+    dashboard: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    projects: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    procurement: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    inventory: { read: true, create: true, update: true, delete: false, approve: true, export: true },
+    hr: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    finance: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    maintenance: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    quality: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    workflows: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    admin: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+  },
+  RESPONSABLE_RH: {
+    dashboard: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    projects: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    procurement: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    inventory: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    hr: { read: true, create: true, update: true, delete: false, approve: true, export: true },
+    finance: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    maintenance: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    quality: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    workflows: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    admin: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+  },
+  RESPONSABLE_FINANCIER: {
+    dashboard: { read: true, create: false, update: false, delete: false, approve: true, export: true },
+    projects: { read: true, create: false, update: true, delete: false, approve: false, export: true },
+    procurement: { read: true, create: false, update: false, delete: false, approve: true, export: true },
+    inventory: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    hr: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    finance: { read: true, create: true, update: true, delete: false, approve: true, export: true },
+    maintenance: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    quality: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    workflows: { read: true, create: true, update: true, delete: false, approve: true, export: true },
+    admin: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+  },
+  RESPONSABLE_MAINTENANCE: {
+    dashboard: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    projects: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    procurement: { read: true, create: true, update: false, delete: false, approve: false, export: false },
+    inventory: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    hr: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    finance: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    maintenance: { read: true, create: true, update: true, delete: false, approve: true, export: true },
+    quality: { read: true, create: true, update: false, delete: false, approve: false, export: false },
+    workflows: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    admin: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+  },
+  RESPONSABLE_QUALITE: {
+    dashboard: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    projects: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    procurement: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    inventory: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    hr: { read: true, create: false, update: false, delete: false, approve: false, export: false },
+    finance: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    maintenance: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    quality: { read: true, create: true, update: true, delete: false, approve: true, export: true },
+    workflows: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+    admin: { read: false, create: false, update: false, delete: false, approve: false, export: false },
+  },
+  ADMINISTRATEUR: {
+    dashboard: { read: true, create: true, update: true, delete: true, approve: true, export: true },
+    projects: { read: true, create: true, update: true, delete: true, approve: true, export: true },
+    procurement: { read: true, create: true, update: true, delete: true, approve: true, export: true },
+    inventory: { read: true, create: true, update: true, delete: true, approve: true, export: true },
+    hr: { read: true, create: true, update: true, delete: true, approve: true, export: true },
+    finance: { read: true, create: true, update: true, delete: true, approve: true, export: true },
+    maintenance: { read: true, create: true, update: true, delete: true, approve: true, export: true },
+    quality: { read: true, create: true, update: true, delete: true, approve: true, export: true },
+    workflows: { read: true, create: true, update: true, delete: true, approve: true, export: true },
+    admin: { read: true, create: true, update: true, delete: true, approve: true, export: true },
+  },
+};
+
+import { SystemRole, DepartmentCode, ProjectStatus } from '@silex/shared';
 
 export interface ServerUser {
   id: string;
@@ -99,30 +211,60 @@ class ServerStore {
   private qualityDocuments: any[] = [];
   private financePayments: any[] = [];
   private auditLogs: any[] = [];
+  private rolePermissions: Record<string, any> = {};
 
   constructor() {
     this.initBaseline();
   }
 
   private initBaseline() {
-    // 1. Initialiser les 9 rôles officiels réels SILEX
-    this.users = Object.values(DEMO_PROFILES).map(profile => ({
-      id: profile.id,
-      name: profile.name,
-      email: profile.email,
-      title: profile.title,
-      role: profile.role,
-      departmentCode: profile.departmentCode,
-      avatar: profile.avatar,
-      active: true,
-      assignedProjects: [],
-      permissions: ['*'],
-    }));
+    // 1. Initialiser le SEUL ET UNIQUE SuperAdmin
+    this.users = [
+      {
+        id: 'usr-superadmin-001',
+        name: 'Super Administrateur SILEX',
+        email: 'admin@silex-services.dz',
+        title: 'Super Administrateur & Directeur des Systèmes ERP',
+        role: SystemRole.ADMINISTRATEUR,
+        departmentCode: DepartmentCode.DIRECTION_GENERALE,
+        avatar: '',
+        active: true,
+        assignedProjects: [],
+        permissions: ['*'],
+      },
+    ];
 
-    // 2. Magasins physiques demarrent a zero (100% dynamiques)
+    // 2. Magasins physiques démarrent à zéro (100% dynamiques)
     this.warehouses = [];
 
-    // NOTE: Toutes les tables demarrent a 0 mockdata.
+    // 3. Matrice RBAC initiale
+    this.rolePermissions = JSON.parse(JSON.stringify(DEFAULT_RBAC_MATRIX));
+  }
+
+  deleteUser(id: string) {
+    const idx = this.users.findIndex(u => u.id === id);
+    if (idx !== -1) {
+      const removed = this.users.splice(idx, 1)[0];
+      this.addAuditLog('DELETE_USER', 'USER', id, `Suppression collaborateur ${removed.name} (${removed.email})`);
+      return true;
+    }
+    return false;
+  }
+
+  getRolePermissions() {
+    if (!this.rolePermissions || Object.keys(this.rolePermissions).length === 0) {
+      this.rolePermissions = JSON.parse(JSON.stringify(DEFAULT_RBAC_MATRIX));
+    }
+    return this.rolePermissions;
+  }
+
+  updateRolePermissions(role: string, permissions: any) {
+    if (!this.rolePermissions) {
+      this.rolePermissions = JSON.parse(JSON.stringify(DEFAULT_RBAC_MATRIX));
+    }
+    this.rolePermissions[role] = permissions;
+    this.addAuditLog('UPDATE_RBAC', 'SECURITY', role, `Mise à jour matrice RBAC rôle ${role}`);
+    return this.rolePermissions[role];
   }
 
   // --- AUDIT ---

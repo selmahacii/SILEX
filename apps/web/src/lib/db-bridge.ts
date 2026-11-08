@@ -95,6 +95,57 @@ export const dbBridge = {
     return res;
   },
 
+  async updateUser(id: string, data: any, operator?: any) {
+    if (hasDb) {
+      try {
+        const updateData: any = {};
+        if (data.name) updateData.name = data.name;
+        if (data.title) updateData.title = data.title;
+        if (data.role) updateData.role = data.role;
+        if (data.departmentCode) updateData.departmentCode = data.departmentCode;
+        if (typeof data.active === 'boolean') updateData.active = data.active;
+        if (data.password) updateData.passwordHash = '$argon2id$v=19$m=65536,t=3,p=4$dummyhashdemo2026';
+
+        const updated = await prisma.user.update({
+          where: { id },
+          data: updateData,
+        });
+        await this.logAudit('UPDATE_USER', 'USER', updated.id, `Mise à jour collaborateur ${updated.name} (Rôle: ${updated.role})`, operator);
+        return updated;
+      } catch (err) {
+        console.warn('[DB Bridge] Error updating user in DB:', err);
+      }
+    }
+    const res = serverStore.updateUser(id, data);
+    await this.logAudit('UPDATE_USER', 'USER', id, `Mise à jour collaborateur ${id}`, operator);
+    return res;
+  },
+
+  async deleteUser(id: string, operator?: any) {
+    if (hasDb) {
+      try {
+        await prisma.user.delete({ where: { id } });
+        await this.logAudit('DELETE_USER', 'USER', id, `Suppression collaborateur ID ${id}`, operator);
+        return { success: true };
+      } catch (err) {
+        console.warn('[DB Bridge] Error deleting user in DB:', err);
+      }
+    }
+    const res = serverStore.deleteUser(id);
+    await this.logAudit('DELETE_USER', 'USER', id, `Suppression collaborateur ${id}`, operator);
+    return { success: Boolean(res) };
+  },
+
+  async getRolePermissions() {
+    return serverStore.getRolePermissions();
+  },
+
+  async updateRolePermissions(role: string, permissions: any, operator?: any) {
+    const updated = serverStore.updateRolePermissions(role, permissions);
+    await this.logAudit('UPDATE_RBAC', 'SECURITY', role, `Mise à jour matrice RBAC rôle ${role}`, operator);
+    return updated;
+  },
+
   // --- PROJECTS ---
   async getProjects() {
     if (hasDb) {
