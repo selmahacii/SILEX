@@ -58,6 +58,18 @@ export const dbBridge = {
     return serverStore.getUserByEmail(email);
   },
 
+  async getUserById(id: string) {
+    if (hasDb) {
+      try {
+        const user = await prisma.user.findUnique({ where: { id } });
+        if (user) return user;
+      } catch (err) {
+        console.warn('[DB Bridge] Fallback store for getUserById:', err);
+      }
+    }
+    return serverStore.getUserById(id);
+  },
+
   async getUsers() {
     if (hasDb) {
       try {

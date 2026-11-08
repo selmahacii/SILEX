@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    const token = `silex_auth_token_${user.role}_${Date.now()}`;
+    const token = `silex_auth_token_${user.id}_${user.role}_${Date.now()}`;
     const payload = {
       accessToken: token,
       user: {
