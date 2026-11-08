@@ -8,9 +8,9 @@ services:
     container_name: silex_postgres
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:-silex_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-silex_secure_pass_2026}
+      POSTGRES_DB: ${POSTGRES_DB:-silex_erp}
       TZ: Africa/Algiers
     # Aucun port exposé sur l'hôte en production
     volumes:
@@ -18,7 +18,7 @@ services:
     networks:
       - silex-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-silex_admin} -d ${POSTGRES_DB:-silex_erp}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -32,9 +32,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 4000
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-silex_admin}:${POSTGRES_PASSWORD:-silex_secure_pass_2026}@postgres:5432/${POSTGRES_DB:-silex_erp}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-silex_super_secret_jwt_key_industrial_erp_2026_demo}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-silex_super_refresh_jwt_key_industrial_erp_2026_demo}
       DEMO_MODE: "false"
       TZ: Africa/Algiers
     # Aucun port hôte exposé - joignable uniquement via le reverse proxy Caddy
@@ -58,8 +58,9 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
-      NEXT_PUBLIC_API_URL: https://${DOMAIN}
-      NEXT_PUBLIC_APP_URL: https://${DOMAIN}
+      INTERNAL_API_URL: http://api:4000
+      NEXT_PUBLIC_API_URL: https://${DOMAIN:-localhost}
+      NEXT_PUBLIC_APP_URL: https://${DOMAIN:-localhost}
       DEMO_MODE: "false"
       TZ: Africa/Algiers
     # Aucun port hôte exposé - joignable uniquement via le reverse proxy Caddy
@@ -78,7 +79,7 @@ services:
     container_name: silex_caddy
     restart: always
     environment:
-      DOMAIN: ${DOMAIN}
+      DOMAIN: ${DOMAIN:-localhost}
     ports:
       - "80:80"
       - "443:443"

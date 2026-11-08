@@ -123,12 +123,7 @@ export class FinanceService {
     };
 
     if (grandTotal === 0) {
-      return [
-        { name: 'Fournitures & Tuyauterie', value: 40, amount: 0, color: '#142B45' },
-        { name: 'Main d’œuvre & Soudeurs', value: 35, amount: 0, color: '#0A7F7C' },
-        { name: 'Matériel & Levage', value: 15, amount: 0, color: '#D99B35' },
-        { name: 'Sous-traitance & CND', value: 10, amount: 0, color: '#203D5A' },
-      ];
+      return [];
     }
 
     return Object.entries(categoryTotals)

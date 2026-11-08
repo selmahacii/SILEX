@@ -121,13 +121,13 @@ export default function MaintenancePage() {
   // Mode 2: Dépannage Curatif / Panne d'Urgence (CM)
   const [curativeSeverity, setCurativeSeverity] = useState<'CRITICAL' | 'HIGH' | 'MEDIUM'>('CRITICAL');
   const [immediateImmobilization, setImmediateImmobilization] = useState(true);
-  const [breakdownSymptom, setBreakdownSymptom] = useState('Fuite flexible hydraulique haute pression');
+  const [breakdownSymptom, setBreakdownSymptom] = useState('');
   const [sparePartsNeeded, setSparePartsNeeded] = useState('');
 
   // Mode 3: Visite Réglementaire & Sécurité (VGP Algérie)
   const [regulatoryOrganism, setRegulatoryOrganism] = useState('APAVE Algérie');
   const [regulatoryType, setRegulatoryType] = useState('VGP_LEVAGE');
-  const [previousCertNumber, setPreviousCertNumber] = useState('PV-APAVE-2025-0842');
+  const [previousCertNumber, setPreviousCertNumber] = useState('');
   const [validityMonths, setValidityMonths] = useState(12);
 
   // HSE & Sécurité Chantier (Réglementation Sonatrach / Pétrochimie)
@@ -137,34 +137,17 @@ export default function MaintenancePage() {
   const [hseAreaSafety, setHseAreaSafety] = useState(true);
 
   // Données communes & Chiffrage analytique (Main d'œuvre, Pièces & Sous-traitance)
-  const [orderDescription, setOrderDescription] = useState('Vidange moteur 15W40, remplacement cartouches hydrauliques et contrôle graissage');
+  const [orderDescription, setOrderDescription] = useState('');
   const [orderScheduledDate, setOrderScheduledDate] = useState(new Date().toISOString().split('T')[0]);
-  const [orderCost, setOrderCost] = useState<number>(45000);
-  const [orderTechnician, setOrderTechnician] = useState('Équipe Maintenance SILEX Chantiers');
-  const [laborHours, setLaborHours] = useState<number>(8);
+  const [orderCost, setOrderCost] = useState<number>(0);
+  const [orderTechnician, setOrderTechnician] = useState('');
+  const [laborHours, setLaborHours] = useState<number>(0);
   const [hourlyRate, setHourlyRate] = useState<number>(1500);
   const [externalSubcontractCost, setExternalSubcontractCost] = useState<number>(0);
 
   // Pièces de rechange issues du Stock Magasin Central SILEX
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
-  const [otSpareParts, setOtSpareParts] = useState<OTSparePart[]>([
-    {
-      id: 'sp-1',
-      mode: 'STOCK',
-      itemId: '',
-      name: 'Cartouche Filtre à Huile & Filtre Gasoil',
-      quantity: 2,
-      unitCost: 6500,
-    },
-    {
-      id: 'sp-2',
-      mode: 'STOCK',
-      itemId: '',
-      name: 'Bidon Huile Moteur 15W40 (20L)',
-      quantity: 1,
-      unitCost: 20000,
-    },
-  ]);
+  const [otSpareParts, setOtSpareParts] = useState<OTSparePart[]>([]);
 
   const addOTSparePart = () => {
     const itm = inventoryItems[0];

@@ -202,36 +202,20 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
   const [showSituationModal, setShowSituationModal] = useState(false);
   const [sitPeriodStart, setSitPeriodStart] = useState('2026-03-01');
   const [sitPeriodEnd, setSitPeriodEnd] = useState('2026-03-31');
-  const [sitPvRef, setSitPvRef] = useState('PV-ATT-HMD-2026-084');
-  const [sitInspector, setSitInspector] = useState('M. Belhadj (Superviseur Travaux Sonatrach DP)');
+  const [sitPvRef, setSitPvRef] = useState('');
+  const [sitInspector, setSitInspector] = useState('');
   const [sitTvaRate, setSitTvaRate] = useState<number>(19);
   const [sitRetenueGarantieRate, setSitRetenueGarantieRate] = useState<number>(5);
-  const [sitNotes, setSitNotes] = useState('Situation périodique métrés tuyauterie, spools et contrôles CND contradictoires.');
+  const [sitNotes, setSitNotes] = useState('');
 
   const [sitLines, setSitLines] = useState<SitLineItem[]>([
     {
       id: '1',
-      designation: 'Pose & soudage tuyauterie Inox 316L Schedule 40 (6 pouces)',
-      unit: 'ml',
-      contractQty: 450,
-      periodQty: 45,
-      unitPrice: 32000,
-    },
-    {
-      id: '2',
-      designation: 'Préfabrication spools et collecteurs haute pression en atelier',
+      designation: '',
       unit: 'U',
-      contractQty: 30,
-      periodQty: 6,
-      unitPrice: 120000,
-    },
-    {
-      id: '3',
-      designation: 'Contrôles CND radiographiques soudures (100% RT)',
-      unit: 'joint',
-      contractQty: 180,
-      periodQty: 24,
-      unitPrice: 8500,
+      contractQty: 1,
+      periodQty: 1,
+      unitPrice: 0,
     },
   ]);
 
@@ -240,11 +224,11 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       ...prev,
       {
         id: String(Date.now() + Math.random()),
-        designation: 'Prestation supplémentaire de raccordement / montage',
-        unit: 'ml',
-        contractQty: 100,
-        periodQty: 10,
-        unitPrice: 25000,
+        designation: '',
+        unit: 'U',
+        contractQty: 1,
+        periodQty: 1,
+        unitPrice: 0,
       },
     ]);
   };

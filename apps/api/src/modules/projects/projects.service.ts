@@ -1,7 +1,7 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { SystemRole, UserSessionPayload, ProjectStatus, ServiceOrderType, ServiceOrderStatus, WorkSituationStatus, PurchaseRequestStatus } from '@silex/shared';
+import { SystemRole, UserSessionPayload, ProjectStatus, ServiceOrderType, ServiceOrderStatus, WorkSituationStatus, PurchaseRequestStatus, PurchaseOrderStatus } from '@silex/shared';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -135,7 +135,7 @@ export class ProjectsService {
       totalActual = totalActual.plus(p.actualCost);
     }
 
-    const [pendingPRCount, pendingWSCount] = await Promise.all([
+    const [pendingPRCount, pendingWSCount, invoicedSituations, issuedPOs, monthlyCosts] = await Promise.all([
       this.prisma.purchaseRequest.count({
         where: {
           status: {
@@ -148,8 +148,42 @@ export class ProjectsService {
           status: WorkSituationStatus.SUBMITTED,
         },
       }),
+      this.prisma.workSituation.findMany({
+        where: {
+          status: {
+            in: [WorkSituationStatus.APPROVED, WorkSituationStatus.INVOICED],
+          },
+        },
+      }),
+      this.prisma.purchaseOrder.findMany({
+        where: {
+          status: {
+            in: [PurchaseOrderStatus.ISSUED, PurchaseOrderStatus.CONFIRMED, PurchaseOrderStatus.PARTIALLY_RECEIVED, PurchaseOrderStatus.RECEIVED],
+          },
+        },
+      }),
+      this.prisma.projectCostEntry.aggregate({
+        _sum: { amount: true },
+        where: {
+          recordedAt: {
+            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+          },
+        },
+      }),
     ]);
     const pendingApprovalsCount = pendingPRCount + pendingWSCount;
+
+    const clientReceivables = invoicedSituations.reduce(
+      (acc, s) => acc.plus(s.amountHT.times(1.19)),
+      new Prisma.Decimal(0),
+    );
+
+    const supplierPayables = issuedPOs.reduce(
+      (acc, po) => acc.plus(po.totalAmountTTC),
+      new Prisma.Decimal(0),
+    );
+
+    const monthlyExpenditure = monthlyCosts._sum.amount || new Prisma.Decimal(0);
 
     const marginRate = totalTurnover.gt(0)
       ? totalTurnover.minus(totalBudgets).dividedBy(totalTurnover).times(100).toNumber()
@@ -164,9 +198,9 @@ export class ProjectsService {
       totalCommittedCosts: totalCommitted.toString(),
       totalActualCosts: totalActual.toString(),
       projectedMarginRate: Math.round(marginRate * 10) / 10,
-      clientReceivables: '14200000.00',
-      supplierPayables: '8650000.00',
-      monthlyExpenditure: '12400000.00',
+      clientReceivables: clientReceivables.toFixed(2),
+      supplierPayables: supplierPayables.toFixed(2),
+      monthlyExpenditure: monthlyExpenditure.toFixed(2),
       pendingApprovalsCount,
     };
   }

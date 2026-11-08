@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { SystemRole } from '@silex/shared';
 import { api } from './api-client';
-import { SYSTEM_USERS } from './mock-data';
 
 interface AuthUser {
   id: string;
@@ -46,36 +45,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setLoading(true);
       const token = api.getToken();
-      if (!token) {
-        setUser(null);
-        return;
-      }
-
-      try {
-        const me = await api.getMe();
-        if (me && me.email) {
-          setUser(me);
-          setActiveRole(me.role);
-          return;
+      if (token) {
+        try {
+          const me = await api.getMe();
+          if (me && me.email) {
+            setUser(me);
+            setActiveRole(me.role);
+            localStorage.setItem('silex_active_role', me.role);
+            return;
+          }
+        } catch (e) {
+          console.warn('[AUTH] Token expiré ou invalide, rafraîchissement de la session...');
         }
-      } catch {
-        // Fallback session locale
       }
 
+      // Connexion initiale automatique via le compte de démonstration en base
       const savedRole = (localStorage.getItem('silex_active_role') as SystemRole) || SystemRole.DIRECTEUR_GENERAL;
-      const foundUser = SYSTEM_USERS.find(u => u.role === savedRole) || SYSTEM_USERS[0];
-      setUser({
-        id: foundUser.id,
-        email: foundUser.email,
-        name: foundUser.name,
-        role: foundUser.role as SystemRole,
-        title: foundUser.title,
-        departmentCode: foundUser.departmentCode,
-        permissions: ['*'],
-      });
-      setActiveRole(foundUser.role as SystemRole);
+      try {
+        const demoAuth = await api.switchDemoRole(savedRole);
+        if (demoAuth && demoAuth.user) {
+          setUser(demoAuth.user as AuthUser);
+          setActiveRole(demoAuth.user.role as SystemRole);
+          localStorage.setItem('silex_active_role', demoAuth.user.role);
+        }
+      } catch (demoErr) {
+        console.error('[AUTH] Impossible d’initialiser le compte démo en base :', demoErr);
+        setUser(null);
+      }
     } catch (err) {
-      console.error('Erreur initialisation session:', err);
+      console.error('[AUTH] Erreur initialisation session :', err);
       setUser(null);
     } finally {
       setLoading(false);
@@ -89,22 +87,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(authData.user as AuthUser);
       setActiveRole(authData.user.role as SystemRole);
       localStorage.setItem('silex_active_role', authData.user.role);
-    } catch (err) {
-      console.warn('API locale ou réseau fallback sur compte système :', err);
-      const matched = SYSTEM_USERS.find(u => u.email.toLowerCase() === email.toLowerCase()) || SYSTEM_USERS[0];
-      const localUser: AuthUser = {
-        id: matched.id,
-        email: matched.email,
-        name: matched.name,
-        role: matched.role as SystemRole,
-        title: matched.title,
-        departmentCode: matched.departmentCode,
-        permissions: ['*'],
-      };
-      api.setToken('silex_jwt_session_' + matched.role);
-      localStorage.setItem('silex_active_role', matched.role);
-      setUser(localUser);
-      setActiveRole(matched.role as SystemRole);
     } finally {
       setLoading(false);
     }
@@ -115,18 +97,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const switchRole = async (newRole: SystemRole) => {
-    setActiveRole(newRole);
-    localStorage.setItem('silex_active_role', newRole);
-    const matched = SYSTEM_USERS.find(u => u.role === newRole) || SYSTEM_USERS[0];
-    setUser({
-      id: matched.id,
-      email: matched.email,
-      name: matched.name,
-      role: matched.role as SystemRole,
-      title: matched.title,
-      departmentCode: matched.departmentCode,
-      permissions: ['*'],
-    });
+    setLoading(true);
+    try {
+      const res = await api.switchDemoRole(newRole);
+      if (res && res.user) {
+        setUser(res.user as AuthUser);
+        setActiveRole(res.user.role as SystemRole);
+        localStorage.setItem('silex_active_role', res.user.role);
+      }
+    } catch (err) {
+      console.error('[AUTH] Échec basculement rôle réel :', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = () => {
@@ -135,14 +118,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('silex_active_role');
   };
 
-  const defaultUser = SYSTEM_USERS.find(u => u.role === activeRole) || SYSTEM_USERS[0];
   const currentProfile = {
-    id: user?.id || defaultUser.id,
-    email: user?.email || defaultUser.email,
-    name: user?.name || defaultUser.name,
-    role: (user?.role || defaultUser.role) as SystemRole,
-    title: user?.title || defaultUser.title,
-    departmentCode: user?.departmentCode || defaultUser.departmentCode,
+    id: user?.id || 'guest',
+    email: user?.email || '',
+    name: user?.name || 'Utilisateur',
+    role: (user?.role || activeRole) as SystemRole,
+    title: user?.title || 'Collaborateur SILEX',
+    departmentCode: user?.departmentCode || 'DIRECTION_GENERALE',
   };
 
   return (

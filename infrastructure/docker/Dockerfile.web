@@ -17,6 +17,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @silex/shared build
 RUN pnpm --filter @silex/contracts build
 RUN pnpm --filter @silex/validation build
+ENV DOCKER_BUILD=1
 RUN pnpm --filter @silex/web build
 
 FROM base AS runner

@@ -49,7 +49,7 @@ export default function ReportsPage() {
     : '0';
   const marginGlobal = totalContract > 0
     ? (((totalContract - totalBudget) / totalContract) * 100).toFixed(1)
-    : '23.1';
+    : '0.0';
 
   const handleExportCSV = () => {
     const headers = [

@@ -78,45 +78,7 @@ export default function QualityPage() {
   const [weldCndType, setWeldCndType] = useState('100% Ressuage PT + 100% Radio RT');
   const [weldInspector, setWeldInspector] = useState('Bureau Veritas Algérie (COFREND II)');
   const [weldStatus, setWeldStatus] = useState<'CONFORME' | 'REPARE_CONFORME' | 'EN_ATTENTE_CND'>('CONFORME');
-
-  const [weldRecords, setWeldRecords] = useState<any[]>([
-    {
-      id: 'weld-01',
-      jointNumber: 'J-01-TIE-IN-U100',
-      lineIso: 'ISO-HP-VAP-DN100',
-      material: 'Acier Carbone A106 Gr.B',
-      welder: 'Amar Bouzid (CQS-BV-2026-088)',
-      dmos: 'DMOS-01 (TIG 141)',
-      cnd: '100% Ressuage (PT) + 100% Radiographie (RT)',
-      inspector: 'Bureau Veritas / Sonatrach CND',
-      date: '2026-05-02',
-      status: 'CONFORME',
-    },
-    {
-      id: 'weld-02',
-      jointNumber: 'J-02-SKID-P101',
-      lineIso: 'ISO-316L-DN80-SCH40',
-      material: 'Inox 316L',
-      welder: 'Rachid Belhadj (CQS-BV-2026-092)',
-      dmos: 'DMOS-02 (TIG 141)',
-      cnd: '100% Ressuage (PT)',
-      inspector: 'Inspecteur CND SILEX (COFREND II)',
-      date: '2026-05-03',
-      status: 'CONFORME',
-    },
-    {
-      id: 'weld-03',
-      jointNumber: 'J-03-BALLON-B200',
-      lineIso: 'ISO-CHAUD-DN200',
-      material: 'P91 Alliage Haute Température',
-      welder: 'Karim Mansouri (CQS-TUV-2026-114)',
-      dmos: 'DMOS-04 (TIG + Préchauffage 220°C)',
-      cnd: 'Contrôle Ultrasons (UT) + Radiographie (RT)',
-      inspector: 'TUV Rheinland Algérie',
-      date: '2026-05-04',
-      status: 'CONFORME',
-    },
-  ]);
+  const [weldRecords, setWeldRecords] = useState<any[]>([]);
 
   const loadQualityData = async () => {
     try {
@@ -652,26 +614,34 @@ export default function QualityPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {(Array.isArray(filteredWelds) ? filteredWelds : []).map(w => (
-                  <tr key={w.id} className="hover:bg-slate-50">
-                    <td className="p-2.5 font-mono font-bold text-[#0B207D]">{w.jointNumber}</td>
-                    <td className="p-2.5 font-mono text-slate-700">{w.lineIso}</td>
-                    <td className="p-2.5 text-slate-800 font-semibold">{w.material}</td>
-                    <td className="p-2.5 text-slate-700">{w.welder}</td>
-                    <td className="p-2.5 text-slate-600 text-[11px]">{w.dmos}</td>
-                    <td className="p-2.5">
-                      <div className="font-semibold text-slate-800">{w.cnd}</div>
-                      <div className="text-[10px] text-slate-500">{w.inspector}</div>
-                    </td>
-                    <td className="p-2.5 text-center text-slate-500">{formatDateDZ(w.date)}</td>
-                    <td className="p-2.5 text-right">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-                        <span>{w.status}</span>
-                      </span>
+                {filteredWelds.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="p-8 text-center text-slate-500 text-xs">
+                      Aucun joint de soudure consigné pour l’instant. Cliquez sur « Consigner un Joint de Soudure » pour enrichir le Weld Book.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredWelds.map(w => (
+                    <tr key={w.id} className="hover:bg-slate-50">
+                      <td className="p-2.5 font-mono font-bold text-[#0B207D]">{w.jointNumber}</td>
+                      <td className="p-2.5 font-mono text-slate-700">{w.lineIso}</td>
+                      <td className="p-2.5 text-slate-800 font-semibold">{w.material}</td>
+                      <td className="p-2.5 text-slate-700">{w.welder}</td>
+                      <td className="p-2.5 text-slate-600 text-[11px]">{w.dmos}</td>
+                      <td className="p-2.5">
+                        <div className="font-semibold text-slate-800">{w.cnd}</div>
+                        <div className="text-[10px] text-slate-500">{w.inspector}</div>
+                      </td>
+                      <td className="p-2.5 text-center text-slate-500">{formatDateDZ(w.date)}</td>
+                      <td className="p-2.5 text-right">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                          <span>{w.status}</span>
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
