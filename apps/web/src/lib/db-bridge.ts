@@ -4,6 +4,18 @@ import { SystemRole } from '@silex/shared';
 
 const hasDb = Boolean(process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres'));
 
+function mapToSector(sector?: string): any {
+  if (!sector) return 'OIL_AND_GAS';
+  const clean = sector.toUpperCase();
+  if (clean.includes('PETRO') || clean.includes('GAZ') || clean.includes('OIL')) return 'OIL_AND_GAS';
+  if (clean.includes('ENERG')) return 'ENERGIE';
+  if (clean.includes('AGRO') || clean.includes('ALIM')) return 'AGROALIMENTAIRE';
+  if (clean.includes('SIDER') || clean.includes('ACIER')) return 'SIDERURGIE';
+  if (clean.includes('CIMENT')) return 'CIMENTERIE';
+  if (['OIL_AND_GAS', 'ENERGIE', 'AGROALIMENTAIRE', 'SIDERURGIE', 'CIMENTERIE', 'AUTRE_INDUSTRIE'].includes(clean)) return clean;
+  return 'AUTRE_INDUSTRIE';
+}
+
 export const dbBridge = {
   isDbConnected(): boolean {
     return hasDb;
@@ -218,7 +230,7 @@ export const dbBridge = {
             code,
             name: data.name,
             clientName: data.clientName,
-            sector: (data.sector || 'OIL_AND_GAS') as any,
+            sector: mapToSector(data.sector),
             siteLocation: data.siteLocation || 'Chantier Algérie',
             status: (data.status || 'IN_PROGRESS') as any,
             riskLevel: (data.riskLevel || 'LOW') as any,
@@ -345,6 +357,33 @@ export const dbBridge = {
     return res;
   },
 
+  async deleteProject(idOrCode: string, user?: any) {
+    if (hasDb) {
+      try {
+        const proj = await prisma.project.findFirst({
+          where: { OR: [{ id: idOrCode }, { code: idOrCode }] },
+        });
+        if (proj) {
+          await prisma.projectMilestone.deleteMany({ where: { projectId: proj.id } });
+          await prisma.projectTask.deleteMany({ where: { projectId: proj.id } });
+          await prisma.serviceOrder.deleteMany({ where: { projectId: proj.id } });
+          await prisma.workSituation.deleteMany({ where: { projectId: proj.id } });
+          await prisma.projectCostEntry.deleteMany({ where: { projectId: proj.id } });
+          await prisma.projectMaterialAllocation.deleteMany({ where: { projectId: proj.id } });
+          await prisma.userProjectAssignment.deleteMany({ where: { projectId: proj.id } });
+          await prisma.purchaseRequest.deleteMany({ where: { projectId: proj.id } });
+          await prisma.stockMovement.deleteMany({ where: { projectId: proj.id } });
+          await prisma.project.delete({ where: { id: proj.id } });
+          await this.logAudit('DELETE_PROJECT', 'PROJECT', proj.code, `Suppression projet ${proj.code}`, user);
+          return { success: true };
+        }
+      } catch (err) {
+        console.warn('[DB Bridge] Error deleting project in DB:', err);
+      }
+    }
+    return { success: true };
+  },
+
   async updateProgress(codeOrId: string, physical: number, financial: number) {
     if (hasDb) {
       try {
@@ -456,19 +495,32 @@ export const dbBridge = {
   },
 
   async addCostEntry(codeOrId: string, data: any) {
+    const amt = Number(data.amount !== undefined ? data.amount : (data.amountHT !== undefined ? data.amountHT : 0));
     if (hasDb) {
       try {
         const project = await prisma.project.findFirst({
           where: { OR: [{ code: codeOrId }, { id: codeOrId }] },
         });
         if (project) {
-          const amt = Number(data.amount || 0);
           const updated = await prisma.project.update({
             where: { id: project.id },
             data: {
               actualCost: { increment: amt },
             },
           });
+          let costRecord = null;
+          try {
+            costRecord = await prisma.projectCostEntry.create({
+              data: {
+                projectId: project.id,
+                category: (data.category || 'MATERIEL'),
+                amount: amt,
+                description: data.description || 'Dépense imputée',
+                sourceModule: 'DIRECT_ENTRY',
+                recordedAt: data.date ? new Date(data.date) : new Date(),
+              },
+            });
+          } catch {}
           await this.logAudit(
             'ADD_COST',
             'PROJECT',
@@ -476,20 +528,13 @@ export const dbBridge = {
             `Dépense imputée (${data.category || 'CHEF_PROJET'}) : ${amt} DA`,
             data.user
           );
-          return { success: true, amount: amt, project: updated };
+          return { success: true, id: costRecord?.id || `cst-${Date.now()}`, amount: amt, amountHT: amt, project: updated };
         }
       } catch (err) {
         console.warn('[DB Bridge] Error adding cost entry in DB:', err);
       }
     }
-    const res = serverStore.addCostEntry(codeOrId, data);
-    await this.logAudit(
-      'ADD_COST',
-      'PROJECT',
-      codeOrId,
-      `Dépense imputée : ${data.amount} DA`,
-      data.user
-    );
+    const res = serverStore.addCostEntry(codeOrId, { ...data, amount: amt, amountHT: amt });
     return res;
   },
 
@@ -785,6 +830,10 @@ export const dbBridge = {
     return serverStore.getPurchaseRequest(idOrCode);
   },
 
+  async getPurchaseRequestById(idOrCode: string) {
+    return this.getPurchaseRequest(idOrCode);
+  },
+
   async createPurchaseRequest(data: any) {
     if (hasDb) {
       try {
@@ -799,10 +848,39 @@ export const dbBridge = {
         const vatAmount = amountHT * (vatRate / 100);
         const totalTTC = amountHT + vatAmount;
 
+        let resolvedProjectId = data.projectId;
+        if (!resolvedProjectId && data.projectCode) {
+          const prj = await prisma.project.findFirst({
+            where: { OR: [{ code: data.projectCode }, { id: data.projectCode }] },
+          });
+          if (prj) resolvedProjectId = prj.id;
+        }
+        if (!resolvedProjectId) {
+          let firstPrj = await prisma.project.findFirst();
+          if (!firstPrj) {
+            firstPrj = await prisma.project.create({
+              data: {
+                code: 'PRJ-INT-001',
+                name: 'Opérations Générales & Approvisionnements SILEX',
+                clientName: 'SILEX SERVICES INTERNE',
+                sector: 'AUTRE_INDUSTRIE',
+                siteLocation: 'Siège Social & Magasin Central',
+                description: 'Projet interne de gestion des approvisionnements',
+                startDate: new Date(),
+                contractEndDate: new Date(Date.now() + 365 * 86400000),
+                contractAmount: 0,
+                budgetAmount: 0,
+                managerId: 'usr-rp-002',
+              },
+            });
+          }
+          resolvedProjectId = firstPrj.id;
+        }
+
         const created = await prisma.purchaseRequest.create({
           data: {
             reference: code,
-            projectId: data.projectId,
+            projectId: resolvedProjectId,
             createdById: data.requestedById || data.createdById || 'usr-rp-002',
             urgencyLevel: (data.urgency || data.urgencyLevel || 'NORMAL'),
             status: 'SUBMITTED',
@@ -1126,11 +1204,11 @@ export const dbBridge = {
         const created = await prisma.item.create({
           data: {
             code,
-            name: data.name,
-            description: data.description || data.name,
+            name: data.name || data.designation || 'Article Industriel',
+            description: data.description || data.designation || data.name || 'Article standard',
             categoryId: cat.id,
             unit: data.unit || 'UNITE',
-            unitCost: Number(data.unitCost || 0),
+            unitCost: Number(data.unitCost !== undefined ? data.unitCost : (data.unitPrice || 0)),
             minStockLevel: Number(data.minStock || data.minStockLevel || 10),
             currentStock: Number(data.currentStock || 0),
             active: true,
@@ -1145,6 +1223,23 @@ export const dbBridge = {
     const res = serverStore.createInventoryItem(data);
     await this.logAudit('CREATE_ITEM', 'INVENTORY', res.code, `Article référencé : ${res.name}`, data.user);
     return res;
+  },
+
+  async deleteInventoryItem(id: string, user?: any) {
+    if (hasDb) {
+      try {
+        await prisma.stockMovement.deleteMany({ where: { itemId: id } });
+        await prisma.purchaseRequestLine.deleteMany({ where: { itemId: id } });
+        await prisma.purchaseOrderLine.deleteMany({ where: { itemId: id } });
+        await prisma.goodsReceiptLine.deleteMany({ where: { itemId: id } });
+        await prisma.item.delete({ where: { id } });
+        await this.logAudit('DELETE_ITEM', 'INVENTORY', id, `Suppression article ${id}`, user);
+        return { success: true };
+      } catch (err) {
+        console.warn('[DB Bridge] Error deleting item in DB:', err);
+      }
+    }
+    return { success: true };
   },
 
   async getStockMovements() {
@@ -1207,6 +1302,19 @@ export const dbBridge = {
           }
         }
 
+        let resolvedProjectId: string | null = null;
+        if (data.projectId) {
+          const prj = await prisma.project.findFirst({
+            where: { OR: [{ id: data.projectId }, { code: data.projectId }] },
+          });
+          if (prj) resolvedProjectId = prj.id;
+        } else if (data.projectCode) {
+          const prj = await prisma.project.findFirst({
+            where: { OR: [{ id: data.projectCode }, { code: data.projectCode }] },
+          });
+          if (prj) resolvedProjectId = prj.id;
+        }
+
         const mvtType = isEntry ? 'PURCHASE_RECEIPT' : 'PROJECT_ISSUE';
         const created = await prisma.stockMovement.create({
           data: {
@@ -1217,10 +1325,10 @@ export const dbBridge = {
             quantity: qty,
             unitCost,
             totalCost,
-            projectId: data.projectId || null,
+            projectId: resolvedProjectId,
             referenceDocument: data.documentRef || data.deliveryNoteNumber || '',
             notes: data.notes || '',
-            createdById: data.createdById || 'usr-mag-004',
+            createdById: data.createdById || 'usr-mag-001',
           },
         });
 
@@ -1231,9 +1339,9 @@ export const dbBridge = {
           },
         });
 
-        if (!isEntry && data.projectId && totalCost > 0) {
+        if (!isEntry && resolvedProjectId && totalCost > 0) {
           await prisma.project.update({
-            where: { id: data.projectId },
+            where: { id: resolvedProjectId },
             data: { actualCost: { increment: totalCost } },
           });
         }

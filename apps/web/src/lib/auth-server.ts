@@ -18,40 +18,24 @@ export async function parseUserFromToken(rawTokenOrHeader: string | null | undef
   const token = rawTokenOrHeader.replace(/^Bearer\s+/i, '').trim();
   if (!token) return null;
 
-  // 1. Format complet recommandé : silex_auth_token_<userId>_<role>_<timestamp>
-  const matchFull = token.match(/^silex_auth_token_([a-zA-Z0-9_-]+)_([A-Z_]+)(?:_\d+)?$/);
-  if (matchFull) {
-    const userId = matchFull[1];
-    const role = matchFull[2] as SystemRole;
-
-    // Chercher d'abord par ID précis pour préserver le compte exact
-    let user = await dbBridge.getUserById(userId);
-    if (!user) {
-      user = await dbBridge.getUserByRole(role);
-    }
-    if (user) {
-      return user;
-    }
-  }
-
-  // 2. Format alternatif de rôle : silex_auth_token_<role>_<timestamp>
-  const matchRole = token.match(/^silex_auth_token_([A-Z_]+)(?:_\d+)?$/);
-  if (matchRole) {
-    const role = matchRole[1] as SystemRole;
-    const user = await dbBridge.getUserByRole(role);
-    if (user) {
-      return user;
-    }
-  }
-
-  // 3. Extraction sécurisée par mot-clé de rôle dans le token si le format varie
+  const withoutPrefix = token.replace(/^silex_auth_token_/, '');
   const knownRoles = Object.values(SystemRole);
-  for (const r of knownRoles) {
-    if (token.includes(r)) {
-      const user = await dbBridge.getUserByRole(r as SystemRole);
-      if (user) {
-        return user;
+
+  // Chercher par rôle connu dans le jeton (trie du plus long au plus court pour éviter les faux positifs)
+  const sortedRoles = [...knownRoles].sort((a, b) => b.length - a.length);
+
+  for (const role of sortedRoles) {
+    if (withoutPrefix.includes(role)) {
+      const roleIndex = withoutPrefix.indexOf(role);
+      const possibleUserId = withoutPrefix.slice(0, roleIndex).replace(/_$/, '');
+
+      if (possibleUserId) {
+        let user = await dbBridge.getUserById(possibleUserId);
+        if (user) return user;
       }
+
+      let userByRole = await dbBridge.getUserByRole(role as SystemRole);
+      if (userByRole) return userByRole;
     }
   }
 
