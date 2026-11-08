@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
-import { formatDateDZ, formatCurrencyDA } from '@silex/shared';
+import { formatDateDZ, formatCurrencyDA, SystemRole } from '@silex/shared';
 import {
   Users,
   Award,
@@ -36,6 +36,11 @@ import {
 
 export default function HrPage() {
   const { activeRole } = useAuth();
+  const canManageHR =
+    activeRole === SystemRole.RESPONSABLE_RH ||
+    activeRole === SystemRole.DIRECTEUR_GENERAL ||
+    activeRole === SystemRole.ADMINISTRATEUR;
+  const canRecordAttendance = canManageHR || activeRole === SystemRole.RESPONSABLE_PROJET;
   const [employees, setEmployees] = useState<any[]>([]);
   const [certifications, setCertifications] = useState<any[]>([]);
   const [attendances, setAttendances] = useState<any[]>([]);

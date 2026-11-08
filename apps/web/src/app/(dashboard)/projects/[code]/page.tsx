@@ -4,7 +4,7 @@ import React, { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api-client';
-import { formatCurrencyDA, formatDateDZ, ServiceOrderType } from '@silex/shared';
+import { formatCurrencyDA, formatDateDZ, ServiceOrderType, SystemRole } from '@silex/shared';
 import { StatusBadge } from '@/components/shared/status-badge';
 import {
   ArrowLeft,
@@ -86,11 +86,87 @@ export interface SitLineItem {
 
 export default function ProjectDetailsPage({ params }: { params: Promise<{ code: string }> }) {
   const resolvedParams = use(params);
+  const { activeRole, user } = useAuth();
   const [project, setProject] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [notification, setNotification] = useState<string | null>(null);
   const [usersList, setUsersList] = useState<any[]>([]);
+
+  // Matrice de permissions RBAC stricte (PERMISSIONS_MATRIX.md) :
+  const isDG = activeRole === SystemRole.DIRECTEUR_GENERAL || activeRole === SystemRole.ADMINISTRATEUR;
+  const isProjectManager = activeRole === SystemRole.RESPONSABLE_PROJET;
+  const isFinance = activeRole === SystemRole.RESPONSABLE_FINANCIER;
+  const isQuality = activeRole === SystemRole.RESPONSABLE_QUALITE;
+
+  // Habilitations d'actions opérationnelles conformes :
+  const canAssignManager = isDG;
+  const canModifyDates = isDG;
+  const canEditProject = isDG || isProjectManager;
+  const canAdjustProgress = isDG || isProjectManager;
+  const canManageMembers = isDG || isProjectManager;
+  const canCreateMilestone = isDG || isProjectManager || isQuality;
+  const canEmitODS = isDG || isProjectManager;
+  const canCreateSituation = isDG || isProjectManager || isFinance;
+
+  // États pour les modales de Désignation Responsable et Modification Dates :
+  const [showChangeManagerModal, setShowChangeManagerModal] = useState(false);
+  const [selectedManagerId, setSelectedManagerId] = useState('');
+  const [showChangeDatesModal, setShowChangeDatesModal] = useState(false);
+  const [dateNotification, setDateNotification] = useState('');
+  const [dateFinContractuelle, setDateFinContractuelle] = useState('');
+
+  const handleOpenManagerModal = () => {
+    if (!canAssignManager) {
+      alert("Habilitation restreinte : Seule la Direction Générale (DG) ou l'Administrateur peut nommer ou changer le Responsable de Chantier.");
+      return;
+    }
+    setSelectedManagerId(project?.managerId || project?.manager?.id || '');
+    setShowChangeManagerModal(true);
+  };
+
+  const handleSaveManager = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project) return;
+    try {
+      await api.patch('/projects/' + project.id, {
+        managerId: selectedManagerId,
+      });
+      setShowChangeManagerModal(false);
+      setNotification('Responsable de Chantier désigné avec succès dans PostgreSQL !');
+      setTimeout(() => setNotification(null), 5000);
+      await fetchProject();
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la désignation du responsable');
+    }
+  };
+
+  const handleOpenDatesModal = () => {
+    if (!canModifyDates) {
+      alert("Habilitation restreinte : Seule la Direction Générale (DG) ou l'Administrateur peut modifier le calendrier contractuel et les délais.");
+      return;
+    }
+    setDateNotification(project?.startDate ? project.startDate.split('T')[0] : (project?.contractStartDate ? project.contractStartDate.split('T')[0] : ''));
+    setDateFinContractuelle(project?.contractEndDate ? project.contractEndDate.split('T')[0] : '');
+    setShowChangeDatesModal(true);
+  };
+
+  const handleSaveDates = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!project) return;
+    try {
+      await api.patch('/projects/' + project.id, {
+        startDate: dateNotification ? new Date(dateNotification).toISOString() : undefined,
+        contractEndDate: dateFinContractuelle ? new Date(dateFinContractuelle).toISOString() : undefined,
+      });
+      setShowChangeDatesModal(false);
+      setNotification('Dates contractuelles et échéances mises à jour avec succès dans PostgreSQL !');
+      setTimeout(() => setNotification(null), 5000);
+      await fetchProject();
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la mise à jour des dates');
+    }
+  };
 
   // 1. Modal Modifier le Projet
   const [showEditModal, setShowEditModal] = useState(false);
@@ -566,21 +642,25 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={handleOpenProgress}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-[#0B207D] text-[#0B207D] rounded-md hover:bg-blue-50 transition-colors shadow-2xs cursor-pointer"
-          >
-            <Gauge className="w-3.5 h-3.5" />
-            Ajuster Avancement ({project.physicalProgress}%)
-          </button>
+          {canAdjustProgress && (
+            <button
+              onClick={handleOpenProgress}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-[#0B207D] text-[#0B207D] rounded-md hover:bg-blue-50 transition-colors shadow-2xs cursor-pointer"
+            >
+              <Gauge className="w-3.5 h-3.5" />
+              Ajuster Avancement ({project.physicalProgress}%)
+            </button>
+          )}
 
-          <button
-            onClick={handleOpenEdit}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#0B207D] text-white rounded-md hover:bg-[#07164D] transition-colors shadow-xs cursor-pointer"
-          >
-            <Edit className="w-3.5 h-3.5" />
-            Modifier le Projet
-          </button>
+          {canEditProject && (
+            <button
+              onClick={handleOpenEdit}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#0B207D] text-white rounded-md hover:bg-[#07164D] transition-colors shadow-xs cursor-pointer"
+            >
+              <Edit className="w-3.5 h-3.5" />
+              Modifier le Projet
+            </button>
+          )}
         </div>
       </div>
 
@@ -752,12 +832,14 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                   <User className="w-4 h-4 text-[#0B207D]" />
                   Responsable & Équipe Chantier
                 </h2>
-                <button
-                  onClick={handleOpenManagerModal}
-                  className="text-[11px] text-[#0B207D] font-semibold hover:underline cursor-pointer"
-                >
-                  Changer
-                </button>
+                {canAssignManager && (
+                  <button
+                    onClick={handleOpenManagerModal}
+                    className="text-[11px] text-[#0B207D] font-semibold hover:underline cursor-pointer"
+                  >
+                    Changer
+                  </button>
+                )}
               </div>
 
               {/* Fiche Responsable & Contacts Directs */}
@@ -811,14 +893,18 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                     <div className="text-xs font-bold text-slate-800">Aucun Responsable Assigné</div>
                     <div className="text-[11px] text-slate-500">Veuillez désigner le Chef de Projet / Responsable Chantier.</div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleOpenManagerModal}
-                    className="px-3 py-1.5 bg-[#0B207D] text-white text-xs font-semibold rounded hover:bg-[#07164D] transition-colors cursor-pointer inline-flex items-center gap-1"
-                  >
-                    <User className="w-3.5 h-3.5" />
-                    + Désigner le Responsable
-                  </button>
+                  {canAssignManager ? (
+                    <button
+                      type="button"
+                      onClick={handleOpenManagerModal}
+                      className="px-3 py-1.5 bg-[#0B207D] text-white text-xs font-semibold rounded hover:bg-[#07164D] transition-colors cursor-pointer inline-flex items-center gap-1"
+                    >
+                      <User className="w-3.5 h-3.5" />
+                      + Désigner le Responsable
+                    </button>
+                  ) : (
+                    <div className="text-[10px] text-slate-400 italic">Désignation réservée à la Direction Générale (DG)</div>
+                  )}
                 </div>
               )}
 
@@ -829,13 +915,15 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                     <Users className="w-3.5 h-3.5 text-[#0B207D]" />
                     Participants au Projet ({project.assignedUsers?.length || 0}) :
                   </div>
-                  <button
-                    onClick={() => setShowAddMemberModal(true)}
-                    className="text-[11px] font-bold text-[#0B207D] hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <Plus className="w-3 h-3" />
-                    Affecter
-                  </button>
+                  {canManageMembers && (
+                    <button
+                      onClick={() => setShowAddMemberModal(true)}
+                      className="text-[11px] font-bold text-[#0B207D] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Affecter
+                    </button>
+                  )}
                 </div>
 
                 {(!project.assignedUsers || project.assignedUsers.length === 0) ? (
@@ -881,12 +969,14 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                   <Calendar className="w-4 h-4 text-[#0B207D]" />
                   Dates Contractuelles & Délais
                 </h2>
-                <button
-                  onClick={handleOpenDatesModal}
-                  className="text-[11px] text-[#0B207D] font-semibold hover:underline cursor-pointer"
-                >
-                  Modifier
-                </button>
+                {canModifyDates && (
+                  <button
+                    onClick={handleOpenDatesModal}
+                    className="text-[11px] text-[#0B207D] font-semibold hover:underline cursor-pointer"
+                  >
+                    Modifier
+                  </button>
+                )}
               </div>
 
               {(() => {

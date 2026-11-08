@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
-import { formatCurrencyDA, formatDateDZ } from '@silex/shared';
+import { formatCurrencyDA, formatDateDZ, SystemRole } from '@silex/shared';
 import { StatusBadge } from '@/components/shared/status-badge';
 import {
   Search,
@@ -28,6 +28,10 @@ import {
 
 export default function ProjectsListPage() {
   const { activeRole } = useAuth();
+  const canCreateProject =
+    activeRole === SystemRole.DIRECTEUR_GENERAL ||
+    activeRole === SystemRole.RESPONSABLE_PROJET ||
+    activeRole === SystemRole.ADMINISTRATEUR;
   const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -225,13 +229,15 @@ export default function ProjectsListPage() {
             </button>
           </div>
 
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#0B207D] text-white rounded-lg hover:bg-[#07164D] transition-colors shadow-xs cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Nouveau Projet
-          </button>
+          {canCreateProject && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#0B207D] text-white rounded-lg hover:bg-[#07164D] transition-colors shadow-xs cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Nouveau Projet
+            </button>
+          )}
         </div>
       </div>
 

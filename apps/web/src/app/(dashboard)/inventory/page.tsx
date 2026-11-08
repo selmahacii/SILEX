@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
-import { formatDateDZ, formatCurrencyDA, StockMovementType, COMPANY_NAME, COMPANY_ESTABLISHED } from '@silex/shared';
+import { formatDateDZ, formatCurrencyDA, StockMovementType, COMPANY_NAME, COMPANY_ESTABLISHED, SystemRole } from '@silex/shared';
 import {
   Boxes,
   Package,
@@ -165,6 +165,11 @@ export default function InventoryPage() {
   const [bonsSortieList, setBonsSortieList] = useState<IssuedBonDeSortie[]>([]);
 
   const { activeRole } = useAuth();
+  const canManageInventory =
+    activeRole === SystemRole.RESPONSABLE_MAGASIN ||
+    activeRole === SystemRole.DIRECTEUR_GENERAL ||
+    activeRole === SystemRole.ADMINISTRATEUR ||
+    activeRole === SystemRole.RESPONSABLE_ACHATS;
   const [error, setError] = useState<string | null>(null);
 
   const loadData = async () => {

@@ -183,20 +183,24 @@ export default function FinancePage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setShowPaymentModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#0B207D] text-white rounded-lg hover:bg-[#07164D] transition-colors shadow-xs cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Enregistrer Encaissement Client
-          </button>
-          <button
-            onClick={() => setShowWarrantyModal(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-white border border-amber-600 text-amber-800 rounded-lg hover:bg-amber-50 transition-colors shadow-2xs cursor-pointer"
-          >
-            <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-            Restitution Retenue (5%)
-          </button>
+          {canManageFinances && (
+            <>
+              <button
+                onClick={() => setShowPaymentModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#0B207D] text-white rounded-lg hover:bg-[#07164D] transition-colors shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Enregistrer Encaissement Client
+              </button>
+              <button
+                onClick={() => setShowWarrantyModal(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-white border border-amber-600 text-amber-800 rounded-lg hover:bg-amber-50 transition-colors shadow-2xs cursor-pointer"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                Restitution Retenue (5%)
+              </button>
+            </>
+          )}
           {activeRole === SystemRole.RESPONSABLE_PROJET && (
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-xs text-[#0B207D] font-semibold">
               <ShieldCheck className="w-4 h-4 text-[#0B207D]" />

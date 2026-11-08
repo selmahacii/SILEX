@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
-import { formatDateDZ } from '@silex/shared';
+import { formatDateDZ, SystemRole } from '@silex/shared';
 import {
   FileCheck,
   AlertTriangle,
