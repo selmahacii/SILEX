@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api-client';
 import {
@@ -18,13 +17,9 @@ import {
   BarChart3,
   ShieldAlert,
   Settings,
-  Flame,
   ChevronRight,
   Sparkles,
-  Info,
-  CheckCircle,
   Lock,
-  LogOut,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -39,7 +34,12 @@ interface NavItem {
   allowedRoles?: SystemRole[];
 }
 
-export function Sidebar() {
+export interface SidebarProps {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { activeRole } = useAuth();
   const [showDomainsModal, setShowDomainsModal] = useState(false);
@@ -78,26 +78,22 @@ export function Sidebar() {
         SystemRole.RESPONSABLE_PROJET,
         SystemRole.RESPONSABLE_ACHATS,
         SystemRole.RESPONSABLE_FINANCIER,
-        SystemRole.RESPONSABLE_MAINTENANCE,
         SystemRole.RESPONSABLE_QUALITE,
-        SystemRole.RESPONSABLE_MAGASIN,
         SystemRole.ADMINISTRATEUR,
       ],
     },
     {
       id: 'procurement',
-      title: 'Achats & Approvisionnements',
+      title: 'Achats & Appro',
       path: '/procurement',
       icon: ShoppingCart,
-      badge: 'Flux clé',
       allowedRoles: [
         SystemRole.DIRECTEUR_GENERAL,
         SystemRole.RESPONSABLE_ACHATS,
-        SystemRole.RESPONSABLE_PROJET,
         SystemRole.RESPONSABLE_MAGASIN,
         SystemRole.RESPONSABLE_FINANCIER,
-        SystemRole.RESPONSABLE_MAINTENANCE,
         SystemRole.ADMINISTRATEUR,
+        SystemRole.RESPONSABLE_PROJET,
       ],
     },
     {
@@ -108,33 +104,32 @@ export function Sidebar() {
       allowedRoles: [
         SystemRole.DIRECTEUR_GENERAL,
         SystemRole.RESPONSABLE_MAGASIN,
-        SystemRole.RESPONSABLE_PROJET,
         SystemRole.RESPONSABLE_ACHATS,
-        SystemRole.RESPONSABLE_MAINTENANCE,
         SystemRole.ADMINISTRATEUR,
       ],
     },
     {
       id: 'hr',
-      title: 'Ressources humaines',
+      title: 'Ressources Humaines',
       path: '/hr',
       icon: Users,
       allowedRoles: [
         SystemRole.DIRECTEUR_GENERAL,
         SystemRole.RESPONSABLE_RH,
-        SystemRole.RESPONSABLE_PROJET,
         SystemRole.ADMINISTRATEUR,
+        SystemRole.RESPONSABLE_PROJET,
       ],
     },
     {
       id: 'finance',
-      title: 'Finance & Rentabilité',
+      title: 'Finance & Trésorerie',
       path: '/finance',
       icon: Coins,
       allowedRoles: [
         SystemRole.DIRECTEUR_GENERAL,
         SystemRole.RESPONSABLE_FINANCIER,
         SystemRole.ADMINISTRATEUR,
+        SystemRole.RESPONSABLE_PROJET,
       ],
     },
     {
@@ -145,50 +140,45 @@ export function Sidebar() {
       allowedRoles: [
         SystemRole.DIRECTEUR_GENERAL,
         SystemRole.RESPONSABLE_MAINTENANCE,
-        SystemRole.RESPONSABLE_PROJET,
-        SystemRole.RESPONSABLE_ACHATS,
         SystemRole.ADMINISTRATEUR,
       ],
     },
     {
       id: 'quality',
-      title: 'Documents & Qualité',
+      title: 'Qualité & HSE',
       path: '/quality',
       icon: FileCheck,
       allowedRoles: [
         SystemRole.DIRECTEUR_GENERAL,
         SystemRole.RESPONSABLE_QUALITE,
-        SystemRole.RESPONSABLE_PROJET,
-        SystemRole.RESPONSABLE_MAINTENANCE,
         SystemRole.ADMINISTRATEUR,
+        SystemRole.RESPONSABLE_PROJET,
       ],
     },
     {
       id: 'workflows',
-      title: 'Workflows & Validations',
+      title: 'Circuit de Validation',
       path: '/workflows',
       icon: GitPullRequest,
       badge: pendingApprovals > 0 ? pendingApprovals : undefined,
       allowedRoles: [
         SystemRole.DIRECTEUR_GENERAL,
-        SystemRole.RESPONSABLE_FINANCIER,
-        SystemRole.RESPONSABLE_ACHATS,
         SystemRole.RESPONSABLE_PROJET,
+        SystemRole.RESPONSABLE_ACHATS,
+        SystemRole.RESPONSABLE_FINANCIER,
+        SystemRole.RESPONSABLE_QUALITE,
         SystemRole.ADMINISTRATEUR,
       ],
     },
     {
       id: 'reports',
-      title: 'Rapports & Exports',
+      title: 'Rapports & Audit',
       path: '/reports',
       icon: BarChart3,
       allowedRoles: [
         SystemRole.DIRECTEUR_GENERAL,
         SystemRole.RESPONSABLE_PROJET,
-        SystemRole.RESPONSABLE_ACHATS,
         SystemRole.RESPONSABLE_FINANCIER,
-        SystemRole.RESPONSABLE_MAINTENANCE,
-        SystemRole.RESPONSABLE_QUALITE,
         SystemRole.ADMINISTRATEUR,
       ],
     },
@@ -215,12 +205,15 @@ export function Sidebar() {
     return activeRole ? item.allowedRoles.includes(activeRole) : true;
   });
 
-  return (
-    <aside className="w-64 bg-[#07164D] text-slate-100 flex flex-col shrink-0 border-r border-[#152972] select-none h-screen sticky top-0 shadow-lg">
+  const renderContent = (isMobile = false) => (
+    <>
       {/* Brand & Corporate Logo Header */}
-      <div className="h-20 flex items-center px-4 border-b border-[#152972] bg-[#05113B] justify-between">
-        <Link href="/dashboard" className="flex items-center gap-3 group">
-          {/* Logo container with clean white background for high-contrast B2B rendering */}
+      <div className="h-20 flex items-center px-4 border-b border-[#152972] bg-[#05113B] justify-between shrink-0">
+        <Link
+          href="/dashboard"
+          onClick={() => isMobile && onClose && onClose()}
+          className="flex items-center gap-3 group"
+        >
           <div className="w-12 h-12 rounded-lg bg-white p-1 flex items-center justify-center shadow-md border border-slate-200 shrink-0 group-hover:scale-105 transition-transform duration-200">
             <img
               src="/logo-silex.png"
@@ -243,6 +236,16 @@ export function Sidebar() {
             </div>
           </div>
         </Link>
+        {isMobile && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Fermer le menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        )}
       </div>
 
       {/* Navigation list */}
@@ -259,6 +262,7 @@ export function Sidebar() {
             <Link
               key={item.id}
               href={item.path}
+              onClick={() => isMobile && onClose && onClose()}
               className={`flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-all duration-150 ${
                 isActive
                   ? 'bg-[#0B207D] text-white shadow-sm font-semibold border-l-4 border-[#E51A1A] pl-2.5'
@@ -280,9 +284,10 @@ export function Sidebar() {
       </nav>
 
       {/* Direct Link to Login Portal */}
-      <div className="px-3 py-1.5 border-t border-[#152972] bg-[#05113B]/80">
+      <div className="px-3 py-1.5 border-t border-[#152972] bg-[#05113B]/80 shrink-0">
         <Link
           href="/login"
+          onClick={() => isMobile && onClose && onClose()}
           className="w-full flex items-center justify-between p-2 rounded bg-[#091C5C] hover:bg-[#0E287C] border border-[#1C3691] text-slate-200 hover:text-white transition-all text-xs font-semibold group cursor-pointer"
         >
           <div className="flex items-center gap-2">
@@ -296,8 +301,9 @@ export function Sidebar() {
       </div>
 
       {/* 5 Domains of Activity Button / Mini-card */}
-      <div className="px-3 py-2 border-t border-[#152972] bg-[#05113B]/70">
+      <div className="px-3 py-2 border-t border-[#152972] bg-[#05113B]/70 shrink-0">
         <button
+          type="button"
           onClick={() => setShowDomainsModal(true)}
           className="w-full text-left p-2 rounded bg-[#091C5C] hover:bg-[#0E287C] border border-[#1C3691] transition-colors group cursor-pointer"
         >
@@ -315,7 +321,7 @@ export function Sidebar() {
       </div>
 
       {/* Corporate Footer info */}
-      <div className="p-3 border-t border-[#152972] bg-[#05113B] text-[11px] text-slate-300">
+      <div className="p-3 border-t border-[#152972] bg-[#05113B] text-[11px] text-slate-300 shrink-0">
         <div className="flex items-center justify-between text-xs">
           <span className="font-medium text-slate-400">ERP SILEX SERVICES</span>
           <span className="text-[#E51A1A] font-bold text-[10px] bg-red-950/40 px-1.5 py-0.5 rounded border border-red-800/40">
@@ -326,6 +332,32 @@ export function Sidebar() {
           QCD : Qualité • Coûts • Délais
         </div>
       </div>
+    </>
+  );
+
+  return (
+    <>
+      {/* 1. Desktop Persistent Sidebar (>= 1024px) */}
+      <aside className="hidden lg:flex w-64 bg-[#07164D] text-slate-100 flex-col shrink-0 border-r border-[#152972] select-none h-screen sticky top-0 shadow-lg z-20">
+        {renderContent(false)}
+      </aside>
+
+      {/* 2. Mobile / Tablet Drawer (< 1024px) */}
+      {mobileOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden animate-in fade-in duration-200"
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-[#07164D] text-slate-100 flex flex-col z-50 shadow-2xl lg:hidden transition-transform duration-300 ease-in-out select-none ${
+          mobileOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'
+        }`}
+      >
+        {renderContent(true)}
+      </aside>
 
       {/* Modal / Flyout for the 5 Domains of Activity */}
       {showDomainsModal && (
@@ -344,6 +376,7 @@ export function Sidebar() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowDomainsModal(false)}
                 className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors"
                 title="Fermer"
@@ -383,6 +416,7 @@ export function Sidebar() {
 
             <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end">
               <button
+                type="button"
                 onClick={() => setShowDomainsModal(false)}
                 className="px-4 py-2 bg-[#07164D] hover:bg-[#0B207D] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
               >
@@ -392,7 +426,6 @@ export function Sidebar() {
           </div>
         </div>
       )}
-    </aside>
+    </>
   );
 }
-

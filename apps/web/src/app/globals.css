@@ -48,3 +48,10 @@
     background: white;
   }
 }
+
+/* Amélioration du défilement tactile sur mobile et tablette */
+@layer utilities {
+  .touch-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+}

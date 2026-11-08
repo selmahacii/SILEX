@@ -74,10 +74,12 @@ export default function LoginPage() {
       <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden relative z-10 animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header Header Brand */}
-        <div className="bg-[#05113B] p-6 text-white text-center border-b border-[#152972] relative">
-          <div className="absolute top-4 right-4 flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#E51A1A]/20 border border-[#E51A1A]/40 text-[10px] font-bold text-red-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#E51A1A] animate-pulse" />
-            Portail National Algérie
+        <div className="bg-[#05113B] p-4 sm:p-6 text-white text-center border-b border-[#152972] relative">
+          <div className="flex sm:absolute sm:top-4 sm:right-4 justify-center mb-2 sm:mb-0">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#E51A1A]/20 border border-[#E51A1A]/40 text-[10px] font-bold text-red-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#E51A1A] animate-pulse" />
+              Portail National Algérie
+            </div>
           </div>
 
           {/* Logo container */}

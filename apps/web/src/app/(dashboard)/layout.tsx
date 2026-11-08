@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
@@ -14,6 +14,13 @@ export default function DashboardLayout({
 }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Close mobile drawer automatically when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -23,8 +30,8 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center bg-[#07164D]">
-        <div className="flex flex-col items-center gap-4 text-white">
+      <div className="flex h-screen w-screen items-center justify-center bg-[#07164D] p-4">
+        <div className="flex flex-col items-center gap-4 text-white text-center">
           <Loader2 className="w-10 h-10 animate-spin text-[#E51A1A]" />
           <div className="text-sm font-semibold tracking-wide">
             SILEX SERVICES ERP — Chargement de la session...
@@ -39,11 +46,19 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F5F7FA]">
-      <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header />
-        <main className="flex-1 p-6 overflow-y-auto">
+    <div className="flex min-h-screen bg-[#F5F7FA] overflow-x-hidden relative">
+      {/* Responsive Sidebar (desktop sticky & mobile sliding drawer) */}
+      <Sidebar
+        mobileOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+      />
+
+      {/* Main Workspace Column */}
+      <div className="flex-1 flex flex-col min-w-0 max-w-full">
+        <Header
+          onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
+        />
+        <main className="flex-1 p-3.5 sm:p-5 lg:p-6 overflow-y-auto overflow-x-hidden min-w-0 max-w-full">
           {children}
         </main>
       </div>
