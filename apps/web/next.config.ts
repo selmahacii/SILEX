@@ -14,15 +14,6 @@ const nextConfig: NextConfig = {
   output: process.env.DOCKER_BUILD === '1' ? 'standalone' : undefined,
   outputFileTracingRoot: path.join(__dirname, '../../'),
   async rewrites() {
-    const apiUrl = process.env.INTERNAL_API_URL || process.env.API_URL;
-    if (apiUrl && apiUrl !== 'http://127.0.0.1:4000') {
-      return [
-        {
-          source: '/api/:path*',
-          destination: `${apiUrl}/api/:path*`,
-        },
-      ];
-    }
     return [];
   },
 };
