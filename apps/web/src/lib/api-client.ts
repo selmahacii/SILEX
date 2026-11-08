@@ -35,7 +35,7 @@ class ApiClient {
         process.env.INTERNAL_API_URL ||
         process.env.API_URL ||
         process.env.NEXT_PUBLIC_API_URL ||
-        'http://127.0.0.1:4000';
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://127.0.0.1:3000');
       return serverUrl.replace(/\/api\/?$/, '').replace(/\/$/, '');
     }
 
@@ -43,7 +43,7 @@ class ApiClient {
     if (process.env.NEXT_PUBLIC_API_URL) {
       return process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/?$/, '').replace(/\/$/, '');
     }
-    // Par défaut dans le navigateur, les requêtes /api/* sont réécrites par Next.js vers l'API NestJS
+    // Par défaut dans le navigateur, les requêtes /api/* vont directement sur la même origine
     return '';
   }
 
