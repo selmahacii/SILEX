@@ -581,10 +581,15 @@ export const dbBridge = {
           for (const line of rawLines) {
             const lineQty = Number(line.quantity || 1);
             const linePrice = Number(line.unitPrice || 0);
+            let resolvedItemId = defaultItem.id;
+            if (line.itemId) {
+              const itemExists = await prisma.item.findUnique({ where: { id: line.itemId } }).catch(() => null);
+              if (itemExists) resolvedItemId = itemExists.id;
+            }
             await prisma.purchaseRequestLine.create({
               data: {
                 purchaseRequestId: created.id,
-                itemId: line.itemId || defaultItem.id,
+                itemId: resolvedItemId,
                 description: line.customName || line.description || defaultItem.name,
                 quantity: lineQty,
                 unit: line.unit || 'UNITE',
@@ -710,12 +715,22 @@ export const dbBridge = {
 
         // Find or fallback valid supplier and purchase request
         let supId = data.supplierId;
+        if (supId) {
+          const supExists = await prisma.supplier.findUnique({ where: { id: supId } }).catch(() => null);
+          if (!supExists) supId = null;
+        }
         if (!supId) {
           const firstSup = await prisma.supplier.findFirst();
           supId = firstSup?.id;
         }
 
         let prId = data.purchaseRequestId;
+        if (prId) {
+          const prExists = await prisma.purchaseRequest.findFirst({
+            where: { OR: [{ id: prId }, { reference: prId }] },
+          }).catch(() => null);
+          prId = prExists ? prExists.id : null;
+        }
         if (!prId) {
           const firstPr = await prisma.purchaseRequest.findFirst();
           prId = firstPr?.id;
@@ -742,10 +757,15 @@ export const dbBridge = {
             for (const line of rawLines) {
               const lineQty = Number(line.quantity || 1);
               const linePrice = Number(line.unitPrice || 0);
+              let resolvedItemId = defaultItem.id;
+              if (line.itemId) {
+                const itemExists = await prisma.item.findUnique({ where: { id: line.itemId } }).catch(() => null);
+                if (itemExists) resolvedItemId = itemExists.id;
+              }
               await prisma.purchaseOrderLine.create({
                 data: {
                   purchaseOrderId: created.id,
-                  itemId: line.itemId || defaultItem.id,
+                  itemId: resolvedItemId,
                   description: line.customName || line.name || line.description || defaultItem.name,
                   quantity: lineQty,
                   unit: line.unit || 'UNITE',
@@ -1254,15 +1274,27 @@ export const dbBridge = {
       try {
         const count = await prisma.nonConformity.count();
         const ncNumber = data.code || data.ncNumber || `FNC-2026-${String(count + 1).padStart(3, '0')}`;
+        const rawSev = String(data.severity || 'MAJEURE').toUpperCase();
+        const severity = rawSev.includes('MIN') ? 'MINEURE' : (rawSev.includes('CRIT') ? 'CRITIQUE' : 'MAJEURE');
+
+        // Resolve project if project code or id is provided
+        let projectId = data.projectId || null;
+        if (data.projectCode && !projectId) {
+          const prj = await prisma.project.findFirst({
+            where: { OR: [{ code: data.projectCode }, { id: data.projectCode }] },
+          });
+          if (prj) projectId = prj.id;
+        }
+
         const created = await prisma.nonConformity.create({
           data: {
             ncNumber,
             title: data.title || 'Fiche Non-Conformité',
             description: data.description || '',
-            severity: (data.severity || 'MAJOR') as any,
+            severity: severity as any,
             status: 'OPEN',
             detectedBy: data.detectedBy || 'Inspecteur CND SILEX',
-            projectId: data.projectId || null,
+            projectId,
           },
         });
         await this.logAudit('CREATE_NON_CONFORMITY', 'QUALITY', created.ncNumber, `FNC ouverte : ${created.ncNumber} - ${created.title}`, data.user);
