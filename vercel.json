@@ -1,36 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
-    "api": {
-      "root": "apps/api",
-      "framework": "nestjs",
-      "buildCommand": "prisma generate && nest build"
-    },
-    "web": {
-      "root": "apps/web",
-      "framework": "nextjs",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "api",
-          "format": "url",
-          "env": "API_URL"
-        }
-      ]
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": {
-        "service": "api"
-      }
-    },
-    {
-      "source": "/(.*)",
-      "destination": {
-        "service": "web"
-      }
-    }
-  ]
+  "buildCommand": "pnpm --filter @silex/shared build && pnpm --filter @silex/contracts build && pnpm --filter @silex/validation build && pnpm --filter @silex/web build",
+  "outputDirectory": "apps/web/.next"
 }
