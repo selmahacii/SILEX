@@ -46,15 +46,15 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F5F7FA] overflow-x-hidden relative">
-      {/* Responsive Sidebar (desktop sticky & mobile sliding drawer) */}
+    <div className="min-h-screen bg-[#F5F7FA] overflow-x-hidden relative">
+      {/* Fixed Sidebar (Desktop fixed position & Mobile sliding drawer) */}
       <Sidebar
         mobileOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
       />
 
-      {/* Main Workspace Column */}
-      <div className="flex-1 flex flex-col min-w-0 max-w-full">
+      {/* Main Workspace Column with lg:pl-64 offset for the fixed sidebar */}
+      <div className="lg:pl-64 flex flex-col min-h-screen min-w-0 max-w-full">
         <Header
           onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
         />

@@ -337,8 +337,8 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
 
   return (
     <>
-      {/* 1. Desktop Persistent Sidebar (>= 1024px) */}
-      <aside className="hidden lg:flex w-64 bg-[#07164D] text-slate-100 flex-col shrink-0 border-r border-[#152972] select-none h-screen sticky top-0 shadow-lg z-20">
+      {/* 1. Desktop Fixed Sidebar (>= 1024px) */}
+      <aside className="hidden lg:flex fixed inset-y-0 left-0 w-64 bg-[#07164D] text-slate-100 flex-col shrink-0 border-r border-[#152972] select-none h-screen shadow-lg z-30">
         {renderContent(false)}
       </aside>
 
