@@ -12,6 +12,7 @@ export type ActionPermission =
   | 'validate';
 
 export type ResourceDomain =
+  | 'commercial'
   | 'projects'
   | 'procurement'
   | 'inventory'

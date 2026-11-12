@@ -1,6 +1,6 @@
 import { SystemRole, DepartmentCode } from './enums.js';
 export type ActionPermission = 'read' | 'create' | 'update' | 'delete' | 'submit' | 'approve' | 'reject' | 'export' | 'validate';
-export type ResourceDomain = 'projects' | 'procurement' | 'inventory' | 'hr' | 'finance' | 'maintenance' | 'quality' | 'workflows' | 'reports' | 'admin';
+export type ResourceDomain = 'commercial' | 'projects' | 'procurement' | 'inventory' | 'hr' | 'finance' | 'maintenance' | 'quality' | 'workflows' | 'reports' | 'admin';
 export interface UserSessionPayload {
     userId: string;
     email: string;

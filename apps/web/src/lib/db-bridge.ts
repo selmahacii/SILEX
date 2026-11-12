@@ -1822,6 +1822,68 @@ export const dbBridge = {
     return serverStore.getCostDistribution();
   },
 
+
+  // --- MODULE COMMERCIAL & DEVIS ---
+  async getCommercialKpis() {
+    return serverStore.getCommercialKpis();
+  },
+
+  async getOpportunities() {
+    return serverStore.getOpportunities();
+  },
+
+  async getOpportunity(id: string) {
+    return serverStore.getOpportunity(id);
+  },
+
+  async createOpportunity(data: any, user?: any) {
+    return serverStore.createOpportunity(data, user);
+  },
+
+  async updateOpportunity(id: string, data: any, user?: any) {
+    return serverStore.updateOpportunity(id, data, user);
+  },
+
+  async getCostSheets() {
+    return serverStore.getCostSheets();
+  },
+
+  async getCostSheet(id: string) {
+    return serverStore.getCostSheet(id);
+  },
+
+  async createCostSheet(data: any, user?: any) {
+    return serverStore.createCostSheet(data, user);
+  },
+
+  async updateCostSheetContribution(id: string, department: 'PROJECT' | 'PROCUREMENT' | 'HR' | 'FINANCE', data: any, user?: any) {
+    return serverStore.updateCostSheetContribution(id, department, data, user);
+  },
+
+  async submitCostSheetToDG(id: string, user?: any) {
+    return serverStore.submitCostSheetToDG(id, user);
+  },
+
+  async arbitrateCostSheet(id: string, decision: 'APPROVED' | 'REJECTED' | 'REVISION_REQUESTED', notes: string, user?: any) {
+    return serverStore.arbitrateCostSheet(id, decision, notes, user);
+  },
+
+  async createCustomerQuote(costSheetId: string, user?: any) {
+    return serverStore.createCustomerQuoteFromCostSheet(costSheetId, user);
+  },
+
+  async getCustomerQuotes() {
+    return serverStore.getCustomerQuotes();
+  },
+
+  async getCustomerQuote(id: string) {
+    return serverStore.getCustomerQuote(id);
+  },
+
+  async convertCostSheetToProject(costSheetId: string, user?: any) {
+    return serverStore.convertCostSheetToProject(costSheetId, user);
+  },
+
   // --- AUDIT TRAIL (Traçabilité) ---
   async getAuditLogs() {
     if (hasDb) {

@@ -61,21 +61,24 @@ export default function ExecutiveDashboardPage() {
   const [projects, setProjects] = useState<any[]>([]);
   const [pendingWorkflows, setPendingWorkflows] = useState<any[]>([]);
   const [costDistribution, setCostDistribution] = useState<any[]>([]);
+  const [commercialKpis, setCommercialKpis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [kpisRes, projectsRes, workflowsRes, distRes] = await Promise.all([
+      const [kpisRes, projectsRes, workflowsRes, distRes, commRes] = await Promise.all([
         api.get<any>('/projects/kpis'),
         api.get<any[]>('/projects'),
         api.get<any>('/workflows/inbox'),
         api.get<any[]>('/finance/distribution'),
+        api.get<any>('/commercial/kpis').catch(() => null),
       ]);
       setKpis(kpisRes);
       setProjects(projectsRes);
       setPendingWorkflows(workflowsRes?.items || []);
       setCostDistribution(Array.isArray(distRes) ? distRes : []);
+      if (commRes) setCommercialKpis(commRes);
     } catch (err) {
       console.error('Erreur chargement dashboard:', err);
     } finally {
@@ -256,6 +259,72 @@ export default function ExecutiveDashboardPage() {
             <span>Accéder à la boîte d’arbitrage</span>
             <ArrowRight className="w-3 h-3" />
           </Link>
+        </div>
+      </div>
+
+      {/* Commercial & Affaires Pipeline Overview (Module 01) */}
+      <div className="bg-gradient-to-r from-slate-900 via-[#07164D] to-[#0B207D] rounded-xl p-5 text-white shadow-xs border border-slate-800">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-lg bg-white/10 text-emerald-400">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold tracking-wide text-white">Pipeline Commercial & Fiches de Coût Chantiers</h2>
+              <p className="text-xs text-slate-300">Module 01 Commercial — Devis, marges collaboratives et arbitrages DG</p>
+            </div>
+          </div>
+          <Link
+            href="/commercial"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors border border-white/20 self-start sm:self-auto"
+          >
+            <span>Ouvrir l&apos;Espace Commercial</span>
+            <ArrowRight className="w-3 h-3" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+          <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+            <div className="text-xs text-slate-300 font-medium">Pipeline Opportunités</div>
+            <div className="text-base font-bold text-white mt-1">
+              {formatCurrencyDA(commercialKpis?.pipelineValue || 0, false)}
+            </div>
+            <div className="text-[11px] text-emerald-400 mt-0.5">
+              {commercialKpis?.openOpportunities || 0} affaires en négociation
+            </div>
+          </div>
+
+          <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+            <div className="text-xs text-slate-300 font-medium">Fiches Coût en Attente DG</div>
+            <div className="text-base font-bold text-amber-300 mt-1 flex items-center gap-1.5">
+              <span>{commercialKpis?.pendingCostSheetsCount || 0}</span>
+              <span className="text-xs font-normal text-slate-300">fiches à valider</span>
+            </div>
+            <Link
+              href="/commercial?tab=sheets"
+              className="text-[11px] text-blue-200 hover:text-white underline mt-0.5 inline-block"
+            >
+              Arbitrer les marges
+            </Link>
+          </div>
+
+          <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+            <div className="text-xs text-slate-300 font-medium">Fiches Validées DG</div>
+            <div className="text-base font-bold text-emerald-400 mt-1">
+              {commercialKpis?.validatedCostSheetsCount || 0}
+            </div>
+            <div className="text-[11px] text-slate-300 mt-0.5">Prêtes pour devis / contrat</div>
+          </div>
+
+          <div className="bg-white/5 rounded-lg p-3 border border-white/10">
+            <div className="text-xs text-slate-300 font-medium">Volume Affaires Gagnées</div>
+            <div className="text-base font-bold text-white mt-1">
+              {formatCurrencyDA(commercialKpis?.totalWonValue || 0, false)}
+            </div>
+            <div className="text-[11px] text-emerald-300 mt-0.5">
+              {commercialKpis?.wonOpportunitiesCount || 0} projets convertis
+            </div>
+          </div>
         </div>
       </div>
 

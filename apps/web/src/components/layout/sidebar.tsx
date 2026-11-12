@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { api } from '@/lib/api-client';
 import {
   LayoutDashboard,
+  TrendingUp,
   Briefcase,
   ShoppingCart,
   Boxes,
@@ -67,6 +68,20 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       title: 'Tableau de bord',
       path: '/dashboard',
       icon: LayoutDashboard,
+    },
+    {
+      id: 'commercial',
+      title: 'Commercial & Devis',
+      path: '/commercial',
+      icon: TrendingUp,
+      allowedRoles: [
+        SystemRole.DIRECTEUR_GENERAL,
+        SystemRole.RESPONSABLE_PROJET,
+        SystemRole.RESPONSABLE_ACHATS,
+        SystemRole.RESPONSABLE_FINANCIER,
+        SystemRole.RESPONSABLE_RH,
+        SystemRole.ADMINISTRATEUR,
+      ],
     },
     {
       id: 'projects',

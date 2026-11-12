@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ApprovalStatus = exports.NonConformityStatus = exports.NonConformitySeverity = exports.DocumentCategory = exports.MaintenanceStatus = exports.MaintenanceType = exports.AssetStatus = exports.AssetType = exports.WorkSituationStatus = exports.ServiceOrderStatus = exports.ServiceOrderType = exports.StockMovementType = exports.PurchaseOrderStatus = exports.PurchaseRequestStatus = exports.ProjectRiskLevel = exports.ProjectStatus = exports.IndustrialSector = exports.DepartmentCode = exports.SystemRole = void 0;
+exports.CustomerQuoteStatus = exports.CostSheetStatus = exports.OpportunityStatus = exports.ApprovalStatus = exports.NonConformityStatus = exports.NonConformitySeverity = exports.DocumentCategory = exports.MaintenanceStatus = exports.MaintenanceType = exports.AssetStatus = exports.AssetType = exports.WorkSituationStatus = exports.ServiceOrderStatus = exports.ServiceOrderType = exports.StockMovementType = exports.PurchaseOrderStatus = exports.PurchaseRequestStatus = exports.ProjectRiskLevel = exports.ProjectStatus = exports.IndustrialSector = exports.DepartmentCode = exports.SystemRole = void 0;
 var SystemRole;
 (function (SystemRole) {
     SystemRole["DIRECTEUR_GENERAL"] = "DIRECTEUR_GENERAL";
@@ -166,4 +166,33 @@ var ApprovalStatus;
     ApprovalStatus["REJECTED"] = "REJECTED";
     ApprovalStatus["CHANGES_REQUESTED"] = "CHANGES_REQUESTED";
 })(ApprovalStatus || (exports.ApprovalStatus = ApprovalStatus = {}));
+var OpportunityStatus;
+(function (OpportunityStatus) {
+    OpportunityStatus["DRAFT"] = "DRAFT";
+    OpportunityStatus["IN_STUDY"] = "IN_STUDY";
+    OpportunityStatus["QUOTED"] = "QUOTED";
+    OpportunityStatus["WON"] = "WON";
+    OpportunityStatus["LOST"] = "LOST";
+})(OpportunityStatus || (exports.OpportunityStatus = OpportunityStatus = {}));
+var CostSheetStatus;
+(function (CostSheetStatus) {
+    CostSheetStatus["BROUILLON"] = "BROUILLON";
+    CostSheetStatus["EN_ATTENTE_CONTRIBUTIONS"] = "EN_ATTENTE_CONTRIBUTIONS";
+    CostSheetStatus["EN_COURS_CHIFFRAGE"] = "EN_COURS_CHIFFRAGE";
+    CostSheetStatus["PRETE_POUR_VALIDATION"] = "PRETE_POUR_VALIDATION";
+    CostSheetStatus["EN_ATTENTE_DG"] = "EN_ATTENTE_DG";
+    CostSheetStatus["VALIDEE"] = "VALIDEE";
+    CostSheetStatus["REJETEE"] = "REJETEE";
+    CostSheetStatus["MODIFICATION_DEMANDEE"] = "MODIFICATION_DEMANDEE";
+    CostSheetStatus["SOUMISE_CLIENT"] = "SOUMISE_CLIENT";
+    CostSheetStatus["GAGNEE"] = "GAGNEE";
+    CostSheetStatus["PERDUE"] = "PERDUE";
+})(CostSheetStatus || (exports.CostSheetStatus = CostSheetStatus = {}));
+var CustomerQuoteStatus;
+(function (CustomerQuoteStatus) {
+    CustomerQuoteStatus["BROUILLON"] = "BROUILLON";
+    CustomerQuoteStatus["ENVOYE"] = "ENVOYE";
+    CustomerQuoteStatus["ACCEPTE"] = "ACCEPTE";
+    CustomerQuoteStatus["REFUSE"] = "REFUSE";
+})(CustomerQuoteStatus || (exports.CustomerQuoteStatus = CustomerQuoteStatus = {}));
 //# sourceMappingURL=enums.js.map

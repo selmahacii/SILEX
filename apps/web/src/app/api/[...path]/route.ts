@@ -52,6 +52,42 @@ export async function GET(
     return NextResponse.json(rbac, { headers: corsHeaders() });
   }
 
+  // 2.5 Commercial (Opportunités, Fiches de Coût, Devis)
+  if (clean === '/commercial/kpis') {
+    const kpis = await dbBridge.getCommercialKpis();
+    return NextResponse.json(kpis, { headers: corsHeaders() });
+  }
+  if (clean.includes('/commercial/opportunities/') || clean.includes('/opportunities/')) {
+    const id = resolvedParams.path[resolvedParams.path.length - 1];
+    const opp = await dbBridge.getOpportunity(id);
+    if (!opp) return NextResponse.json({ error: 'Opportunité introuvable' }, { status: 404, headers: corsHeaders() });
+    return NextResponse.json(opp, { headers: corsHeaders() });
+  }
+  if (clean === '/commercial/opportunities' || clean === '/opportunities') {
+    const opps = await dbBridge.getOpportunities();
+    return NextResponse.json(opps, { headers: corsHeaders() });
+  }
+  if (clean.includes('/commercial/cost-sheets/') || clean.includes('/cost-sheets/')) {
+    const id = resolvedParams.path[resolvedParams.path.length - 1];
+    const sheet = await dbBridge.getCostSheet(id);
+    if (!sheet) return NextResponse.json({ error: 'Fiche de coût introuvable' }, { status: 404, headers: corsHeaders() });
+    return NextResponse.json(sheet, { headers: corsHeaders() });
+  }
+  if (clean === '/commercial/cost-sheets' || clean === '/cost-sheets') {
+    const sheets = await dbBridge.getCostSheets();
+    return NextResponse.json(sheets, { headers: corsHeaders() });
+  }
+  if (clean.includes('/commercial/quotes/') || clean.includes('/quotes/')) {
+    const id = resolvedParams.path[resolvedParams.path.length - 1];
+    const quote = await dbBridge.getCustomerQuote(id);
+    if (!quote) return NextResponse.json({ error: 'Devis introuvable' }, { status: 404, headers: corsHeaders() });
+    return NextResponse.json(quote, { headers: corsHeaders() });
+  }
+  if (clean === '/commercial/quotes' || clean === '/quotes') {
+    const quotes = await dbBridge.getCustomerQuotes();
+    return NextResponse.json(quotes, { headers: corsHeaders() });
+  }
+
   // 3. Projects
   if (clean === '/projects/kpis') {
     const kpis = await dbBridge.getProjectKpis();
@@ -235,6 +271,49 @@ export async function POST(
     return NextResponse.json(updated, { status: 200, headers: corsHeaders() });
   }
 
+  // 2.5 Commercial POST actions
+  if (clean === '/commercial/opportunities' || clean === '/opportunities') {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const opp = await dbBridge.createOpportunity(body, user);
+    return NextResponse.json(opp, { status: 201, headers: corsHeaders() });
+  }
+  if (clean === '/commercial/cost-sheets' || clean === '/cost-sheets') {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const sheet = await dbBridge.createCostSheet(body, user);
+    return NextResponse.json(sheet, { status: 201, headers: corsHeaders() });
+  }
+  if (clean.includes('/commercial/cost-sheets/') || clean.includes('/cost-sheets/')) {
+    const sheetId = resolvedParams.path.find(p => p.startsWith('fc-') || p.startsWith('FC-')) || resolvedParams.path[2] || resolvedParams.path[1];
+    const action = resolvedParams.path[resolvedParams.path.length - 1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+
+    if (action === 'submit-dg') {
+      const res = await dbBridge.submitCostSheetToDG(sheetId, user);
+      return NextResponse.json(res, { headers: corsHeaders() });
+    }
+    if (action === 'arbitrate') {
+      const res = await dbBridge.arbitrateCostSheet(sheetId, body.decision, body.notes, user);
+      return NextResponse.json(res, { headers: corsHeaders() });
+    }
+    if (action === 'convert-project') {
+      const proj = await dbBridge.convertCostSheetToProject(sheetId, user);
+      return NextResponse.json(proj, { status: 201, headers: corsHeaders() });
+    }
+    if (action === 'create-quote') {
+      const quote = await dbBridge.createCustomerQuote(sheetId, user);
+      return NextResponse.json(quote, { status: 201, headers: corsHeaders() });
+    }
+  }
+  if (clean === '/commercial/quotes' || clean === '/quotes') {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const quote = await dbBridge.createCustomerQuote(body.costSheetId, user);
+    return NextResponse.json(quote, { status: 201, headers: corsHeaders() });
+  }
+
   // 3. Projects
   if (clean.includes('/members')) {
     const projId = resolvedParams.path[1];
@@ -375,6 +454,26 @@ export async function PATCH(
     body = await req.json();
   } catch {
     // ignore
+  }
+
+  // 0.5 Commercial PATCH actions
+  if (clean.includes('/commercial/cost-sheets/') || clean.includes('/cost-sheets/')) {
+    const sheetId = resolvedParams.path.find(p => p.startsWith('fc-') || p.startsWith('FC-')) || resolvedParams.path[2] || resolvedParams.path[1];
+    const lastSeg = (resolvedParams.path[resolvedParams.path.length - 1] || '').toUpperCase();
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+
+    if (['PROJECT', 'PROCUREMENT', 'HR', 'FINANCE'].includes(lastSeg)) {
+      const res = await dbBridge.updateCostSheetContribution(sheetId, lastSeg as any, body, user);
+      return NextResponse.json(res, { headers: corsHeaders() });
+    }
+  }
+  if (clean.includes('/commercial/opportunities/') || clean.includes('/opportunities/')) {
+    const id = resolvedParams.path[resolvedParams.path.length - 1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const updated = await dbBridge.updateOpportunity(id, body, user);
+    return NextResponse.json(updated, { headers: corsHeaders() });
   }
 
   // 1. Milestones Update (/projects/:projectId/milestones/:milestoneId)

@@ -144,4 +144,30 @@ export declare enum ApprovalStatus {
     REJECTED = "REJECTED",
     CHANGES_REQUESTED = "CHANGES_REQUESTED"
 }
+export declare enum OpportunityStatus {
+    DRAFT = "DRAFT",
+    IN_STUDY = "IN_STUDY",
+    QUOTED = "QUOTED",
+    WON = "WON",
+    LOST = "LOST"
+}
+export declare enum CostSheetStatus {
+    BROUILLON = "BROUILLON",
+    EN_ATTENTE_CONTRIBUTIONS = "EN_ATTENTE_CONTRIBUTIONS",
+    EN_COURS_CHIFFRAGE = "EN_COURS_CHIFFRAGE",
+    PRETE_POUR_VALIDATION = "PRETE_POUR_VALIDATION",
+    EN_ATTENTE_DG = "EN_ATTENTE_DG",
+    VALIDEE = "VALIDEE",
+    REJETEE = "REJETEE",
+    MODIFICATION_DEMANDEE = "MODIFICATION_DEMANDEE",
+    SOUMISE_CLIENT = "SOUMISE_CLIENT",
+    GAGNEE = "GAGNEE",
+    PERDUE = "PERDUE"
+}
+export declare enum CustomerQuoteStatus {
+    BROUILLON = "BROUILLON",
+    ENVOYE = "ENVOYE",
+    ACCEPTE = "ACCEPTE",
+    REFUSE = "REFUSE"
+}
 //# sourceMappingURL=enums.d.ts.map
