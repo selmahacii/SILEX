@@ -147,6 +147,46 @@ export async function GET(
     return NextResponse.json({ items: wfs, total: wfs.length }, { headers: corsHeaders() });
   }
 
+  // 5. Phase 4 Procurement (KPIs, EB, RFQ, TCO, Contrats, Évaluations)
+  if (clean.includes('/procurement/kpis')) {
+    const kpis = await dbBridge.getProcurementKpis();
+    return NextResponse.json(kpis, { headers: corsHeaders() });
+  }
+  if (clean.includes('/inventory/kpis')) {
+    const kpis = await dbBridge.getInventoryKpis();
+    return NextResponse.json(kpis, { headers: corsHeaders() });
+  }
+  if (clean.includes('/procurement/need-requests')) {
+    const projId = req.nextUrl.searchParams.get('projectId') || req.nextUrl.searchParams.get('project') || undefined;
+    const nrs = await dbBridge.getNeedRequests(projId);
+    return NextResponse.json(nrs, { headers: corsHeaders() });
+  }
+  if (clean.includes('/procurement/rfq') || clean.includes('/procurement/consultations')) {
+    const projId = req.nextUrl.searchParams.get('projectId') || req.nextUrl.searchParams.get('project') || undefined;
+    const rfqs = await dbBridge.getRfqConsultations(projId);
+    return NextResponse.json(rfqs, { headers: corsHeaders() });
+  }
+  if (clean.includes('/procurement/contracts')) {
+    const suppId = req.nextUrl.searchParams.get('supplierId') || undefined;
+    const contracts = await dbBridge.getSupplierContracts(suppId);
+    return NextResponse.json(contracts, { headers: corsHeaders() });
+  }
+  if (clean.includes('/procurement/evaluations')) {
+    const suppId = req.nextUrl.searchParams.get('supplierId') || undefined;
+    const evals = await dbBridge.getSupplierEvaluations(suppId);
+    return NextResponse.json(evals, { headers: corsHeaders() });
+  }
+  if (clean.includes('/inventory/goods-receipts') || clean.includes('/procurement/goods-receipts')) {
+    const orderId = req.nextUrl.searchParams.get('orderId') || undefined;
+    const grs = await dbBridge.getGoodsReceipts(orderId);
+    return NextResponse.json(grs, { headers: corsHeaders() });
+  }
+  if (clean.includes('/inventory/physical-inventories')) {
+    const whId = req.nextUrl.searchParams.get('warehouseId') || undefined;
+    const pinvs = await dbBridge.getPhysicalInventories(whId);
+    return NextResponse.json(pinvs, { headers: corsHeaders() });
+  }
+
   // 5. Procurement (DA, BC, Fournisseurs)
   if (clean.includes('/procurement/purchase-requests/') && resolvedParams.path.length >= 3) {
     const prId = resolvedParams.path[2];
@@ -445,6 +485,120 @@ export async function POST(
     }
   }
 
+  // 5. Phase 4 Procurement & Inventory Endpoints
+  // Expressions de besoin
+  if (clean.includes('/procurement/need-requests') && clean.includes('/validate')) {
+    const id = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.validateNeedRequest(id, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
+  }
+  if (clean.includes('/procurement/need-requests') && (clean.includes('/convert-to-da') || clean.includes('/convert-to-pr'))) {
+    const id = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.convertNeedRequestToPR(id, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
+  }
+  if (clean.includes('/procurement/need-requests')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const eb = await dbBridge.createNeedRequest(body, user);
+    return NextResponse.json(eb, { status: 201, headers: corsHeaders() });
+  }
+
+  // RFQ & TCO
+  if (clean.includes('/procurement/rfq') && clean.includes('/offers')) {
+    const rfqId = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.addOfferToRfq(rfqId, body, user);
+    return NextResponse.json(res, { status: 201, headers: corsHeaders() });
+  }
+  if (clean.includes('/procurement/rfq') && clean.includes('/tco-evaluate')) {
+    const rfqId = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.calculateTcoComparison(rfqId, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
+  }
+  if (clean.includes('/procurement/tco') && clean.includes('/approve-dg')) {
+    const tcoId = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.approveTcoDG(tcoId, body.justification || 'Approbation DG après audit TCO', user);
+    return NextResponse.json(res, { headers: corsHeaders() });
+  }
+  if (clean.includes('/procurement/tco') && clean.includes('/create-po')) {
+    const tcoId = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.createPurchaseOrderFromTco(tcoId, user);
+    return NextResponse.json(res, { status: 201, headers: corsHeaders() });
+  }
+  if (clean.includes('/procurement/rfq')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const rfq = await dbBridge.createRfqConsultation(body, user);
+    return NextResponse.json(rfq, { status: 201, headers: corsHeaders() });
+  }
+
+  // Contrats fournisseurs
+  if (clean.includes('/procurement/contracts')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const c = await dbBridge.createSupplierContract(body, user);
+    return NextResponse.json(c, { status: 201, headers: corsHeaders() });
+  }
+
+  // Évaluations fournisseurs
+  if (clean.includes('/procurement/evaluations')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const ev = await dbBridge.recordSupplierEvaluation(body, user);
+    return NextResponse.json(ev, { status: 201, headers: corsHeaders() });
+  }
+
+  // Fournisseurs statut update
+  if (clean.includes('/procurement/suppliers') && clean.includes('/status')) {
+    const suppId = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.updateSupplierStatus(suppId, body.status, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
+  }
+
+  // Bons de réception & contrôle qualité
+  if (clean.includes('/inventory/goods-receipts') || clean.includes('/procurement/goods-receipts')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const gr = await dbBridge.recordGoodsReceipt(body, user);
+    return NextResponse.json(gr, { status: 201, headers: corsHeaders() });
+  }
+
+  // Inventaires physiques
+  if (clean.includes('/inventory/physical-inventories') && clean.includes('/count')) {
+    const invId = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.submitInventoryCount(invId, body.counts, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
+  }
+  if (clean.includes('/inventory/physical-inventories') && clean.includes('/validate-adjust')) {
+    const invId = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.validateAndAdjustInventoryDG(invId, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
+  }
+  if (clean.includes('/inventory/physical-inventories')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const inv = await dbBridge.createPhysicalInventory(body, user);
+    return NextResponse.json(inv, { status: 201, headers: corsHeaders() });
+  }
+
   // 5. Procurement
   if (clean.includes('/procurement/purchase-requests') || clean === '/procurement') {
     const pr = await dbBridge.createPurchaseRequest(body);
@@ -556,6 +710,15 @@ export async function PATCH(
     const user = await parseUserFromToken(authHeader);
     const updated = await dbBridge.updateOpportunity(id, body, user);
     return NextResponse.json(updated, { headers: corsHeaders() });
+  }
+
+  // 0.8 Procurement supplier status update
+  if (clean.includes('/procurement/suppliers') && clean.includes('/status')) {
+    const suppId = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.updateSupplierStatus(suppId, body.status, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
   }
 
   // 1. Milestones Update (/projects/:projectId/milestones/:milestoneId)

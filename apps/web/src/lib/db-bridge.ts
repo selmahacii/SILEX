@@ -2009,4 +2009,104 @@ export const dbBridge = {
     return serverStore.recordProjectStockConsumption(code, data, user);
   },
 
+  // ============================================================================
+  // ============================================================================
+  // PHASE 4 : ACHATS, APPROVISIONNEMENTS, TCO, CONTRATS, RECEPTIONS & INVENTAIRES
+  // ============================================================================
+
+  async getNeedRequests(projectId?: string) {
+    return serverStore.getNeedRequests(projectId);
+  },
+
+  async createNeedRequest(data: any, user?: any) {
+    return serverStore.createNeedRequest(data, user);
+  },
+
+  async validateNeedRequest(id: string, user?: any) {
+    return serverStore.validateNeedRequest(id, user);
+  },
+
+  async convertNeedRequestToPR(id: string, user?: any) {
+    return serverStore.convertNeedRequestToPR(id, user);
+  },
+
+  async getRfqConsultations(projectId?: string) {
+    const rfqs = serverStore.getRfqConsultations();
+    if (projectId) return rfqs.filter(r => r.projectId === projectId);
+    return rfqs;
+  },
+
+  async createRfqConsultation(data: any, user?: any) {
+    return serverStore.createRfqConsultation(data, user);
+  },
+
+  async addOfferToRfq(rfqId: string, offerData: any, user?: any) {
+    return serverStore.addOfferToRfq(rfqId, offerData, user);
+  },
+
+  async calculateTcoComparison(rfqId: string, user?: any) {
+    return serverStore.calculateTcoComparison(rfqId, user);
+  },
+
+  async approveTcoDG(tcoId: string, justification: string, user?: any) {
+    return serverStore.approveTcoDG(tcoId, justification, user);
+  },
+
+  async createPurchaseOrderFromTco(tcoId: string, user?: any) {
+    return serverStore.createPurchaseOrderFromTco(tcoId, user);
+  },
+
+  async getGoodsReceipts(orderId?: string) {
+    return serverStore.getGoodsReceipts(orderId);
+  },
+
+  async recordGoodsReceipt(data: any, user?: any) {
+    return serverStore.recordGoodsReceipt(data, user);
+  },
+
+  async getSupplierContracts(supplierId?: string) {
+    return serverStore.getSupplierContracts(supplierId);
+  },
+
+  async createSupplierContract(data: any, user?: any) {
+    return serverStore.createSupplierContract(data, user);
+  },
+
+  async getPhysicalInventories(warehouseId?: string) {
+    return serverStore.getPhysicalInventories(warehouseId);
+  },
+
+  async createPhysicalInventory(data: any, user?: any) {
+    return serverStore.createPhysicalInventory(data, user);
+  },
+
+  async submitInventoryCount(id: string, counts: Array<{ itemId: string; physicalCount: number; reason?: string }>, user?: any) {
+    return serverStore.submitInventoryCount(id, counts, user);
+  },
+
+  async validateAndAdjustInventoryDG(id: string, user?: any) {
+    return serverStore.validateAndAdjustInventoryDG(id, user);
+  },
+
+  async getSupplierEvaluations(supplierId?: string) {
+    return serverStore.getSupplierEvaluations(supplierId);
+  },
+
+  async recordSupplierEvaluation(data: any, user?: any) {
+    return serverStore.recordSupplierEvaluation(data, user);
+  },
+
+  async updateSupplierStatus(id: string, status: any, user?: any) {
+    return serverStore.updateSupplierStatus(id, status, user);
+  },
+
+  async getProcurementKpis() {
+    return serverStore.getProcurementKpis();
+  },
+
+  async getInventoryKpis() {
+    return serverStore.getInventoryKpis();
+  },
+
+
 };

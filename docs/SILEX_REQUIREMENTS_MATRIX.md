@@ -12,11 +12,11 @@
 |---|---|---|---|---|---|
 | **Module 01 — Commercial** | 12 | 11 | 0 | 0 | 1 |
 | **Module 02 — Projet** | 13 | 13 | 0 | 0 | 0 |
-| **Module 03 — Achats & Stocks**| 12 | 7 | 3 | 2 | 0 |
+| **Module 03 — Achats & Stocks**| 12 | 12 | 0 | 0 | 0 |
 | **Module 04 — Ressources Humaines** | 12 | 5 | 3 | 3 | 1 |
 | **Module 05 — Finance & Comptabilité** | 11 | 4 | 4 | 3 | 0 |
 | **Transversal & Direction Générale** | 10 | 7 | 2 | 1 | 0 |
-| **TOTAL** | **70** | **47** | **12** | **9** | **2** |
+| **TOTAL** | **70** | **52** | **9** | **7** | **2** |
 
 ---
 
@@ -67,16 +67,16 @@
 |---|---|---|---|---|---|---|---|---|---|
 | **ACH-01** | Expression de Besoin / DA Chantier | Émission d'une Demande d'Achat rattachée au projet, avec désignation, quantités et urgence. | `/procurement` | Resp. Projet, Achats | Brouillon → Soumise → Consultation | Demande d'Achat (DA) | **EXISTANT ET FONCTIONNEL** | P1 | Formulaire DA avec lignes chiffrées et régime TVA DZ. |
 | **ACH-02** | Consultation Fournisseurs & Devis | Saisie de plusieurs offres concurrentes par DA pour mise en concurrence. | `/procurement` | Resp. Achats | En consultation → Offres saisies | Tableau des Offres | **EXISTANT ET FONCTIONNEL** | P1 | Saisie dynamique des devis fournisseurs par ligne. |
-| **ACH-03** | Comparatif TCO Multicritères | Analyse comparative pondérée : Prix unitaire, Transport, Délais, Garantie, Disponibilité, Conformité technique. | `/procurement` | Resp. Achats, DG | En comparaison → Fournisseur retenu | Grille d'Évaluation TCO | **À DÉVELOPPER** | **P1** | Tableau de scoring TCO multicritères avec recommandation. |
+| **ACH-03** | Comparatif TCO Multicritères | Analyse comparative pondérée : Coût HT (35%), Délais (20%), Technique (25%), Qualité (10%), Garantie (10%) avec critère éliminatoire CCPU 3.1. | `/procurement` | Resp. Achats, DG | En comparaison → Approuvé DG | Grille d'Évaluation TCO A4 | **EXISTANT ET FONCTIONNEL** | P1 | Matrice comparative automatisée, détection disqualification et visa électronique DG. |
 | **ACH-04** | Circuit de Validation DG (SoD) | Validation hiérarchique avec séparation des tâches (le demandeur ne peut pas approuver son achat). | `/procurement`, `/workflows` | Directeur Général | En attente DG → Validé / Rejeté | Visa DG | **EXISTANT ET FONCTIONNEL** | P1 | Ségrégation stricte des rôles et enregistrement d'audit. |
 | **ACH-05** | Bon de Commande Fournisseur (BC) | Génération du BC numéroté après validation DG, avec TVA légale (19%, 9% ou 0% ANDI). | `/procurement` | Resp. Achats | Validé → BC Émis | Bon de Commande A4 | **EXISTANT ET FONCTIONNEL** | P1 | Création automatique du BC lié à la DA. |
-| **ACH-06** | Réception Fournisseur (Contrôle Quantitatif) | Réception en magasin avec rapprochement direct BC, contrôle quantités et conformité. | `/inventory`, `/procurement` | Resp. Magasin | Réception partielle / totale | Bon de Réception A4 | **EXISTANT ET FONCTIONNEL** | P1 | Incrémentation immédiate du stock physique magasin. |
+| **ACH-06** | Réception Fournisseur (Contrôle Quantitatif & Qualité) | Réception en magasin avec rapprochement direct BC, réceptions partielles, reliquats et gestion des rebuts. | `/inventory`, `/procurement` | Resp. Magasin | Réception partielle / totale | Bon de Réception A4 | **EXISTANT ET FONCTIONNEL** | P1 | Incrémentation du stock disponible pour les pièces conformes, rebuts isolés en quarantaine. |
 | **ACH-07** | Sortie de Stock vers Chantier | Émission de bons de sortie pour affecter les pièces à un projet spécifique. | `/inventory` | Resp. Magasin | Sortie validée | Bon de Sortie Chantier | **EXISTANT ET FONCTIONNEL** | P1 | Décrémentation avec vérification stricte anti-négatif. |
-| **ACH-08** | Gestion Multi-Magasins & Dépôts | Suivi des stocks par magasin central (ex. Hassi Messaoud, Rouiba) et dépôts chantiers. | `/inventory` | Resp. Magasin | Consultation en temps réel | Fiche Stock Magasin | **EXISTANT ET FONCTIONNEL** | P1 | Gestion des entrepôts physiques multiples. |
+| **ACH-08** | Gestion Multi-Magasins & Dépôts | Suivi des stocks par magasin central (Arzew MAG-01) et dépôts chantiers (Skikda MAG-02, Hassi Messaoud MAG-03). | `/inventory` | Resp. Magasin | Consultation en temps réel | Fiche Stock Magasin | **EXISTANT ET FONCTIONNEL** | P1 | Gestion des entrepôts physiques multiples et traçabilité par magasin. |
 | **ACH-09** | Transferts Inter-Dépôts | Mouvements de stock entre deux magasins ou entre magasin central et chantier. | `/inventory` | Resp. Magasin | Transfert émis → Réceptionné | Bon de Transfert | **EXISTANT ET FONCTIONNEL** | P2 | Mouvement de type `WAREHOUSE_TRANSFER`. |
-| **ACH-10** | Inventaires Physiques Périodiques | Saisie des comptages physiques et calcul des écarts d'inventaire. | `/inventory/inventaires` | Resp. Magasin, Finance | Planifié → Réalisé → Ajusté | Procès-Verbal d'Inventaire | **À DÉVELOPPER** | P2 | Écran de pointage d'inventaire et ajustement d'écart. |
+| **ACH-10** | Inventaires Physiques Périodiques | Saisie des comptages physiques, calcul des écarts d'inventaire en quantité et valeur (DA), régularisation DG. | `/inventory` | Resp. Magasin, Finance, DG | Comptage → Soumis DG → Régularisé | Procès-Verbal d'Inventaire A4 | **EXISTANT ET FONCTIONNEL** | P2 | Sessions d'inventaire complètes et tournantes avec génération de mouvements `INVENTORY_ADJUSTMENT`. |
 | **ACH-11** | Seuils d'Alerte & Réapprovisionnement | Détection automatique des articles sous stock minimum de sécurité. | `/inventory`, `/dashboard` | Resp. Magasin | Alerte temps réel | Liste Ruptures Potentielles | **EXISTANT ET FONCTIONNEL** | P2 | Badge rouge "Alerte Rupture" sur les articles critiques. |
-| **ACH-12** | Évaluation Fournisseurs | Notation de la performance des fournisseurs (qualité livrée, respect délais). | `/procurement` | Resp. Achats | Périodique | Fiche Fournisseur | **EXISTANT MAIS INCOMPLET**| P3 | Note globale 1-5 étoiles affichée, grille détaillée à compléter. |
+| **ACH-12** | Évaluation Fournisseurs | Notation de la performance des fournisseurs (Qualité 35%, Délais 30%, Prix 20%, Réactivité 15%). | `/procurement` | Resp. Achats, Qualité, DG | Périodique | Fiche Évaluation Fournisseur | **EXISTANT ET FONCTIONNEL** | P3 | Notation multicritères sur 100, étoiles /5, classification stratégique (A/B/C/D) et statut fournisseur. |
 
 ---
 

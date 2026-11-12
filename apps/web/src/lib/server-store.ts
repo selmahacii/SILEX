@@ -568,6 +568,263 @@ export interface StoredCustomerQuote {
   createdAt: string;
 }
 
+
+// ============================================================================
+// PHASE 4: TYPES ET INTERFACES ACHATS, APPROVISIONNEMENT & STOCKS
+// ============================================================================
+
+export interface StoredNeedRequest {
+  id: string;
+  reference: string;          // ex: EB-2026-001
+  projectId?: string;
+  projectCode?: string;
+  projectName?: string;
+  siteLocation?: string;
+  requesterId: string;
+  requesterName: string;
+  requesterRole: string;
+  department: string;
+  title: string;
+  justification: string;
+  category: 'TUYAUTERIE' | 'SOUDAGE' | 'MECANIQUE' | 'HVAC' | 'EPI_SECURITE' | 'OUTILLAGE' | 'LOCATION_ENGIN' | 'SOUS_TRAITANCE';
+  priority: 'NORMALE' | 'URGENTE' | 'CRITIQUE';
+  desiredDate: string;
+  status: 'BROUILLON' | 'SOUMISE' | 'VALIDEE' | 'CONVERTIE_EN_DA' | 'REJETEE';
+  items: Array<{
+    id: string;
+    itemId?: string;
+    itemCode?: string;
+    description: string;
+    quantity: number;
+    unit: string;
+    estimatedUnitPrice?: number;
+    resourceType: 'CONSOMMABLE' | 'ARTICLE_STOCKABLE' | 'EQUIPEMENT' | 'LOCATION' | 'SOUS_TRAITANCE';
+    technicalSpecs?: string;
+  }>;
+  convertedPrId?: string;
+  convertedPrCode?: string;
+  validatorName?: string;
+  validationDate?: string;
+  rejectionReason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoredRfqOffer {
+  id: string;
+  supplierId: string;
+  supplierCode: string;
+  supplierName: string;
+  unitPriceHT: number;
+  totalPriceHT: number;
+  deliveryLeadTimeDays: number;
+  paymentTerms: string;
+  warrantyMonths: number;
+  certificationsProvided: {
+    ccpu31: boolean;
+    cndReport: boolean;
+    coc: boolean;
+    atex: boolean;
+  };
+  technicalComplianceRating: number; // 0 to 100
+  qualityRating: number;             // 0 to 100
+  notes?: string;
+  submittedAt: string;
+  isEliminated?: boolean;
+  eliminationReason?: string;
+  tcoScore?: number;
+}
+
+export interface StoredRfqConsultation {
+  id: string;
+  reference: string;          // ex: RFQ-2026-001
+  title: string;
+  purchaseRequestId: string;
+  purchaseRequestCode: string;
+  projectId?: string;
+  projectCode?: string;
+  projectName?: string;
+  issueDate: string;
+  closingDate: string;
+  status: 'OUVERTE' | 'OFFRES_RECUES' | 'EVALUEE' | 'CLOTUREE';
+  invitedSuppliers: Array<{
+    supplierId: string;
+    supplierName: string;
+    contactEmail?: string;
+    status: 'INVITE' | 'REPONDU' | 'DECLINE';
+  }>;
+  items: Array<{
+    description: string;
+    quantity: number;
+    unit: string;
+    technicalRequirements?: string;
+  }>;
+  offers: StoredRfqOffer[];
+  selectedSupplierId?: string;
+  selectedSupplierName?: string;
+  selectionJustification?: string;
+  selectedAt?: string;
+  createdAt: string;
+}
+
+export interface TcoCriteriaConfig {
+  costWeight: number;            // e.g. 35%
+  technicalWeight: number;       // e.g. 25%
+  leadTimeWeight: number;        // e.g. 20%
+  qualityWeight: number;         // e.g. 10%
+  warrantyWeight: number;        // e.g. 10%
+  mandatoryCcpuRequired: boolean;
+}
+
+export interface StoredTcoComparison {
+  id: string;
+  rfqId: string;
+  rfqReference: string;
+  purchaseRequestCode: string;
+  projectName?: string;
+  evaluationDate: string;
+  evaluatedByName: string;
+  criteriaConfig: TcoCriteriaConfig;
+  supplierScores: Array<{
+    supplierId: string;
+    supplierName: string;
+    totalAmountHT: number;
+    deliveryDays: number;
+    costScore: number;
+    leadTimeScore: number;
+    technicalScore: number;
+    qualityScore: number;
+    warrantyScore: number;
+    overallTcoScore: number;
+    rank: number;
+    isEliminated: boolean;
+    eliminationReason?: string;
+  }>;
+  selectedSupplierId?: string;
+  selectedSupplierName?: string;
+  decisionJustification?: string;
+  status: 'EN_COURS' | 'VALIDE_ACHATS' | 'APPROUVE_DG';
+  dgVisaSignature?: string;
+  dgApprovedAt?: string;
+}
+
+export interface StoredSupplierContract {
+  id: string;
+  contractNumber: string;     // ex: CTR-FOU-2026-001
+  supplierId: string;
+  supplierName: string;
+  title: string;
+  contractType: 'FOURNITURE_CADRE' | 'LOCATION_ENGINS' | 'SOUS_TRAITANCE_CND' | 'MAINTENANCE_TIERCE';
+  projectId?: string;
+  projectCode?: string;
+  totalAmountHT: number;
+  startDate: string;
+  endDate: string;
+  paymentTerms: string;
+  retentionGuaranteePercent?: number;
+  penaltiesTerms?: string;
+  status: 'ACTIF' | 'EN_REVISION' | 'EXPIRE' | 'RESILIE';
+  signedBySilex: string;
+  signedBySupplier: string;
+  documents: Array<{ name: string; url?: string; uploadedAt: string }>;
+  createdAt: string;
+}
+
+export interface StoredGoodsReceipt {
+  id: string;
+  receiptNumber: string;      // ex: BR-2026-001
+  purchaseOrderId: string;
+  purchaseOrderCode: string;
+  supplierId: string;
+  supplierName: string;
+  deliveryNoteNumber: string; // Numéro Bon de Livraison (BL) Fournisseur
+  receiptDate: string;
+  warehouseId: string;
+  warehouseName: string;
+  receiverName: string;
+  projectId?: string;
+  projectCode?: string;
+  status: 'PARTIEL' | 'COMPLET' | 'AVEC_RESERVES';
+  qualityInspection: {
+    inspectorName: string;
+    inspectionDate: string;
+    overallStatus: 'CONFORME' | 'NON_CONFORME' | 'ACCEPTE_SOUS_RESERVES' | 'REFUSE';
+    ccpuVerified: boolean;
+    cndReportAttached: boolean;
+    observations?: string;
+  };
+  lines: Array<{
+    id: string;
+    itemId?: string;
+    itemCode?: string;
+    description: string;
+    orderedQuantity: number;
+    previouslyReceivedQuantity: number;
+    deliveredQuantity: number;
+    acceptedQuantity: number;
+    rejectedQuantity: number;
+    remainingQuantity: number;
+    rejectionReason?: string;
+    unit: string;
+    unitPriceHT: number;
+  }>;
+  totalAcceptedAmountHT: number;
+  createdAt: string;
+}
+
+export interface StoredPhysicalInventory {
+  id: string;
+  inventoryNumber: string;    // ex: INV-2026-001
+  warehouseId: string;
+  warehouseName: string;
+  inventoryDate: string;
+  responsibleName: string;
+  status: 'EN_COMPTAGE' | 'EN_CONTROLE' | 'EN_VALIDATION_DG' | 'VALIDE' | 'CLOTURE';
+  itemsCounted: Array<{
+    itemId: string;
+    itemCode: string;
+    itemName: string;
+    unit: string;
+    unitCostDA: number;
+    theoreticalStock: number;
+    physicalCount: number;
+    discrepancyQuantity: number; // physical - theoretical
+    discrepancyValueDA: number;  // discrepancyQuantity * unitCostDA
+    discrepancyReason?: string;
+  }>;
+  totalTheoreticalValueDA: number;
+  totalPhysicalValueDA: number;
+  totalVarianceValueDA: number;
+  dgApprovedAt?: string;
+  dgApprovedBy?: string;
+  adjustmentMovementReferences?: string[];
+  createdAt: string;
+}
+
+export interface StoredSupplierEvaluation {
+  id: string;
+  evaluationNumber: string;   // ex: EVAL-2026-001
+  supplierId: string;
+  supplierName: string;
+  period: string;             // ex: T3-2026 ou Annuelle 2026
+  evaluatorName: string;
+  evaluatorRole: string;
+  evaluationDate: string;
+  scores: {
+    deliveryPunctuality: number;  // /30 (Respect des délais)
+    qualityCompliance: number;    // /30 (Qualité & CCPU 3.1)
+    quantityAccuracy: number;     // /15 (Conformité des quantités)
+    responsiveness: number;       // /15 (Réactivité & Support)
+    commercialPricing: number;    // /10 (Compétitivité tarifaire)
+  };
+  totalScore: number;             // /100
+  starRating: number;             // 1 to 5 stars
+  classification: 'STRATEGIQUE_A' | 'QUALIFIE_B' | 'SOUS_VIGILANCE_C' | 'SUSPENDU_D';
+  comments: string;
+  recommendedAction: 'MAINTIEN' | 'DEVELOPPEMENT' | 'AUDIT_REQUIS' | 'SUSPENSION';
+  createdAt: string;
+}
+
 class ServerStore {
   private users: ServerUser[] = [];
   private projects: StoredProject[] = [];
@@ -591,6 +848,28 @@ class ServerStore {
   public financePayments: any[] = [];
   private auditLogs: any[] = [];
   private rolePermissions: Record<string, any> = {};
+
+  // Données Phase 4 : Achats, RFQ, TCO, Stocks & Inventaires
+  private needRequests: StoredNeedRequest[] = [];
+  private rfqConsultations: StoredRfqConsultation[] = [];
+  private tcoComparisons: StoredTcoComparison[] = [];
+  private supplierContracts: StoredSupplierContract[] = [];
+  private goodsReceipts: StoredGoodsReceipt[] = [];
+  private physicalInventories: StoredPhysicalInventory[] = [];
+  private supplierEvaluations: StoredSupplierEvaluation[] = [];
+  private tcoConfig: TcoCriteriaConfig = {
+    costWeight: 35,
+    technicalWeight: 25,
+    leadTimeWeight: 20,
+    qualityWeight: 10,
+    warrantyWeight: 10,
+    mandatoryCcpuRequired: true,
+  };
+  private approvalThresholds = {
+    pmThresholdDA: 500000,
+    procurementHeadThresholdDA: 2000000,
+    dgThresholdDA: 10000000,
+  };
 
   constructor() {
     this.initBaseline();
@@ -814,6 +1093,7 @@ class ServerStore {
     // 4. Données de démonstration Commercial & Fiche de Coût
     this.initCommercialBaseline();
     this.initProjectsBaseline();
+    this.initProcurementBaseline();
   }
 
 
@@ -1768,6 +2048,10 @@ class ServerStore {
     return this.suppliers;
   }
 
+  getSupplier(idOrCode: string) {
+    return this.suppliers.find(s => s.id === idOrCode || s.code === idOrCode);
+  }
+
   createSupplier(data: any) {
     const code = `FOURN-${String(this.suppliers.length + 1).padStart(3, '0')}`;
     const supplier = {
@@ -1792,6 +2076,10 @@ class ServerStore {
 
   getPurchaseOrders() {
     return this.purchaseOrders;
+  }
+
+  getPurchaseOrder(idOrCode: string) {
+    return this.purchaseOrders.find(p => p.id === idOrCode || p.code === idOrCode);
   }
 
   createPurchaseOrder(data: any) {
@@ -1843,6 +2131,10 @@ class ServerStore {
 
   getInventoryItems() {
     return this.inventoryItems;
+  }
+
+  getInventoryItem(idOrCode: string) {
+    return this.inventoryItems.find(i => i.id === idOrCode || i.code === idOrCode);
   }
 
   createInventoryItem(data: any) {
@@ -3800,6 +4092,1670 @@ class ServerStore {
     this.addAuditLog('CREATE_PURCHASE_REQUEST', 'PROCUREMENT', daRef, `Demande d'achat ${daRef} émise depuis le chantier ${project.code}`, user);
     return pr;
   }
+
+  // ============================================================================
+  // PHASE 4: INITIALISATION BASELINE ACHATS & STOCKS INDUSTRIELS
+  // ============================================================================
+
+  private initProcurementBaseline() {
+    // 1. Fournisseurs Industriels Homologués
+    this.suppliers = [
+      {
+        id: 'supp-001',
+        code: 'FOURN-001',
+        name: 'Batimetal Tuyauteries Algérie',
+        category: 'TUYAUTERIE',
+        contactName: 'Mohamed Brahimi',
+        phone: '+213 21 89 45 12',
+        email: 'commercial@batimetal-tuyauterie.dz',
+        taxId: '001616010899981',
+        tradeRegistryNumber: '16/00-0987654B16',
+        bankRIB: '001 00234 0123456789 45 (BEA Alger)',
+        address: 'Zone Industrielle Oued Smar, Lot 14, Alger',
+        rating: 4.8,
+        status: 'ACTIF',
+        specialties: ['Tuyauterie sans soudure ASTM A106 Gr.B', 'Coudes forgés ASTM A234', 'Brides ANSI 300#'],
+        createdAt: '2026-01-15T08:00:00.000Z',
+      },
+      {
+        id: 'supp-002',
+        code: 'FOURN-002',
+        name: 'Maghreb Tubes & Raccords Industriels',
+        category: 'TUYAUTERIE',
+        contactName: 'Nabil Saidi',
+        phone: '+213 41 56 78 90',
+        email: 'ventes@maghreb-tubes.dz',
+        taxId: '001831010778899',
+        tradeRegistryNumber: '31/00-1122334B18',
+        bankRIB: '002 00111 0987654321 89 (BNA Oran)',
+        address: 'Zone Industrielle Es-Sénia, Hangar B3, Oran',
+        rating: 4.5,
+        status: 'ACTIF',
+        specialties: ['Raccords forgés ASTM A105', 'Robinetterie HP', 'Vannes à guillotine'],
+        createdAt: '2026-02-10T09:00:00.000Z',
+      },
+      {
+        id: 'supp-003',
+        code: 'FOURN-003',
+        name: 'Techno-Weld Algérie & Consommables',
+        category: 'SOUDAGE',
+        contactName: 'Kamel Bensaada',
+        phone: '+213 21 67 23 45',
+        email: 'contact@technoweld.dz',
+        taxId: '002016010445566',
+        tradeRegistryNumber: '16/00-5544332B20',
+        bankRIB: '003 00888 1234567890 23 (CPA Rouiba)',
+        address: 'Zone Industrielle Rouiba, Voie C, Alger',
+        rating: 4.7,
+        status: 'ACTIF',
+        specialties: ['Électrodes basiques E7018', 'Fils TIG ER70S-6', 'Postes inverter Miller', 'Meules 230mm'],
+        createdAt: '2026-02-15T10:00:00.000Z',
+      },
+      {
+        id: 'supp-004',
+        code: 'FOURN-004',
+        name: 'Sarl Levage Lourd & Manutention Sud',
+        category: 'LOCATION_ENGINS',
+        contactName: 'Djamel Zergoun',
+        phone: '+213 29 73 11 22',
+        email: 'operations@levage-sud.dz',
+        taxId: '001930010332211',
+        tradeRegistryNumber: '30/00-7788991B19',
+        bankRIB: '004 00555 4567890123 67 (BDL Hassi Messaoud)',
+        address: 'Zone Industrielle Irara, Hassi Messaoud, Ouargla',
+        rating: 4.2,
+        status: 'ACTIF',
+        specialties: ['Grues télescopiques 50T-200T', 'Chariots élévateurs tout-terrain', 'Porte-chars'],
+        createdAt: '2026-03-01T08:30:00.000Z',
+      },
+      {
+        id: 'supp-005',
+        code: 'FOURN-005',
+        name: 'Contrôle Industriel CND Algérie (Bureau Veritas Partenaire)',
+        category: 'SOUS_TRAITANCE',
+        contactName: 'Abdelkader Mezouar',
+        phone: '+213 21 78 99 00',
+        email: 'cnd@controle-algerie.dz',
+        taxId: '001716010556677',
+        tradeRegistryNumber: '16/00-9988776B17',
+        bankRIB: '001 00444 8901234567 12 (BEA Hydra)',
+        address: 'Cité DNC, Bâtiment 4, Hydra, Alger',
+        rating: 4.9,
+        status: 'ACTIF',
+        specialties: ['Tirs radiographiques RT 100%', 'Ressuage PT', 'Ultrasons phased array', 'Agrément Sonatrach'],
+        createdAt: '2026-01-20T11:00:00.000Z',
+      },
+      {
+        id: 'supp-006',
+        code: 'FOURN-006',
+        name: 'Apex Sécurité & Équipements ATEX',
+        category: 'EPI_SECURITE',
+        contactName: 'Leila Kaced',
+        phone: '+213 21 54 32 10',
+        email: 'sales@apex-securite.dz',
+        taxId: '002116010667788',
+        tradeRegistryNumber: '16/00-4455667B21',
+        bankRIB: '005 00999 2345678901 99 (BADR Blida)',
+        address: 'Boulevard des Martyrs, Blida',
+        rating: 3.8,
+        status: 'EN_EVALUATION',
+        specialties: ['Harnais antichute ATEX', 'Masques ventilés', 'Combinaisons ignifugées Nomex'],
+        createdAt: '2026-04-12T14:00:00.000Z',
+      },
+    ];
+
+    // 2. Magasins & Entrepôts Physiques Multi-Sites
+    this.warehouses = [
+      {
+        id: 'wh-001',
+        code: 'MAG-01',
+        name: 'Magasin Central Arzew & Base Logistique',
+        location: 'Zone Industrielle Arzew, Oran',
+        type: 'CENTRAL',
+        capacityM2: 3500,
+        responsibleName: 'Tarek Meziani (Gestionnaire Magasin)',
+        active: true,
+        createdAt: '2026-01-05T08:00:00.000Z',
+      },
+      {
+        id: 'wh-002',
+        code: 'MAG-02',
+        name: 'Dépôt Régional Skikda RA1K',
+        location: 'Zone Industrielle Skikda, Raffinerie RA1K',
+        type: 'SECONDAIRE',
+        capacityM2: 1800,
+        responsibleName: 'Yacine Khelifi (Superviseur Logistique Est)',
+        active: true,
+        createdAt: '2026-01-10T08:00:00.000Z',
+      },
+      {
+        id: 'wh-003',
+        code: 'MAG-03',
+        name: 'Magasin Chantier Hassi Messaoud',
+        location: 'Base de Vie SILEX, Hassi Messaoud',
+        type: 'CHANTIER',
+        capacityM2: 800,
+        responsibleName: 'Mourad Zitouni (Responsable Base)',
+        active: true,
+        createdAt: '2026-02-01T08:00:00.000Z',
+      },
+    ];
+
+    // 3. Articles & Catalogue Industriel
+    this.inventoryItems = [
+      {
+        id: 'itm-001',
+        code: 'ART-TUY-001',
+        name: 'Tube acier carbone sans soudure Sch 40 DN150 (ASTM A106 Gr.B)',
+        description: 'Tuyauterie haute pression vapeur 80 bar avec certificat matière CCPU 3.1 EN 10204',
+        category: 'TUYAUTERIE',
+        resourceType: 'ARTICLE_STOCKABLE',
+        unit: 'ml',
+        unitCost: 18500,
+        minStock: 50,
+        currentStock: 180,
+        reservedStock: 45,
+        warehouseId: 'wh-001',
+        warehouseName: 'Magasin Central Arzew & Base Logistique',
+        location: 'Allée T-01, Rack Lourd',
+        batchNumber: 'LOT-A106-2026-01',
+        supplierId: 'supp-001',
+        supplierName: 'Batimetal Tuyauteries Algérie',
+        createdAt: '2026-01-15T09:00:00.000Z',
+      },
+      {
+        id: 'itm-002',
+        code: 'ART-TUY-002',
+        name: 'Coude 90° LR acier carbone DN150 ASTM A234 WPB',
+        description: 'Raccord forgé à souder bout-à-bout pour collecteur vapeur haute pression',
+        category: 'TUYAUTERIE',
+        resourceType: 'ARTICLE_STOCKABLE',
+        unit: 'U',
+        unitCost: 14000,
+        minStock: 20,
+        currentStock: 65,
+        reservedStock: 15,
+        warehouseId: 'wh-001',
+        warehouseName: 'Magasin Central Arzew & Base Logistique',
+        location: 'Allée T-03, Bac B12',
+        supplierId: 'supp-001',
+        supplierName: 'Batimetal Tuyauteries Algérie',
+        createdAt: '2026-01-15T09:30:00.000Z',
+      },
+      {
+        id: 'itm-003',
+        code: 'ART-TUY-003',
+        name: 'Bride à collerette Welding Neck Class 300 DN150',
+        description: 'Bride forgée ASTM A105 face surélevée RF conforme ASME B16.5',
+        category: 'TUYAUTERIE',
+        resourceType: 'ARTICLE_STOCKABLE',
+        unit: 'U',
+        unitCost: 22500,
+        minStock: 15,
+        currentStock: 40,
+        reservedStock: 10,
+        warehouseId: 'wh-001',
+        warehouseName: 'Magasin Central Arzew & Base Logistique',
+        location: 'Allée T-03, Bac B14',
+        supplierId: 'supp-002',
+        supplierName: 'Maghreb Tubes & Raccords Industriels',
+        createdAt: '2026-01-15T10:00:00.000Z',
+      },
+      {
+        id: 'itm-004',
+        code: 'ART-TUY-004',
+        name: 'Joint spirométallique inox 316L DN150 CL300',
+        description: 'Joint avec anneau de centrage acier carbone et garniture graphite expansé',
+        category: 'TUYAUTERIE',
+        resourceType: 'CONSOMMABLE',
+        unit: 'U',
+        unitCost: 3800,
+        minStock: 30,
+        currentStock: 85,
+        reservedStock: 20,
+        warehouseId: 'wh-001',
+        warehouseName: 'Magasin Central Arzew & Base Logistique',
+        location: 'Rayon Joints J-02',
+        supplierId: 'supp-002',
+        supplierName: 'Maghreb Tubes & Raccords Industriels',
+        createdAt: '2026-01-16T11:00:00.000Z',
+      },
+      {
+        id: 'itm-005',
+        code: 'ART-SOU-001',
+        name: 'Électrodes basiques E7018 diam 3.2mm',
+        description: 'Baguettes de soudage enrobées pour aciers au carbone, étuvage 350°C requis',
+        category: 'SOUDAGE',
+        resourceType: 'CONSOMMABLE',
+        unit: 'kg',
+        unitCost: 1200,
+        minStock: 100,
+        currentStock: 450,
+        reservedStock: 80,
+        warehouseId: 'wh-001',
+        warehouseName: 'Magasin Central Arzew & Base Logistique',
+        location: 'Armoire Chauffante S-01',
+        supplierId: 'supp-003',
+        supplierName: 'Techno-Weld Algérie & Consommables',
+        createdAt: '2026-01-18T10:00:00.000Z',
+      },
+      {
+        id: 'itm-006',
+        code: 'ART-SOU-002',
+        name: 'Fil de soudage TIG ER70S-6 diam 2.4mm',
+        description: 'Baguettes d\'apport TIG pour passes de pénétration sur tuyauterie haute pression',
+        category: 'SOUDAGE',
+        resourceType: 'CONSOMMABLE',
+        unit: 'kg',
+        unitCost: 1950,
+        minStock: 50,
+        currentStock: 120,
+        reservedStock: 30,
+        warehouseId: 'wh-001',
+        warehouseName: 'Magasin Central Arzew & Base Logistique',
+        location: 'Rayon TIG S-03',
+        supplierId: 'supp-003',
+        supplierName: 'Techno-Weld Algérie & Consommables',
+        createdAt: '2026-01-18T11:00:00.000Z',
+      },
+      {
+        id: 'itm-007',
+        code: 'ART-EQU-001',
+        name: 'Poste à souder autonome Miller Big Blue 400A',
+        description: 'Groupe autonome de soudage diesel insonorisé pour chantiers en extérieur',
+        category: 'OUTILLAGE',
+        resourceType: 'EQUIPEMENT',
+        unit: 'U',
+        unitCost: 850000,
+        minStock: 2,
+        currentStock: 6,
+        reservedStock: 4,
+        warehouseId: 'wh-001',
+        warehouseName: 'Magasin Central Arzew & Base Logistique',
+        location: 'Parc Matériel Zone Extérieure',
+        supplierId: 'supp-003',
+        supplierName: 'Techno-Weld Algérie & Consommables',
+        createdAt: '2026-01-20T14:00:00.000Z',
+      },
+      {
+        id: 'itm-008',
+        code: 'ART-LOC-001',
+        name: 'Location Grue mobile télescopique 50T Liebherr',
+        description: 'Mise à disposition avec grutier certifié CACES pour opérations de levage lourd',
+        category: 'LOCATION_ENGIN',
+        resourceType: 'LOCATION',
+        unit: 'Jours',
+        unitCost: 120000,
+        minStock: 0,
+        currentStock: 0,
+        reservedStock: 0,
+        warehouseId: 'wh-001',
+        warehouseName: 'Magasin Central Arzew & Base Logistique',
+        location: 'Service Non Stockable',
+        supplierId: 'supp-004',
+        supplierName: 'Sarl Levage Lourd & Manutention Sud',
+        createdAt: '2026-02-01T09:00:00.000Z',
+      },
+      {
+        id: 'itm-009',
+        code: 'ART-STR-001',
+        name: 'Prestation Contrôle CND Radiographie RT 100%',
+        description: 'Contrôles non destructifs gamma sur soudures HP selon code ASME B31.3',
+        category: 'SOUS_TRAITANCE',
+        resourceType: 'SOUS_TRAITANCE',
+        unit: 'Forfait',
+        unitCost: 450000,
+        minStock: 0,
+        currentStock: 0,
+        reservedStock: 0,
+        warehouseId: 'wh-001',
+        warehouseName: 'Magasin Central Arzew & Base Logistique',
+        location: 'Prestation Externe',
+        supplierId: 'supp-005',
+        supplierName: 'Contrôle Industriel CND Algérie (Bureau Veritas Partenaire)',
+        createdAt: '2026-02-05T09:00:00.000Z',
+      },
+    ];
+
+    // 4. Expressions de Besoin (EB)
+    this.needRequests = [
+      {
+        id: 'eb-001',
+        reference: 'EB-2026-001',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+        siteLocation: 'Zone Industrielle Skikda RA1K',
+        requesterId: 'usr-rp-001',
+        requesterName: 'Karim Mansouri',
+        requesterRole: 'Chef de Projets & Conduite de Travaux',
+        department: 'OPERATIONS_PROJETS',
+        title: 'Fourniture coudes HP et joints spirométalliques pour arrêt craqueur Skikda',
+        justification: 'Remplacement des spools corrodés sur la ligne de vapeur 80 bar du réacteur principal',
+        category: 'TUYAUTERIE',
+        priority: 'NORMALE',
+        desiredDate: '2026-10-25',
+        status: 'CONVERTIE_EN_DA',
+        items: [
+          {
+            id: 'ebl-01',
+            itemId: 'itm-002',
+            itemCode: 'ART-TUY-002',
+            description: 'Coude 90° LR acier carbone DN150 ASTM A234 WPB',
+            quantity: 20,
+            unit: 'U',
+            estimatedUnitPrice: 14000,
+            resourceType: 'ARTICLE_STOCKABLE',
+            technicalSpecs: 'Épaisseur Sch 40, chanfrein à souder 37.5°, CCPU 3.1 obligatoire',
+          },
+          {
+            id: 'ebl-02',
+            itemId: 'itm-004',
+            itemCode: 'ART-TUY-004',
+            description: 'Joint spirométallique inox 316L DN150 CL300',
+            quantity: 30,
+            unit: 'U',
+            estimatedUnitPrice: 3800,
+            resourceType: 'CONSOMMABLE',
+            technicalSpecs: 'Graphite expansé haute température 450°C',
+          },
+        ],
+        convertedPrId: 'pr-da-2026-001',
+        convertedPrCode: 'DA-2026-001',
+        validatorName: 'Farouk Brahimi (Resp. Achats)',
+        validationDate: '2026-10-18T11:00:00.000Z',
+        createdAt: '2026-10-16T08:30:00.000Z',
+        updatedAt: '2026-10-18T11:00:00.000Z',
+      },
+      {
+        id: 'eb-002',
+        reference: 'EB-2026-002',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+        siteLocation: 'Zone Industrielle Skikda RA1K',
+        requesterId: 'usr-rp-001',
+        requesterName: 'Mourad Zitouni (Chef d\'équipe)',
+        requesterRole: 'Responsable Chantier',
+        department: 'OPERATIONS_PROJETS',
+        title: 'Renfort consommables soudage TIG et disques meulage zone haute pression',
+        justification: 'Accélération des cadences de préfabrication atelier pour respecter le jalon ODS 02',
+        category: 'SOUDAGE',
+        priority: 'URGENTE',
+        desiredDate: '2026-11-20',
+        status: 'SOUMISE',
+        items: [
+          {
+            id: 'ebl-03',
+            itemId: 'itm-006',
+            itemCode: 'ART-SOU-002',
+            description: 'Fil de soudage TIG ER70S-6 diam 2.4mm',
+            quantity: 40,
+            unit: 'kg',
+            estimatedUnitPrice: 1950,
+            resourceType: 'CONSOMMABLE',
+          },
+        ],
+        createdAt: '2026-11-10T14:20:00.000Z',
+        updatedAt: '2026-11-10T14:20:00.000Z',
+      },
+    ];
+
+    // 5. Demande d'Achat (DA) issue de l'EB-001
+    this.purchaseRequests = [
+      {
+        id: 'pr-da-2026-001',
+        code: 'DA-2026-001',
+        reference: 'DA-2026-001',
+        needRequestReference: 'EB-2026-001',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+        requestedById: 'usr-rp-001',
+        requestedByName: 'Karim Mansouri',
+        category: 'TUYAUTERIE',
+        urgency: 'NORMAL',
+        status: 'PO_GENERATED',
+        desiredDeliveryDate: '2026-11-05',
+        deliveryLocation: 'Zone Industrielle Skikda RA1K',
+        amountHT: 640000,
+        vatRate: 19,
+        amountTVA: 121600,
+        amountTTC: 761600,
+        justification: 'Fourniture coudes acier carbone ANSI B16.9 et joints CL300 pour Skikda',
+        certificationsRequired: {
+          ccpu31: true,
+          cndReport: true,
+          coc: true,
+          atexFds: false,
+        },
+        items: [
+          {
+            id: 'pri-01',
+            itemId: 'itm-002',
+            itemCode: 'ART-TUY-002',
+            description: 'Coude 90° LR acier carbone DN150 ASTM A234 WPB',
+            quantity: 20,
+            unit: 'U',
+            unitPrice: 14000,
+            totalPrice: 280000,
+          },
+          {
+            id: 'pri-02',
+            itemId: 'itm-003',
+            itemCode: 'ART-TUY-003',
+            description: 'Bride à collerette Welding Neck Class 300 DN150',
+            quantity: 16,
+            unit: 'U',
+            unitPrice: 22500,
+            totalPrice: 360000,
+          },
+        ],
+        selectedSupplierId: 'supp-001',
+        selectedSupplierName: 'Batimetal Tuyauteries Algérie',
+        createdAt: '2026-10-18T14:00:00.000Z',
+      },
+    ];
+
+    // 6. Consultation Fournisseurs (RFQ) & Comparatif TCO
+    this.rfqConsultations = [
+      {
+        id: 'rfq-001',
+        reference: 'RFQ-2026-001',
+        title: 'Consultation Fournisseurs Tuyauteries & Raccords Forgés Skikda RA1K',
+        purchaseRequestId: 'pr-da-2026-001',
+        purchaseRequestCode: 'DA-2026-001',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+        issueDate: '2026-10-19',
+        closingDate: '2026-10-24',
+        status: 'CLOTUREE',
+        invitedSuppliers: [
+          { supplierId: 'supp-001', supplierName: 'Batimetal Tuyauteries Algérie', status: 'REPONDU' },
+          { supplierId: 'supp-002', supplierName: 'Maghreb Tubes & Raccords Industriels', status: 'REPONDU' },
+          { supplierId: 'supp-006', supplierName: 'Fournisseur Généraliste Non Agréé', status: 'REPONDU' },
+        ],
+        items: [
+          { description: 'Coude 90° LR acier carbone DN150 ASTM A234 WPB', quantity: 20, unit: 'U' },
+          { description: 'Bride à collerette Welding Neck Class 300 DN150', quantity: 16, unit: 'U' },
+        ],
+        offers: [
+          {
+            id: 'off-01',
+            supplierId: 'supp-001',
+            supplierCode: 'FOURN-001',
+            supplierName: 'Batimetal Tuyauteries Algérie',
+            unitPriceHT: 17777,
+            totalPriceHT: 640000,
+            deliveryLeadTimeDays: 7,
+            paymentTerms: '30 jours fin de mois après réception conforme',
+            warrantyMonths: 12,
+            certificationsProvided: { ccpu31: true, cndReport: true, coc: true, atex: true },
+            technicalComplianceRating: 95,
+            qualityRating: 92,
+            notes: 'Matière d\'origine ArcelorMittal avec traçabilité complète de coulée',
+            submittedAt: '2026-10-21T10:00:00.000Z',
+            isEliminated: false,
+            tcoScore: 92.4,
+          },
+          {
+            id: 'off-02',
+            supplierId: 'supp-002',
+            supplierCode: 'FOURN-002',
+            supplierName: 'Maghreb Tubes & Raccords Industriels',
+            unitPriceHT: 19166,
+            totalPriceHT: 690000,
+            deliveryLeadTimeDays: 5,
+            paymentTerms: '45 jours virement bancaire',
+            warrantyMonths: 18,
+            certificationsProvided: { ccpu31: true, cndReport: true, coc: true, atex: true },
+            technicalComplianceRating: 90,
+            qualityRating: 88,
+            notes: 'Stock disponible immédiatement sur magasin Oran',
+            submittedAt: '2026-10-22T14:30:00.000Z',
+            isEliminated: false,
+            tcoScore: 88.1,
+          },
+          {
+            id: 'off-03',
+            supplierId: 'supp-006',
+            supplierCode: 'FOURN-006',
+            supplierName: 'Fournisseur Généraliste Non Agréé',
+            unitPriceHT: 16111,
+            totalPriceHT: 580000,
+            deliveryLeadTimeDays: 21,
+            paymentTerms: 'Comptant à la livraison',
+            warrantyMonths: 6,
+            certificationsProvided: { ccpu31: false, cndReport: false, coc: false, atex: false },
+            technicalComplianceRating: 40,
+            qualityRating: 50,
+            notes: 'Prix le plus bas mais certificat matière CCPU 3.1 absent',
+            submittedAt: '2026-10-23T09:15:00.000Z',
+            isEliminated: true,
+            eliminationReason: 'ÉLIMINÉ : Certificat CCPU 3.1 EN 10204 obligatoire manquant (Exigence de sécurité Sonatrach RA1K)',
+            tcoScore: 0,
+          },
+        ],
+        selectedSupplierId: 'supp-001',
+        selectedSupplierName: 'Batimetal Tuyauteries Algérie',
+        selectionJustification: 'Meilleur score TCO (92.4/100). Conformité technique 95%, CCPU 3.1 fourni et délai de 7 jours parfaitement compatible avec le jalon ODS 02.',
+        selectedAt: '2026-10-25T11:00:00.000Z',
+        createdAt: '2026-10-19T08:00:00.000Z',
+      },
+    ];
+
+    // 7. Comparateur TCO Validé
+    this.tcoComparisons = [
+      {
+        id: 'tco-001',
+        rfqId: 'rfq-001',
+        rfqReference: 'RFQ-2026-001',
+        purchaseRequestCode: 'DA-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+        evaluationDate: '2026-10-25',
+        evaluatedByName: 'Farouk Brahimi (Resp. Achats)',
+        criteriaConfig: {
+          costWeight: 35,
+          technicalWeight: 25,
+          leadTimeWeight: 20,
+          qualityWeight: 10,
+          warrantyWeight: 10,
+          mandatoryCcpuRequired: true,
+        },
+        supplierScores: [
+          {
+            supplierId: 'supp-001',
+            supplierName: 'Batimetal Tuyauteries Algérie',
+            totalAmountHT: 640000,
+            deliveryDays: 7,
+            costScore: 90.6,
+            leadTimeScore: 71.4,
+            technicalScore: 95.0,
+            qualityScore: 92.0,
+            warrantyScore: 66.7,
+            overallTcoScore: 92.4,
+            rank: 1,
+            isEliminated: false,
+          },
+          {
+            supplierId: 'supp-002',
+            supplierName: 'Maghreb Tubes & Raccords Industriels',
+            totalAmountHT: 690000,
+            deliveryDays: 5,
+            costScore: 84.1,
+            leadTimeScore: 100.0,
+            technicalScore: 90.0,
+            qualityScore: 88.0,
+            warrantyScore: 100.0,
+            overallTcoScore: 88.1,
+            rank: 2,
+            isEliminated: false,
+          },
+          {
+            supplierId: 'supp-006',
+            supplierName: 'Fournisseur Généraliste Non Agréé',
+            totalAmountHT: 580000,
+            deliveryDays: 21,
+            costScore: 100.0,
+            leadTimeScore: 23.8,
+            technicalScore: 40.0,
+            qualityScore: 50.0,
+            warrantyScore: 33.3,
+            overallTcoScore: 0.0,
+            rank: 3,
+            isEliminated: true,
+            eliminationReason: 'ÉLIMINÉ : Certificat CCPU 3.1 EN 10204 obligatoire manquant',
+          },
+        ],
+        selectedSupplierId: 'supp-001',
+        selectedSupplierName: 'Batimetal Tuyauteries Algérie',
+        decisionJustification: 'Attribution motivée : Respect strict des exigences CND et délai garanti 7j',
+        status: 'APPROUVE_DG',
+        dgVisaSignature: 'VISA-DG-TCO-2026-9812-OK',
+        dgApprovedAt: '2026-10-25T15:30:00.000Z',
+      },
+    ];
+
+    // 8. Bon de Commande (BC) issu du TCO
+    this.purchaseOrders = [
+      {
+        id: 'po-001',
+        code: 'BC-2026-001',
+        poNumber: 'BC-2026-001',
+        purchaseRequestId: 'pr-da-2026-001',
+        purchaseRequestCode: 'DA-2026-001',
+        rfqReference: 'RFQ-2026-001',
+        supplierId: 'supp-001',
+        supplierName: 'Batimetal Tuyauteries Algérie',
+        supplierCode: 'FOURN-001',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+        status: 'CONFIRMED',
+        totalHT: 640000,
+        vatAmount: 121600,
+        totalTTC: 761600,
+        deliveryLeadTimeDays: 7,
+        paymentTerms: '30 jours fin de mois après réception conforme',
+        deliveryLocation: 'Zone Industrielle Skikda RA1K',
+        items: [
+          {
+            itemId: 'itm-002',
+            itemCode: 'ART-TUY-002',
+            description: 'Coude 90° LR acier carbone DN150 ASTM A234 WPB',
+            quantity: 20,
+            receivedQuantity: 16, // Réception partielle
+            remainingQuantity: 4,
+            unit: 'U',
+            unitPrice: 14000,
+            totalPrice: 280000,
+          },
+          {
+            itemId: 'itm-003',
+            itemCode: 'ART-TUY-003',
+            description: 'Bride à collerette Welding Neck Class 300 DN150',
+            quantity: 16,
+            receivedQuantity: 16, // Réception complète
+            remainingQuantity: 0,
+            unit: 'U',
+            unitPrice: 22500,
+            totalPrice: 360000,
+          },
+        ],
+        issuedAt: '2026-10-26T09:00:00.000Z',
+        createdAt: '2026-10-26T09:00:00.000Z',
+      },
+    ];
+
+    // 9. Bon de Réception (BR) avec contrôle qualité
+    this.goodsReceipts = [
+      {
+        id: 'br-001',
+        receiptNumber: 'BR-2026-001',
+        purchaseOrderId: 'po-001',
+        purchaseOrderCode: 'BC-2026-001',
+        supplierId: 'supp-001',
+        supplierName: 'Batimetal Tuyauteries Algérie',
+        deliveryNoteNumber: 'BL-BATIMETAL-8891',
+        receiptDate: '2026-11-02',
+        warehouseId: 'wh-002',
+        warehouseName: 'Dépôt Régional Skikda RA1K',
+        receiverName: 'Yacine Khelifi (Superviseur Logistique)',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        status: 'PARTIEL',
+        qualityInspection: {
+          inspectorName: 'Nadia Chaib (Resp. QHSE)',
+          inspectionDate: '2026-11-02T14:00:00.000Z',
+          overallStatus: 'CONFORME',
+          ccpuVerified: true,
+          cndReportAttached: true,
+          observations: 'Contrôle dimensionnel conforme. Clichés radio et certificats de coulée vérifiés conformes.',
+        },
+        lines: [
+          {
+            id: 'brl-01',
+            itemId: 'itm-002',
+            itemCode: 'ART-TUY-002',
+            description: 'Coude 90° LR acier carbone DN150 ASTM A234 WPB',
+            orderedQuantity: 20,
+            previouslyReceivedQuantity: 0,
+            deliveredQuantity: 16,
+            acceptedQuantity: 16,
+            rejectedQuantity: 0,
+            remainingQuantity: 4,
+            unit: 'U',
+            unitPriceHT: 14000,
+          },
+          {
+            id: 'brl-02',
+            itemId: 'itm-003',
+            itemCode: 'ART-TUY-003',
+            description: 'Bride à collerette Welding Neck Class 300 DN150',
+            orderedQuantity: 16,
+            previouslyReceivedQuantity: 0,
+            deliveredQuantity: 16,
+            acceptedQuantity: 16,
+            rejectedQuantity: 0,
+            remainingQuantity: 0,
+            unit: 'U',
+            unitPriceHT: 22500,
+          },
+        ],
+        totalAcceptedAmountHT: 584000,
+        createdAt: '2026-11-02T15:00:00.000Z',
+      },
+    ];
+
+    // 10. Contrats Fournisseurs
+    this.supplierContracts = [
+      {
+        id: 'ctr-001',
+        contractNumber: 'CTR-FOU-2026-001',
+        supplierId: 'supp-001',
+        supplierName: 'Batimetal Tuyauteries Algérie',
+        title: 'Contrat-Cadre de Fourniture de Tuyauteries Hautes Pressions et Raccords Spéciaux',
+        contractType: 'FOURNITURE_CADRE',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        totalAmountHT: 18500000,
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+        paymentTerms: 'Règlement à 30 jours fin de mois avec retenue de garantie 5%',
+        retentionGuaranteePercent: 5,
+        penaltiesTerms: '1% par semaine de retard plafonné à 10%',
+        status: 'ACTIF',
+        signedBySilex: 'Amine Benali (Directeur Général)',
+        signedBySupplier: 'Mohamed Brahimi (Directeur Commercial Batimetal)',
+        documents: [
+          { name: 'Convention_Cadre_Batimetal_2026_Signee.pdf', uploadedAt: '2026-01-02T10:00:00.000Z' },
+          { name: 'Bareme_Prix_Unitaires_2026.pdf', uploadedAt: '2026-01-02T10:00:00.000Z' },
+        ],
+        createdAt: '2026-01-02T08:00:00.000Z',
+      },
+      {
+        id: 'ctr-002',
+        contractNumber: 'CTR-FOU-2026-002',
+        supplierId: 'supp-005',
+        supplierName: 'Contrôle Industriel CND Algérie (Bureau Veritas Partenaire)',
+        title: 'Contrat de Sous-Traitance Contrôles Non Destructifs et Tirs Radiographiques',
+        contractType: 'SOUS_TRAITANCE_CND',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        totalAmountHT: 4800000,
+        startDate: '2026-10-01',
+        endDate: '2026-12-31',
+        paymentTerms: 'À présentation du rapport contradictoire agréé',
+        retentionGuaranteePercent: 0,
+        penaltiesTerms: 'Intervention sous 24h sur site exigée',
+        status: 'ACTIF',
+        signedBySilex: 'Karim Mansouri (Chef de Projets)',
+        signedBySupplier: 'Abdelkader Mezouar (Gérant)',
+        documents: [
+          { name: 'Contrat_CND_Skikda_2026.pdf', uploadedAt: '2026-10-01T14:00:00.000Z' },
+        ],
+        createdAt: '2026-10-01T09:00:00.000Z',
+      },
+    ];
+
+    // 11. Inventaires Physiques
+    this.physicalInventories = [
+      {
+        id: 'inv-001',
+        inventoryNumber: 'INV-2026-001',
+        warehouseId: 'wh-001',
+        warehouseName: 'Magasin Central Arzew & Base Logistique',
+        inventoryDate: '2026-06-30',
+        responsibleName: 'Tarek Meziani (Gestionnaire Magasin)',
+        status: 'CLOTURE',
+        itemsCounted: [
+          {
+            itemId: 'itm-001',
+            itemCode: 'ART-TUY-001',
+            itemName: 'Tube acier carbone sans soudure Sch 40 DN150',
+            unit: 'ml',
+            unitCostDA: 18500,
+            theoreticalStock: 180,
+            physicalCount: 182,
+            discrepancyQuantity: 2,
+            discrepancyValueDA: 37000,
+            discrepancyReason: 'Surplus suite à reliquat d\'un chantier restitué sans bon de retour immédiat',
+          },
+          {
+            itemId: 'itm-005',
+            itemCode: 'ART-SOU-001',
+            itemName: 'Électrodes basiques E7018 diam 3.2mm',
+            unit: 'kg',
+            unitCostDA: 1200,
+            theoreticalStock: 450,
+            physicalCount: 450,
+            discrepancyQuantity: 0,
+            discrepancyValueDA: 0,
+            discrepancyReason: 'Stock parfaitement conforme',
+          },
+        ],
+        totalTheoreticalValueDA: 3870000,
+        totalPhysicalValueDA: 3907000,
+        totalVarianceValueDA: 37000,
+        dgApprovedAt: '2026-07-02T10:00:00.000Z',
+        dgApprovedBy: 'Amine Benali (DG)',
+        adjustmentMovementReferences: ['MVT-AJUST-2026-001'],
+        createdAt: '2026-06-30T17:00:00.000Z',
+      },
+    ];
+
+    // 12. Évaluations Fournisseurs
+    this.supplierEvaluations = [
+      {
+        id: 'eval-001',
+        evaluationNumber: 'EVAL-2026-001',
+        supplierId: 'supp-001',
+        supplierName: 'Batimetal Tuyauteries Algérie',
+        period: 'T3-2026',
+        evaluatorName: 'Farouk Brahimi',
+        evaluatorRole: 'Responsable Achats & Supply Chain',
+        evaluationDate: '2026-10-30',
+        scores: {
+          deliveryPunctuality: 28,  // /30
+          qualityCompliance: 29,    // /30
+          quantityAccuracy: 15,     // /15
+          responsiveness: 14,       // /15
+          commercialPricing: 8,     // /10
+        },
+        totalScore: 94,
+        starRating: 5,
+        classification: 'STRATEGIQUE_A',
+        comments: 'Fournisseur d\'excellence. Zéro défaut sur les certificats CCPU 3.1. Livraison anticipée de 24h sur le chantier RA1K.',
+        recommendedAction: 'DEVELOPPEMENT',
+        createdAt: '2026-10-30T16:00:00.000Z',
+      },
+    ];
+  }
+
+  // ============================================================================
+  // MÉTHODES EXPRESSIONS DE BESOIN (EB)
+  // ============================================================================
+
+  getNeedRequests(projectId?: string): StoredNeedRequest[] {
+    if (projectId) {
+      return this.needRequests.filter(eb => eb.projectId === projectId || eb.projectCode === projectId);
+    }
+    return this.needRequests;
+  }
+
+  getNeedRequest(idOrRef: string): StoredNeedRequest | undefined {
+    return this.needRequests.find(eb => eb.id === idOrRef || eb.reference === idOrRef);
+  }
+
+  createNeedRequest(data: any, user?: any): StoredNeedRequest {
+    const project = data.projectId ? this.getProject(data.projectId) : undefined;
+    const ebNum = String(this.needRequests.length + 1).padStart(3, '0');
+    const ebRef = "EB-" + new Date().getFullYear() + "-" + ebNum;
+
+    const newEb: StoredNeedRequest = {
+      id: "eb-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+      reference: ebRef,
+      projectId: project?.id || data.projectId,
+      projectCode: project?.code || data.projectCode,
+      projectName: project?.name || data.projectName || 'Chantier Industriel SILEX',
+      siteLocation: project?.siteLocation || data.siteLocation || 'Site d\'intervention',
+      requesterId: user?.id || 'usr-rp-001',
+      requesterName: user?.name || data.requesterName || 'Chef de Chantier',
+      requesterRole: user?.role || 'RESPONSABLE_PROJET',
+      department: user?.departmentCode || 'OPERATIONS_PROJETS',
+      title: data.title || 'Besoin matériel chantier',
+      justification: data.justification || '',
+      category: data.category || 'TUYAUTERIE',
+      priority: data.priority || 'NORMALE',
+      desiredDate: data.desiredDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+      status: 'SOUMISE',
+      items: Array.isArray(data.items) ? data.items.map((it: any, idx: number) => ({
+        id: "ebl-" + Date.now() + "-" + idx,
+        itemId: it.itemId,
+        itemCode: it.itemCode,
+        description: it.description || 'Fourniture industrielle',
+        quantity: Number(it.quantity) || 1,
+        unit: it.unit || 'U',
+        estimatedUnitPrice: Number(it.estimatedUnitPrice) || 0,
+        resourceType: it.resourceType || 'ARTICLE_STOCKABLE',
+        technicalSpecs: it.technicalSpecs || '',
+      })) : [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.needRequests.unshift(newEb);
+    this.addAuditLog('CREATE_NEED_REQUEST', 'PROCUREMENT', ebRef, 'Expression de besoin ' + ebRef + ' créée pour ' + newEb.projectName, user);
+    return newEb;
+  }
+
+  validateNeedRequest(id: string, user?: any): StoredNeedRequest {
+    const eb = this.getNeedRequest(id);
+    if (!eb) throw new Error('Expression de besoin introuvable');
+    eb.status = 'VALIDEE';
+    eb.validatorName = user?.name || 'Responsable Achats';
+    eb.validationDate = new Date().toISOString();
+    eb.updatedAt = new Date().toISOString();
+    this.addAuditLog('VALIDATE_NEED_REQUEST', 'PROCUREMENT', eb.reference, 'EB ' + eb.reference + ' validée par les Achats', user);
+    return eb;
+  }
+
+  convertNeedRequestToPR(id: string, user?: any): { needRequest: StoredNeedRequest; purchaseRequest: any } {
+    const eb = this.getNeedRequest(id);
+    if (!eb) throw new Error('Expression de besoin introuvable');
+
+    const totalHT = eb.items.reduce((sum, it) => sum + (it.quantity * (it.estimatedUnitPrice || 0)), 0);
+    const prData = {
+      projectId: eb.projectId,
+      projectCode: eb.projectCode,
+      category: eb.category,
+      urgency: eb.priority === 'CRITIQUE' ? 'URGENT' : (eb.priority === 'URGENTE' ? 'HIGH' : 'NORMAL'),
+      desiredDeliveryDate: eb.desiredDate,
+      deliveryLocation: eb.siteLocation,
+      totalHT,
+      vatRate: 19,
+      justification: "Issue de l'Expression de Besoin " + eb.reference + " : " + eb.justification,
+      items: eb.items.map(it => ({
+        itemId: it.itemId,
+        itemCode: it.itemCode,
+        description: it.description,
+        quantity: it.quantity,
+        unit: it.unit,
+        unitPrice: it.estimatedUnitPrice || 0,
+        totalPrice: it.quantity * (it.estimatedUnitPrice || 0),
+      })),
+    };
+
+    const pr = this.createPurchaseRequest(prData);
+    eb.status = 'CONVERTIE_EN_DA';
+    eb.convertedPrId = pr.id;
+    eb.convertedPrCode = pr.code;
+    eb.updatedAt = new Date().toISOString();
+
+    this.addAuditLog('CONVERT_EB_TO_DA', 'PROCUREMENT', eb.reference, 'EB ' + eb.reference + ' convertie en DA ' + pr.code, user);
+    return { needRequest: eb, purchaseRequest: pr };
+  }
+
+  // ============================================================================
+  // MÉTHODES CONSULTATIONS RFQ & COMPARATEUR TCO MULTICRITÈRES
+  // ============================================================================
+
+  getRfqConsultations(): StoredRfqConsultation[] {
+    return this.rfqConsultations;
+  }
+
+  getRfqConsultation(idOrRef: string): StoredRfqConsultation | undefined {
+    return this.rfqConsultations.find(r => r.id === idOrRef || r.reference === idOrRef);
+  }
+
+  createRfqConsultation(data: any, user?: any): StoredRfqConsultation {
+    const rfqNum = String(this.rfqConsultations.length + 1).padStart(3, '0');
+    const rfqRef = "RFQ-" + new Date().getFullYear() + "-" + rfqNum;
+
+    const newRfq: StoredRfqConsultation = {
+      id: "rfq-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+      reference: rfqRef,
+      title: data.title || ("Consultation Fournisseurs " + rfqRef),
+      purchaseRequestId: data.purchaseRequestId,
+      purchaseRequestCode: data.purchaseRequestCode || 'DA-2026',
+      projectId: data.projectId,
+      projectCode: data.projectCode,
+      projectName: data.projectName,
+      issueDate: data.issueDate || new Date().toISOString().split('T')[0],
+      closingDate: data.closingDate || new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
+      status: 'OUVERTE',
+      invitedSuppliers: Array.isArray(data.invitedSuppliers) ? data.invitedSuppliers : [],
+      items: Array.isArray(data.items) ? data.items : [],
+      offers: [],
+      createdAt: new Date().toISOString(),
+    };
+
+    this.rfqConsultations.unshift(newRfq);
+    this.addAuditLog('CREATE_RFQ', 'PROCUREMENT', rfqRef, 'Consultation ' + rfqRef + ' ouverte pour la DA ' + newRfq.purchaseRequestCode, user);
+    return newRfq;
+  }
+
+  addOfferToRfq(rfqId: string, offerData: any, user?: any): StoredRfqOffer {
+    const rfq = this.getRfqConsultation(rfqId);
+    if (!rfq) throw new Error('Consultation RFQ introuvable');
+
+    const supplier = this.suppliers.find(s => s.id === offerData.supplierId || s.code === offerData.supplierId);
+
+    // Vérification critère éliminatoire (ex: CCPU 3.1 obligatoire)
+    const isEliminated = this.tcoConfig.mandatoryCcpuRequired && !offerData.certificationsProvided?.ccpu31;
+    const eliminationReason = isEliminated ? 'ÉLIMINÉ : Certificat matière CCPU 3.1 EN 10204 obligatoire manquant' : undefined;
+
+    const offer: StoredRfqOffer = {
+      id: "off-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+      supplierId: supplier?.id || offerData.supplierId,
+      supplierCode: supplier?.code || offerData.supplierCode || 'FOURN',
+      supplierName: supplier?.name || offerData.supplierName || 'Fournisseur Candidat',
+      unitPriceHT: Number(offerData.unitPriceHT) || 0,
+      totalPriceHT: Number(offerData.totalPriceHT) || 0,
+      deliveryLeadTimeDays: Number(offerData.deliveryLeadTimeDays) || 7,
+      paymentTerms: offerData.paymentTerms || '30 jours fin de mois',
+      warrantyMonths: Number(offerData.warrantyMonths) || 12,
+      certificationsProvided: {
+        ccpu31: !!offerData.certificationsProvided?.ccpu31,
+        cndReport: !!offerData.certificationsProvided?.cndReport,
+        coc: !!offerData.certificationsProvided?.coc,
+        atex: !!offerData.certificationsProvided?.atex,
+      },
+      technicalComplianceRating: Number(offerData.technicalComplianceRating) || 85,
+      qualityRating: Number(offerData.qualityRating) || 85,
+      notes: offerData.notes || '',
+      submittedAt: new Date().toISOString(),
+      isEliminated,
+      eliminationReason,
+    };
+
+    rfq.offers.push(offer);
+    if (rfq.status === 'OUVERTE') rfq.status = 'OFFRES_RECUES';
+
+    this.addAuditLog('ADD_RFQ_OFFER', 'PROCUREMENT', rfq.reference, 'Offre reçue de ' + offer.supplierName + ' (' + offer.totalPriceHT.toLocaleString() + ' DA HT)', user);
+    return offer;
+  }
+
+  calculateTcoComparison(rfqId: string, customConfig?: Partial<TcoCriteriaConfig>, user?: any): StoredTcoComparison {
+    const rfq = this.getRfqConsultation(rfqId);
+    if (!rfq) throw new Error('Consultation RFQ introuvable');
+    if (rfq.offers.length === 0) throw new Error('Aucune offre enregistrée sur cette consultation');
+
+    const config: TcoCriteriaConfig = {
+      ...this.tcoConfig,
+      ...(customConfig || {}),
+    };
+
+    const validOffers = rfq.offers.filter(o => !o.isEliminated);
+    const minPrice = validOffers.length > 0 ? Math.min(...validOffers.map(o => o.totalPriceHT)) : 1;
+    const minDays = validOffers.length > 0 ? Math.min(...validOffers.map(o => o.deliveryLeadTimeDays)) : 1;
+
+    const supplierScores = rfq.offers.map(offer => {
+      if (offer.isEliminated) {
+        return {
+          supplierId: offer.supplierId,
+          supplierName: offer.supplierName,
+          totalAmountHT: offer.totalPriceHT,
+          deliveryDays: offer.deliveryLeadTimeDays,
+          costScore: 0,
+          leadTimeScore: 0,
+          technicalScore: 0,
+          qualityScore: 0,
+          warrantyScore: 0,
+          overallTcoScore: 0,
+          rank: 99,
+          isEliminated: true,
+          eliminationReason: offer.eliminationReason,
+        };
+      }
+
+      // Normalisation directionnelle :
+      // - Coût : à minimiser (minPrice / Price * 100)
+      const costScore = Math.round((minPrice / offer.totalPriceHT) * 100 * 10) / 10;
+      // - Délais : à minimiser (minDays / Days * 100)
+      const leadTimeScore = Math.round((minDays / offer.deliveryLeadTimeDays) * 100 * 10) / 10;
+      // - Technique, Qualité, Garantie : à maximiser
+      const technicalScore = Math.min(100, Math.max(0, offer.technicalComplianceRating));
+      const qualityScore = Math.min(100, Math.max(0, offer.qualityRating));
+      const warrantyScore = Math.min(100, Math.round((offer.warrantyMonths / 18) * 100));
+
+      const overallTcoScore = Math.round((
+        (costScore * config.costWeight) +
+        (technicalScore * config.technicalWeight) +
+        (leadTimeScore * config.leadTimeWeight) +
+        (qualityScore * config.qualityWeight) +
+        (warrantyScore * config.warrantyWeight)
+      ) / 100 * 10) / 10;
+
+      offer.tcoScore = overallTcoScore;
+
+      return {
+        supplierId: offer.supplierId,
+        supplierName: offer.supplierName,
+        totalAmountHT: offer.totalPriceHT,
+        deliveryDays: offer.deliveryLeadTimeDays,
+        costScore,
+        leadTimeScore,
+        technicalScore,
+        qualityScore,
+        warrantyScore,
+        overallTcoScore,
+        rank: 1, // assigné après tri
+        isEliminated: false,
+      };
+    });
+
+    // Classement des offres non éliminées
+    const sorted = supplierScores
+      .filter(s => !s.isEliminated)
+      .sort((a, b) => b.overallTcoScore - a.overallTcoScore);
+
+    sorted.forEach((item, idx) => { item.rank = idx + 1; });
+
+    const selected = sorted[0];
+
+    const comparison: StoredTcoComparison = {
+      id: "tco-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+      rfqId: rfq.id,
+      rfqReference: rfq.reference,
+      purchaseRequestCode: rfq.purchaseRequestCode,
+      projectName: rfq.projectName,
+      evaluationDate: new Date().toISOString().split('T')[0],
+      evaluatedByName: user?.name || 'Responsable Achats',
+      criteriaConfig: config,
+      supplierScores,
+      selectedSupplierId: selected?.supplierId,
+      selectedSupplierName: selected?.supplierName,
+      decisionJustification: selected
+        ? ("Meilleur score TCO global (" + selected.overallTcoScore + "/100) après élimination des offres non conformes.")
+        : 'Aucune offre conforme',
+      status: 'VALIDE_ACHATS',
+    };
+
+    this.tcoComparisons.unshift(comparison);
+    rfq.status = 'EVALUEE';
+    rfq.selectedSupplierId = comparison.selectedSupplierId;
+    rfq.selectedSupplierName = comparison.selectedSupplierName;
+    rfq.selectionJustification = comparison.decisionJustification;
+    rfq.selectedAt = new Date().toISOString();
+
+    this.addAuditLog('EVALUATE_TCO', 'PROCUREMENT', rfq.reference, 'Comparateur TCO calculé pour ' + rfq.reference + '. 1er: ' + selected?.supplierName + ' (' + selected?.overallTcoScore + '/100)', user);
+    return comparison;
+  }
+
+  approveTcoDG(tcoId: string, notes?: string, user?: any): StoredTcoComparison {
+    const tco = this.tcoComparisons.find(t => t.id === tcoId);
+    if (!tco) throw new Error('Évaluation TCO introuvable');
+
+    tco.status = 'APPROUVE_DG';
+    tco.dgVisaSignature = "VISA-DG-TCO-" + Date.now() + "-APPROVED";
+    tco.dgApprovedAt = new Date().toISOString();
+    if (notes) tco.decisionJustification += ' | Note DG: ' + notes;
+
+    const rfq = this.getRfqConsultation(tco.rfqId);
+    if (rfq) rfq.status = 'CLOTUREE';
+
+    this.addAuditLog('APPROVE_TCO_DG', 'PROCUREMENT', tco.rfqReference, 'Sélection TCO approuvée par la DG pour ' + tco.selectedSupplierName, user);
+    return tco;
+  }
+
+  // ============================================================================
+  // MÉTHODES BONS DE COMMANDE (BC) & GESTION DES ENGAGEMENTS
+  // ============================================================================
+
+  createPurchaseOrderFromTco(tcoId: string, user?: any) {
+    const tco = this.tcoComparisons.find(t => t.id === tcoId);
+    if (!tco) throw new Error('Évaluation TCO introuvable');
+    if (tco.status !== 'APPROUVE_DG' && tco.status !== 'VALIDE_ACHATS') {
+      throw new Error('L\'évaluation TCO doit être validée avant émission du bon de commande');
+    }
+
+    const rfq = this.getRfqConsultation(tco.rfqId);
+    const winningOffer = rfq?.offers.find(o => o.supplierId === tco.selectedSupplierId);
+    const pr = this.getPurchaseRequest(tco.purchaseRequestCode);
+
+    const poCode = "BC-" + new Date().getFullYear() + "-" + String(this.purchaseOrders.length + 1).padStart(4, '0');
+    const totalHT = winningOffer ? winningOffer.totalPriceHT : (pr?.amountHT || 500000);
+    const vatAmount = totalHT * 0.19;
+    const totalTTC = totalHT + vatAmount;
+
+    const po = {
+      id: "po-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+      code: poCode,
+      poNumber: poCode,
+      purchaseRequestId: pr?.id,
+      purchaseRequestCode: tco.purchaseRequestCode,
+      rfqReference: tco.rfqReference,
+      tcoId: tco.id,
+      supplierId: tco.selectedSupplierId,
+      supplierName: tco.selectedSupplierName,
+      projectId: pr?.projectId,
+      projectCode: pr?.projectCode,
+      projectName: pr?.projectName,
+      status: 'CONFIRMED',
+      totalHT,
+      vatAmount,
+      totalTTC,
+      deliveryLeadTimeDays: winningOffer?.deliveryLeadTimeDays || 7,
+      paymentTerms: winningOffer?.paymentTerms || '30 jours fin de mois',
+      deliveryLocation: pr?.deliveryLocation || 'Magasin Central Arzew',
+      items: pr?.items ? pr.items.map((it: any) => ({
+        ...it,
+        receivedQuantity: 0,
+        remainingQuantity: it.quantity,
+      })) : [],
+      issuedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    };
+
+    this.purchaseOrders.unshift(po);
+
+    // RÈGLE FINANCIÈRE STRICTE : L'engagement budgétaire intervient lors de l'approbation du BC
+    if (pr?.projectCode) {
+      const project = this.getProject(pr.projectCode);
+      if (project) {
+        project.committedBudget = (project.committedBudget || 0) + totalHT;
+      }
+    }
+
+    if (pr) pr.status = 'PO_GENERATED';
+
+    this.addAuditLog('CREATE_PO_FROM_TCO', 'PROCUREMENT', poCode, 'Bon de commande ' + poCode + ' émis à ' + po.supplierName + ' (' + totalHT.toLocaleString() + ' DA HT). Budget engagé actualisé.', user);
+    return po;
+  }
+
+  // ============================================================================
+  // MÉTHODES BONS DE RÉCEPTION (BR) AVEC RÉCEPTIONS PARTIELLES & QUALITÉ
+  // ============================================================================
+
+  getGoodsReceipts(poCodeOrId?: string): StoredGoodsReceipt[] {
+    if (poCodeOrId) {
+      return this.goodsReceipts.filter(br => br.purchaseOrderId === poCodeOrId || br.purchaseOrderCode === poCodeOrId);
+    }
+    return this.goodsReceipts;
+  }
+
+  recordGoodsReceipt(data: any, user?: any): StoredGoodsReceipt {
+    const po = this.purchaseOrders.find(p => p.id === data.purchaseOrderId || p.id === data.orderId || p.code === data.purchaseOrderCode || p.code === data.orderCode || p.poNumber === data.purchaseOrderCode || p.poNumber === data.orderCode);
+    if (!po) throw new Error('Bon de commande introuvable pour cette réception');
+
+    const brNum = String(this.goodsReceipts.length + 1).padStart(3, '0');
+    const brRef = "BR-" + new Date().getFullYear() + "-" + brNum;
+    const warehouse = this.warehouses.find(w => w.id === data.warehouseId || w.code === data.warehouseId) || this.warehouses[0];
+
+    let totalAcceptedAmountHT = 0;
+    let hasRemainingLines = false;
+
+    const rawLines = data.lines || data.items || [];
+    const processedLines = rawLines.map((line: any, idx: number) => {
+      const poLine = (po.items || []).find((it: any) => it.itemId === line.itemId || it.itemCode === line.itemCode) || (po.items || [])[idx];
+      const orderedQty = Number(poLine?.quantity || line.orderedQuantity || 0);
+      const previouslyReceived = Number(poLine?.receivedQuantity || 0);
+      const deliveredQty = Number(line.deliveredQuantity || line.receivedQuantity || 0);
+      const rejectedQty = Number(line.rejectedQuantity || 0);
+      const acceptedQty = Math.max(0, deliveredQty - rejectedQty);
+      const newRemaining = Math.max(0, orderedQty - (previouslyReceived + acceptedQty));
+
+      if (newRemaining > 0) hasRemainingLines = true;
+      const unitPrice = Number(poLine?.unitPrice || line.unitPriceHT || 0);
+      totalAcceptedAmountHT += acceptedQty * unitPrice;
+
+      // Mise à jour de la ligne du bon de commande
+      if (poLine) {
+        poLine.receivedQuantity = previouslyReceived + acceptedQty;
+        poLine.remainingQuantity = newRemaining;
+      }
+
+      // TRANSACTION DE STOCK : Incrémentation du stock physique UNIQUEMENT pour la quantité acceptée
+      if (acceptedQty > 0 && line.itemId) {
+        const item = this.inventoryItems.find(i => i.id === line.itemId || i.code === line.itemCode);
+        if (item) {
+          item.currentStock = (item.currentStock || 0) + acceptedQty;
+        }
+
+        // Création du mouvement de stock officiel
+        const mvtRef = "MVT-REC-" + Date.now() + "-" + idx;
+        this.stockMovements.unshift({
+          id: "sm-" + Date.now() + "-" + idx,
+          movementNumber: mvtRef,
+          type: 'PURCHASE_RECEIPT',
+          itemId: line.itemId,
+          itemCode: item?.code || line.itemCode || 'ART',
+          itemName: item?.name || line.description || 'Article réceptionné',
+          quantity: acceptedQty,
+          unit: item?.unit || line.unit || 'U',
+          warehouseId: warehouse?.id || 'wh-001',
+          warehouseName: warehouse?.name || 'Magasin Central',
+          projectId: po.projectId,
+          projectCode: po.projectCode,
+          documentRef: brRef,
+          batchNumber: line.batchNumber || data.deliveryNoteNumber || '',
+          performedByName: user?.name || 'Gestionnaire Magasin',
+          timestamp: new Date().toISOString(),
+        } as any);
+      }
+
+      return {
+        id: "brl-" + Date.now() + "-" + idx,
+        itemId: line.itemId,
+        itemCode: line.itemCode,
+        description: line.description || poLine?.description || 'Fourniture',
+        orderedQuantity: orderedQty,
+        previouslyReceivedQuantity: previouslyReceived,
+        deliveredQuantity: deliveredQty,
+        acceptedQuantity: acceptedQty,
+        rejectedQuantity: rejectedQty,
+        remainingQuantity: newRemaining,
+        rejectionReason: rejectedQty > 0 ? (line.rejectionReason || 'Non-conformité visuelle/dimensionnelle') : undefined,
+        unit: line.unit || poLine?.unit || 'U',
+        unitPriceHT: unitPrice,
+      };
+    });
+
+    const isComplete = !hasRemainingLines;
+    po.status = isComplete ? 'RECEIVED' : 'PARTIALLY_RECEIVED';
+
+    const newBr: StoredGoodsReceipt = {
+      id: "br-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+      receiptNumber: brRef,
+      purchaseOrderId: po.id,
+      purchaseOrderCode: po.code,
+      supplierId: po.supplierId,
+      supplierName: po.supplierName,
+      deliveryNoteNumber: data.deliveryNoteNumber || 'BL-FOURNISSEUR',
+      receiptDate: data.receiptDate || new Date().toISOString().split('T')[0],
+      warehouseId: warehouse?.id || 'wh-001',
+      warehouseName: warehouse?.name || 'Magasin Central',
+      receiverName: user?.name || data.receiverName || 'Magasinier Réceptionnaire',
+      projectId: po.projectId,
+      projectCode: po.projectCode,
+      status: isComplete ? 'COMPLET' : 'PARTIEL',
+      qualityInspection: {
+        inspectorName: data.inspectorName || user?.name || 'Superviseur Contrôle Qualité',
+        inspectionDate: new Date().toISOString(),
+        overallStatus: data.inspectionStatus || 'CONFORME',
+        ccpuVerified: !!data.ccpuVerified,
+        cndReportAttached: !!data.cndReportAttached,
+        observations: data.qualityObservations || 'Contrôle réception conforme aux spécifications contractuelles.',
+      },
+      lines: processedLines,
+      totalAcceptedAmountHT,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.goodsReceipts.unshift(newBr);
+    this.addAuditLog('RECORD_GOODS_RECEIPT', 'INVENTORY', brRef, 'Bon de réception ' + brRef + ' enregistré pour la commande ' + po.code + ' (Statut: ' + newBr.status + ')', user);
+    return newBr;
+  }
+
+  // ============================================================================
+  // MÉTHODES CONTRATS FOURNISSEURS
+  // ============================================================================
+
+  getSupplierContracts(supplierId?: string): StoredSupplierContract[] {
+    if (supplierId) {
+      return this.supplierContracts.filter(c => c.supplierId === supplierId);
+    }
+    return this.supplierContracts;
+  }
+
+  createSupplierContract(data: any, user?: any): StoredSupplierContract {
+    const ctrNum = String(this.supplierContracts.length + 1).padStart(3, '0');
+    const ctrRef = "CTR-FOU-" + new Date().getFullYear() + "-" + ctrNum;
+
+    const contract: StoredSupplierContract = {
+      id: "ctr-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+      contractNumber: ctrRef,
+      supplierId: data.supplierId,
+      supplierName: data.supplierName,
+      title: data.title || 'Contrat Fournisseur Industriel',
+      contractType: data.contractType || 'FOURNITURE_CADRE',
+      projectId: data.projectId,
+      projectCode: data.projectCode,
+      totalAmountHT: Number(data.totalAmountHT) || 0,
+      startDate: data.startDate || new Date().toISOString().split('T')[0],
+      endDate: data.endDate || new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
+      paymentTerms: data.paymentTerms || '30 jours fin de mois',
+      retentionGuaranteePercent: Number(data.retentionGuaranteePercent) || 0,
+      penaltiesTerms: data.penaltiesTerms || '1% par semaine de retard',
+      status: 'ACTIF',
+      signedBySilex: data.signedBySilex || user?.name || 'Direction Générale SILEX',
+      signedBySupplier: data.signedBySupplier || 'Représentant Légal Fournisseur',
+      documents: Array.isArray(data.documents) ? data.documents : [],
+      createdAt: new Date().toISOString(),
+    };
+
+    this.supplierContracts.unshift(contract);
+    this.addAuditLog('CREATE_SUPPLIER_CONTRACT', 'PROCUREMENT', ctrRef, 'Contrat fournisseur ' + ctrRef + ' créé avec ' + contract.supplierName, user);
+    return contract;
+  }
+
+  // ============================================================================
+  // MÉTHODES INVENTAIRES PHYSIQUES & AJUSTEMENTS
+  // ============================================================================
+
+  getPhysicalInventories(warehouseId?: string): StoredPhysicalInventory[] {
+    if (warehouseId) {
+      return this.physicalInventories.filter(inv => inv.warehouseId === warehouseId);
+    }
+    return this.physicalInventories;
+  }
+
+  createPhysicalInventory(warehouseIdOrData: string | any, responsibleName?: string, user?: any): StoredPhysicalInventory {
+    const targetWhId = typeof warehouseIdOrData === 'object' ? warehouseIdOrData.warehouseId : warehouseIdOrData;
+    const targetResponsible = typeof warehouseIdOrData === 'object' ? (warehouseIdOrData.responsibleName || user?.name) : responsibleName;
+    const wh = this.warehouses.find(w => w.id === targetWhId || w.code === targetWhId) || this.warehouses[0];
+    const invNum = String(this.physicalInventories.length + 1).padStart(3, '0');
+    const invRef = "INV-" + new Date().getFullYear() + "-" + invNum;
+
+    const whItems = this.inventoryItems.filter(i => !i.warehouseId || i.warehouseId === wh?.id);
+    const countedItems = whItems.map(item => ({
+      itemId: item.id,
+      itemCode: item.code,
+      itemName: item.name,
+      unit: item.unit || 'U',
+      unitCostDA: item.unitCost || item.averageCostPrice || 1000,
+      theoreticalStock: item.currentStock || 0,
+      physicalCount: item.currentStock || 0,
+      discrepancyQuantity: 0,
+      discrepancyValueDA: 0,
+      discrepancyReason: '',
+    }));
+
+    const totalTheo = countedItems.reduce((acc, it) => acc + (it.theoreticalStock * it.unitCostDA), 0);
+
+    const inv: StoredPhysicalInventory = {
+      id: "inv-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+      inventoryNumber: invRef,
+      warehouseId: wh?.id || 'wh-001',
+      warehouseName: wh?.name || 'Magasin Central',
+      inventoryDate: new Date().toISOString().split('T')[0],
+      responsibleName: responsibleName || user?.name || 'Gestionnaire Magasin',
+      status: 'EN_COMPTAGE',
+      itemsCounted: countedItems,
+      totalTheoreticalValueDA: totalTheo,
+      totalPhysicalValueDA: totalTheo,
+      totalVarianceValueDA: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.physicalInventories.unshift(inv);
+    this.addAuditLog('CREATE_PHYSICAL_INVENTORY', 'INVENTORY', invRef, 'Session d\'inventaire ' + invRef + ' ouverte pour ' + inv.warehouseName, user);
+    return inv;
+  }
+
+  submitInventoryCount(invId: string, counts: Array<{ itemId: string; physicalCount: number; reason?: string }>, user?: any): StoredPhysicalInventory {
+    const inv = this.physicalInventories.find(i => i.id === invId);
+    if (!inv) throw new Error('Session d\'inventaire introuvable');
+
+    let totalPhysical = 0;
+    let totalVariance = 0;
+
+    inv.itemsCounted.forEach(item => {
+      const countedEntry = counts.find(c => c.itemId === item.itemId);
+      if (countedEntry !== undefined) {
+        item.physicalCount = Number(countedEntry.physicalCount);
+        item.discrepancyQuantity = item.physicalCount - item.theoreticalStock;
+        item.discrepancyValueDA = item.discrepancyQuantity * item.unitCostDA;
+        if (countedEntry.reason) item.discrepancyReason = countedEntry.reason;
+      }
+      totalPhysical += item.physicalCount * item.unitCostDA;
+      totalVariance += item.discrepancyValueDA;
+    });
+
+    inv.totalPhysicalValueDA = totalPhysical;
+    inv.totalVarianceValueDA = totalVariance;
+    inv.status = 'EN_VALIDATION_DG';
+
+    this.addAuditLog('SUBMIT_INVENTORY_COUNT', 'INVENTORY', inv.inventoryNumber, 'Comptage d\'inventaire ' + inv.inventoryNumber + ' soumis. Écart global : ' + totalVariance.toLocaleString() + ' DA', user);
+    return inv;
+  }
+
+  validateAndAdjustInventoryDG(invId: string, user?: any): StoredPhysicalInventory {
+    const inv = this.physicalInventories.find(i => i.id === invId);
+    if (!inv) throw new Error('Session d\'inventaire introuvable');
+
+    const mvtRefs: string[] = [];
+
+    // Régularisation autorisée : création des mouvements d'ajustement
+    inv.itemsCounted.forEach(itemEntry => {
+      if (itemEntry.discrepancyQuantity !== 0) {
+        const item = this.inventoryItems.find(i => i.id === itemEntry.itemId);
+        if (item) {
+          item.currentStock = itemEntry.physicalCount; // Alignement physique
+        }
+
+        const mvtRef = "MVT-AJUST-" + inv.inventoryNumber + "-" + itemEntry.itemCode;
+        mvtRefs.push(mvtRef);
+
+        this.stockMovements.unshift({
+          id: "sm-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+          movementNumber: mvtRef,
+          type: 'INVENTORY_ADJUSTMENT',
+          itemId: itemEntry.itemId,
+          itemCode: itemEntry.itemCode,
+          itemName: itemEntry.itemName,
+          quantity: Math.abs(itemEntry.discrepancyQuantity),
+          unit: itemEntry.unit,
+          warehouseId: inv.warehouseId,
+          warehouseName: inv.warehouseName,
+          documentRef: inv.inventoryNumber,
+          reason: itemEntry.discrepancyReason || ('Régularisation inventaire annuel ' + inv.inventoryNumber),
+          performedByName: user?.name || 'Direction Générale (Validation)',
+          timestamp: new Date().toISOString(),
+        } as any);
+      }
+    });
+
+    inv.status = 'CLOTURE';
+    inv.dgApprovedAt = new Date().toISOString();
+    inv.dgApprovedBy = user?.name || 'Directeur Général SILEX';
+    inv.adjustmentMovementReferences = mvtRefs;
+
+    this.addAuditLog('APPROVE_INVENTORY_DG', 'INVENTORY', inv.inventoryNumber, 'Inventaire ' + inv.inventoryNumber + ' validé et stocks réalignés par la DG', user);
+    return inv;
+  }
+
+  // ============================================================================
+  // MÉTHODES ÉVALUATION FOURNISSEURS
+  // ============================================================================
+
+  getSupplierEvaluations(supplierId?: string): StoredSupplierEvaluation[] {
+    if (supplierId) {
+      return this.supplierEvaluations.filter(e => e.supplierId === supplierId);
+    }
+    return this.supplierEvaluations;
+  }
+
+  recordSupplierEvaluation(data: any, user?: any): StoredSupplierEvaluation {
+    const supplier = this.suppliers.find(s => s.id === data.supplierId || s.code === data.supplierId);
+    if (!supplier) throw new Error('Fournisseur introuvable');
+
+    const evalNum = String(this.supplierEvaluations.length + 1).padStart(3, '0');
+    const evalRef = "EVAL-" + new Date().getFullYear() + "-" + evalNum;
+
+    let punctuality = 25;
+    let quality = 25;
+    let quantity = 12;
+    let response = 12;
+    let pricing = 8;
+    let totalScore = 0;
+
+    if (data.qualityScore !== undefined || data.deliveryScore !== undefined) {
+      const q = Number(data.qualityScore || 80);
+      const d = Number(data.deliveryScore || 80);
+      const p = Number(data.priceCompetitivenessScore || 80);
+      const r = Number(data.responsivenessScore || 80);
+      totalScore = Math.round(q * 0.35 + d * 0.30 + p * 0.20 + r * 0.15);
+      quality = Math.round(q * 0.35);
+      punctuality = Math.round(d * 0.30);
+      pricing = Math.round(p * 0.20);
+      response = Math.round(r * 0.15);
+      quantity = 0;
+    } else {
+      punctuality = Number(data.scores?.deliveryPunctuality || 25);
+      quality = Number(data.scores?.qualityCompliance || 25);
+      quantity = Number(data.scores?.quantityAccuracy || 12);
+      response = Number(data.scores?.responsiveness || 12);
+      pricing = Number(data.scores?.commercialPricing || 8);
+      totalScore = Math.min(100, punctuality + quality + quantity + response + pricing);
+    }
+    const starRating = Math.max(1, Math.min(5, Math.round(totalScore / 20)));
+
+    let classification: StoredSupplierEvaluation['classification'] = 'QUALIFIE_B';
+    if (totalScore >= 90) classification = 'STRATEGIQUE_A';
+    else if (totalScore < 70 && totalScore >= 50) classification = 'SOUS_VIGILANCE_C';
+    else if (totalScore < 50) classification = 'SUSPENDU_D';
+
+    // Mise à jour de la note globale du fournisseur
+    supplier.rating = starRating;
+    if (classification === 'SUSPENDU_D') supplier.status = 'SUSPENDU';
+
+    const evaluation: StoredSupplierEvaluation = {
+      id: "eval-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+      evaluationNumber: evalRef,
+      supplierId: supplier.id,
+      supplierName: supplier.name,
+      period: data.period || 'T3-2026',
+      evaluatorName: user?.name || data.evaluatorName || 'Responsable Achats & Supply Chain',
+      evaluatorRole: user?.role || 'RESPONSABLE_ACHATS',
+      evaluationDate: new Date().toISOString().split('T')[0],
+      scores: {
+        deliveryPunctuality: punctuality,
+        qualityCompliance: quality,
+        quantityAccuracy: quantity,
+        responsiveness: response,
+        commercialPricing: pricing,
+      },
+      totalScore,
+      starRating,
+      classification,
+      comments: data.comments || 'Évaluation périodique régulière',
+      recommendedAction: data.recommendedAction || (totalScore >= 80 ? 'DEVELOPPEMENT' : 'MAINTIEN'),
+      createdAt: new Date().toISOString(),
+    };
+
+    this.supplierEvaluations.unshift(evaluation);
+    this.addAuditLog('EVALUATE_SUPPLIER', 'PROCUREMENT', evalRef, 'Évaluation de ' + supplier.name + ' enregistrée (Score: ' + totalScore + '/100, Rang: ' + classification + ')', user);
+    return evaluation;
+  }
+
+  updateSupplierStatus(supplierId: string, status: 'ACTIF' | 'EN_EVALUATION' | 'SUSPENDU' | 'INACTIF', reason?: string, user?: any) {
+    const supplier = this.suppliers.find(s => s.id === supplierId || s.code === supplierId);
+    if (!supplier) throw new Error('Fournisseur introuvable');
+
+    supplier.status = status;
+    this.addAuditLog('UPDATE_SUPPLIER_STATUS', 'PROCUREMENT', supplier.code, 'Statut fournisseur ' + supplier.name + ' passé à ' + status + (reason ? (' (Motif: ' + reason + ')') : ''), user);
+    return supplier;
+  }
+
+  // ============================================================================
+  // MÉTHODES CONSOLIDATION KPIS ACHATS & STOCKS
+  // ============================================================================
+
+  getProcurementKpis() {
+    const totalRequests = this.purchaseRequests.length;
+    const pendingRequests = this.purchaseRequests.filter(r => r.status === 'PENDING' || r.status === 'SUBMITTED').length;
+    const approvedRequests = this.purchaseRequests.filter(r => r.status === 'APPROVED' || r.status === 'PO_GENERATED').length;
+    const openRfqs = this.rfqConsultations.filter(r => r.status === 'OUVERTE' || r.status === 'OFFRES_RECUES').length;
+    const totalOrders = this.purchaseOrders.length;
+    const totalOrderAmountHT = this.purchaseOrders.reduce((sum, po) => sum + (po.totalHT || 0), 0);
+    const activeSuppliers = this.suppliers.filter(s => s.status === 'ACTIF').length;
+    const avgEvaluationScore = this.supplierEvaluations.length > 0
+      ? Math.round(this.supplierEvaluations.reduce((sum, e) => sum + e.totalScore, 0) / this.supplierEvaluations.length)
+      : 88;
+
+    return {
+      totalRequests,
+      pendingRequests,
+      approvedRequests,
+      openRfqs,
+      totalOrders,
+      totalOrderAmountHT,
+      activeSuppliers,
+      avgEvaluationScore,
+    };
+  }
+
+  getInventoryKpis() {
+    const totalItems = this.inventoryItems.length;
+    const totalStockValueDA = this.inventoryItems.reduce((sum, it) => sum + ((it.currentStock || 0) * (it.unitCost || 0)), 0);
+    const underMinStockCount = this.inventoryItems.filter(it => (it.currentStock || 0) <= (it.minStock || 0)).length;
+    const totalWarehouses = this.warehouses.length;
+    const totalMovements = this.stockMovements.length;
+    const recentMovementsCount = this.stockMovements.slice(0, 10).length;
+
+    return {
+      totalItems,
+      totalStockValueDA,
+      underMinStockCount,
+      totalWarehouses,
+      totalMovements,
+      recentMovementsCount,
+    };
+  }
+
 
   recordProjectStockConsumption(codeOrId: string, data: any, user?: any) {
     const project = this.getProject(codeOrId);
