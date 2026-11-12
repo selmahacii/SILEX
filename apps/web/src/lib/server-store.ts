@@ -134,6 +134,197 @@ export interface ServerUser {
   permissions?: string[];
 }
 
+
+export interface StoredProjectTask {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  projectId: string;
+  milestoneId?: string;
+  assignedToId?: string;
+  assignedToName?: string;
+  team?: string;
+  plannedStartDate: string;
+  plannedEndDate: string;
+  actualStartDate?: string;
+  actualEndDate?: string;
+  estimatedHours: number;
+  actualHours: number;
+  priority: 'FAIBLE' | 'NORMALE' | 'ELEVEE' | 'CRITIQUE';
+  status: 'A_FAIRE' | 'EN_COURS' | 'EN_ATTENTE' | 'BLOQUEE' | 'TERMINEE' | 'ANNULEE';
+  progress: number;
+  dependencies: string[];
+  observations?: string;
+  isDelayed?: boolean;
+}
+
+export interface StoredContractItem {
+  id: string;
+  itemCode: string;
+  designation: string;
+  unit: string;
+  contractQty: number;
+  realizedQty: number;
+  validatedQty: number;
+  unitPrice: number;
+  weightPercentage: number;
+  progress: number;
+  dateMeasured?: string;
+  measuredBy?: string;
+  notes?: string;
+}
+
+export interface StoredDailyReport {
+  id: string;
+  reportNumber: string;
+  projectId: string;
+  projectCode: string;
+  projectName: string;
+  clientName: string;
+  siteLocation: string;
+  date: string;
+  weatherConditions: 'ENSOLEILLE' | 'VENTEUX' | 'PLUIE' | 'CHALEUR_EXTREME' | 'AUTRE';
+  siteCondition: string;
+  preparedById: string;
+  preparedByName: string;
+  verifiedById?: string;
+  verifiedByName?: string;
+  status: 'BROUILLON' | 'SOUMIS' | 'EN_REVUE' | 'VALIDE' | 'REJETE';
+  manpower: Array<{
+    trade: string;
+    plannedCount: number;
+    presentCount: number;
+    hoursWorked: number;
+    notes?: string;
+  }>;
+  activities: Array<{
+    id?: string;
+    designation: string;
+    taskId?: string;
+    plannedQty: number;
+    realizedQty: number;
+    unit: string;
+    workersCount: number;
+    hoursSpent: number;
+    observations: string;
+  }>;
+  equipmentUsed: Array<{
+    equipmentName: string;
+    quantity: number;
+    hoursUsed: number;
+    condition: 'BON' | 'MOYEN' | 'EN_PANNE';
+    notes?: string;
+  }>;
+  materialsConsumed: Array<{
+    itemId?: string;
+    designation: string;
+    quantity: number;
+    unit: string;
+    stockMovementRef?: string;
+    notes?: string;
+  }>;
+  incidents: Array<{
+    type: 'SECURITE' | 'TECHNIQUE' | 'QUALITE' | 'METEO' | 'AUTRE';
+    description: string;
+    severity: 'MINEURE' | 'MOYENNE' | 'GRAVE';
+    actionTaken: string;
+    time: string;
+    supervisor: string;
+  }>;
+  generalObservations?: string;
+  visaChantier?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoredSituationReport {
+  id: string;
+  reportNumber: string;
+  projectId: string;
+  projectCode: string;
+  projectName: string;
+  clientName: string;
+  periodStart: string;
+  periodEnd: string;
+  reportDate: string;
+  preparedByName: string;
+  physicalStatus: {
+    plannedProgress: number;
+    actualProgress: number;
+    completedTasksCount: number;
+    delayedTasksCount: number;
+    summary: string;
+  };
+  financialStatus: {
+    initialBudget: number;
+    revisedBudget: number;
+    committedCost: number;
+    actualCost: number;
+    billedAmount: number;
+    forecastAtCompletion: number;
+    budgetVariance: number;
+  };
+  logisticsStatus: {
+    criticalProcurementNeeds: string;
+    pendingOrdersCount: number;
+    stockAlertsCount: number;
+  };
+  hrStatus: {
+    mobilizedHeadcount: number;
+    totalHoursWorked: number;
+    absentCount: number;
+    additionalNeeds: string;
+  };
+  risksStatus: {
+    openConstraintsCount: number;
+    criticalRisksSummary: string;
+    correctiveActions: any[];
+  };
+  generalAppraisal: string;
+  createdAt: string;
+}
+
+export interface StoredProjectConstraint {
+  id: string;
+  reference: string;
+  projectId: string;
+  projectCode: string;
+  dateDetected: string;
+  type: 'TECHNIQUE' | 'APPROVISIONNEMENT' | 'RH' | 'FINANCIER' | 'PLANNING' | 'CONTRACTUEL' | 'QUALITE' | 'SECURITE' | 'METEO';
+  description: string;
+  impact: string;
+  severity: 'FAIBLE' | 'MOYENNE' | 'ELEVEE' | 'BLOQUANTE';
+  assignedToName: string;
+  assignedToId?: string;
+  correctiveAction: string;
+  deadline: string;
+  status: 'OUVERTE' | 'EN_COURS' | 'EN_ATTENTE' | 'RESOLUE' | 'CLOTUREE';
+  resolvedDate?: string;
+  linkedTaskId?: string;
+  linkedDailyReportId?: string;
+  createdAt: string;
+}
+
+export interface StoredHseIncident {
+  id: string;
+  reference: string;
+  projectId: string;
+  projectCode: string;
+  incidentDate: string;
+  type: 'INCIDENT' | 'PRESQUE_ACCIDENT' | 'OBSERVATION_SECURITE' | 'INSPECTION_HSE' | 'NON_CONFORMITE_QUALITE';
+  severity: 'MINEURE' | 'SIGNIFICATIVE' | 'MAJEURE' | 'CRITIQUE';
+  locationZone: string;
+  description: string;
+  immediateAction: string;
+  correctiveAction: string;
+  responsibleName: string;
+  deadline: string;
+  status: 'OUVERT' | 'EN_TRAITEMENT' | 'RESOLU' | 'CLOTURE';
+  closedDate?: string;
+  createdAt: string;
+}
+
 export interface StoredProject {
   id: string;
   code: string;
@@ -162,6 +353,21 @@ export interface StoredProject {
   assignedUsers?: any[];
   costEntries: any[];
   documents: any[];
+  contractReference?: string;
+  clientPoNumber?: string;
+  costSheetId?: string;
+  costSheetRef?: string;
+  tvaRate?: number;
+  retentionRate?: number;
+  contractItems: StoredContractItem[];
+  tasks: StoredProjectTask[];
+  dailyReports: StoredDailyReport[];
+  situationReports: StoredSituationReport[];
+  constraints: StoredProjectConstraint[];
+  hseIncidents: StoredHseIncident[];
+  allocations: any[];
+  purchaseOrders: any[];
+  nonConformities: any[];
   createdAt: string;
   updatedAt: string;
 }
@@ -607,6 +813,145 @@ class ServerStore {
 
     // 4. Données de démonstration Commercial & Fiche de Coût
     this.initCommercialBaseline();
+    this.initProjectsBaseline();
+  }
+
+
+  private initProjectsBaseline() {
+    const proj: StoredProject = {
+      id: 'prj-2026-001',
+      code: 'PRJ-2026-001',
+      name: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+      clientName: 'Sonatrach Raffinerie Skikda (RA1K)',
+      sector: 'OIL_AND_GAS',
+      siteLocation: 'Zone Industrielle Skikda RA1K',
+      status: ProjectStatus.IN_PROGRESS,
+      riskLevel: 'LOW',
+      contractAmount: 48500000,
+      budgetAmount: 36800000,
+      spentBudget: 14200000,
+      committedBudget: 22400000,
+      physicalProgress: 44,
+      financialProgress: 38,
+      startDate: '2026-10-01',
+      contractEndDate: '2026-12-15',
+      description: 'Arrêt technique annuel : Dépose, préfabrication atelier, montage sur site et épreuves hydrauliques à 45 bars des collecteurs vapeur haute pression avec contrôles CND.',
+      objectives: 'Sécuriser le redémarrage de l\'unité de craquage catalytique dans le respect strict des jalons QCD et zéro accident de travail.',
+      managerId: 'usr-rp-001',
+      managerName: 'Amine Khelifi (Chef de Projet)',
+      contractReference: 'CTR-SONATRACH-2026-042',
+      clientPoNumber: 'BC-SKIKDA-2026-88',
+      costSheetId: 'fc-2026-001',
+      costSheetRef: 'FC-2026-001',
+      tvaRate: 19,
+      retentionRate: 5,
+      milestones: [
+        {
+          id: 'mls-001',
+          title: 'ODS N°01 & Mobilisation de la base de vie',
+          targetDate: '2026-10-07',
+          status: 'COMPLETED',
+          completed: true,
+          completedDate: '2026-10-06',
+          weight: 15,
+        },
+        {
+          id: 'mls-002',
+          title: 'Dépose & Préfabrication des 45 spools tuyauterie HP',
+          targetDate: '2026-11-05',
+          status: 'COMPLETED',
+          completed: true,
+          completedDate: '2026-11-04',
+          weight: 35,
+        },
+        {
+          id: 'mls-003',
+          title: 'Montage sur site des lignes & Contrôles CND radio',
+          targetDate: '2026-11-28',
+          status: 'IN_PROGRESS',
+          completed: false,
+          weight: 30,
+        },
+        {
+          id: 'mls-004',
+          title: 'Épreuves hydrauliques à 45 bars & PV de réception provisoire',
+          targetDate: '2026-12-12',
+          status: 'PENDING',
+          completed: false,
+          weight: 20,
+        },
+      ],
+      serviceOrders: [
+        {
+          id: 'ods-2026-001',
+          orderNumber: 'ODS-PRJ-2026-001-01',
+          type: 'DEMARRAGE',
+          description: 'Ordre de service de démarrage officiel des travaux sur site.',
+          effectiveDate: '2026-10-01',
+          status: 'SIGNE',
+          delayDays: 0,
+          costImpact: 0,
+          clientRef: 'SONATRACH/DP/RA1K/2026',
+          signatory: 'M. Mustapha Larbi (Chef Dép. Maintenance)',
+        },
+      ],
+      workSituations: [
+        {
+          id: 'sit-2026-001',
+          situationNumber: 'SIT-PRJ-2026-001-01',
+          periodStart: '2026-10-01',
+          periodEnd: '2026-10-31',
+          status: 'VALIDE',
+          amountHT: 16975000,
+          retenueGarantie: 848750,
+          amountTVA: 3225250,
+          amountTTC: 19351500,
+          cumulatedAmountHT: 16975000,
+          pvRef: 'PV-ATTEST-SKIKDA-01',
+          inspector: 'Bureau de Contrôle Veritas Algérie',
+          lines: [
+            { designation: 'Préfabrication spools atelier', unit: 'ml', contractQty: 450, periodQty: 180, unitPrice: 20000, totalHT: 3600000 },
+            { designation: 'Montage sur rack Sud', unit: 'ml', contractQty: 450, periodQty: 80, unitPrice: 20000, totalHT: 1600000 },
+          ],
+          createdAt: '2026-10-31T17:00:00Z',
+        },
+      ],
+      members: [
+        { id: 'mbr-1', userId: 'usr-rp-001', name: 'Amine Khelifi', role: 'RESPONSABLE_PROJET', title: 'Directeur de Projet' },
+        { id: 'mbr-2', userId: 'usr-chf-001', name: 'Karim Mansouri', role: 'CONDUCTEUR_TRAVAUX', title: 'Chef de Chantier' },
+        { id: 'mbr-3', userId: 'usr-qhse-001', name: 'Nadia Chaib', role: 'RESPONSABLE_QUALITE', title: 'Ingénieure CQS & HSE' },
+      ],
+      costEntries: [
+        { id: 'cst-001', category: 'ACHATS', amount: 8400000, description: 'Fourniture tubes acier carbone A106 Gr B', sourceModule: 'PROCUREMENT', date: '2026-10-10' },
+        { id: 'cst-002', category: 'MAIN_DOEUVRE', amount: 3600000, description: 'Débours équipe tuyauterie & soudage M1', sourceModule: 'HR', date: '2026-10-31' },
+        { id: 'cst-003', category: 'LOCATION', amount: 2200000, description: 'Location grue mobile 50T Liebherr 18 jours', sourceModule: 'MAINTENANCE', date: '2026-10-25' },
+      ],
+      documents: [
+        { id: 'doc-001', name: 'Contrat de Marché N°CTR-2026-042', type: 'CONTRAT', size: '2.4 MB', uploadDate: '2026-10-01' },
+        { id: 'doc-002', name: 'Permis de Feu & Plan de Prévention ATEX', type: 'HSE', size: '1.1 MB', uploadDate: '2026-10-02' },
+        { id: 'doc-003', name: 'Cahier de Soudage & QMOS/DMOS approuvés', type: 'QUALITE', size: '4.8 MB', uploadDate: '2026-10-05' },
+      ],
+      contractItems: [],
+      tasks: [],
+      dailyReports: [],
+      situationReports: [],
+      constraints: [],
+      hseIncidents: [],
+      allocations: [
+        { id: 'alc-1', itemCode: 'TUB-A106-DN150', itemName: 'Tubes acier carbone A106 Gr B sch 80', quantity: 220, unit: 'ml', allocatedAt: '2026-10-08' },
+        { id: 'alc-2', itemCode: 'VAN-HP-DN150', itemName: 'Vannes à opercule classe 600', quantity: 12, unit: 'u', allocatedAt: '2026-10-12' },
+      ],
+      purchaseOrders: [
+        { id: 'po-1', orderNumber: 'BC-2026-014', supplierName: 'Tubacex Algérie', amount: 8400000, status: 'LIVRE', expectedDeliveryDate: '2026-10-18' },
+        { id: 'po-2', orderNumber: 'BC-2026-022', supplierName: 'PetroValve SPA', amount: 3200000, status: 'COMMANDE', expectedDeliveryDate: '2026-11-20' },
+      ],
+      nonConformities: [],
+      createdAt: '2026-10-01T08:00:00Z',
+      updatedAt: '2026-11-10T14:30:00Z',
+    };
+
+    this.ensureProjectDefaults(proj);
+    this.projects.push(proj);
   }
 
   private initCommercialBaseline() {
@@ -920,6 +1265,15 @@ class ServerStore {
       members: [],
       costEntries: [],
       documents: [],
+      contractItems: [],
+      tasks: [],
+      dailyReports: [],
+      situationReports: [],
+      constraints: [],
+      hseIncidents: [],
+      allocations: [],
+      purchaseOrders: [],
+      nonConformities: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -2405,10 +2759,20 @@ class ServerStore {
       members: [],
       costEntries: [],
       documents: [],
+      contractItems: [],
+      tasks: [],
+      dailyReports: [],
+      situationReports: [],
+      constraints: [],
+      hseIncidents: [],
+      allocations: [],
+      purchaseOrders: [],
+      nonConformities: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
+    this.ensureProjectDefaults(newProject);
     this.projects.unshift(newProject);
 
     sheet.projectCreated = true;
@@ -2439,6 +2803,1051 @@ class ServerStore {
     );
 
     return newProject;
+  }
+
+  // =========================================================================
+  // MODULE 02 PROJET — METHODES INDUSTRIELLES COMPLETES (PHASE 3)
+  // =========================================================================
+
+  ensureProjectDefaults(p: StoredProject) {
+    if (!p.contractItems || p.contractItems.length === 0) {
+      p.contractItems = [
+        {
+          id: `item-${p.id}-1`,
+          itemCode: 'LOT-01',
+          designation: 'Tuyauterie industrielle HP & Remplacement collecteurs A106',
+          unit: 'ml',
+          contractQty: 450,
+          realizedQty: 220,
+          validatedQty: 200,
+          unitPrice: 20000,
+          weightPercentage: 40,
+          progress: 44.4,
+          dateMeasured: new Date().toISOString().split('T')[0],
+          measuredBy: p.managerName || 'Chef de Chantier',
+          notes: 'Métré contradictoire attachement N°01 validé Sonatrach',
+        },
+        {
+          id: `item-${p.id}-2`,
+          itemCode: 'LOT-02',
+          designation: 'Fourniture & Montage robinetterie HP et clapets DN150/200',
+          unit: 'u',
+          contractQty: 25,
+          realizedQty: 12,
+          validatedQty: 12,
+          unitPrice: 200000,
+          weightPercentage: 25,
+          progress: 48,
+          dateMeasured: new Date().toISOString().split('T')[0],
+          measuredBy: p.managerName || 'Superviseur Mécanique',
+          notes: 'Vannes reçues et posées sur rack principal',
+        },
+        {
+          id: `item-${p.id}-3`,
+          itemCode: 'LOT-03',
+          designation: 'Préfabrication charpente métallique et supports de lignes',
+          unit: 'T',
+          contractQty: 18,
+          realizedQty: 10,
+          validatedQty: 9,
+          unitPrice: 350000,
+          weightPercentage: 15,
+          progress: 50,
+          dateMeasured: new Date().toISOString().split('T')[0],
+          measuredBy: 'Amine Khelifi (Resp. Projet)',
+          notes: 'Supports ancrés et peints selon spécification CQS',
+        },
+        {
+          id: `item-${p.id}-4`,
+          itemCode: 'LOT-04',
+          designation: 'Contrôles Non Destructifs CND (Radio/Ressuage) & Épreuves Hydrauliques',
+          unit: 'forfait',
+          contractQty: 1,
+          realizedQty: 0.35,
+          validatedQty: 0.3,
+          unitPrice: 5500000,
+          weightPercentage: 20,
+          progress: 30,
+          dateMeasured: new Date().toISOString().split('T')[0],
+          measuredBy: 'Nadia Chaib (QHSE)',
+          notes: 'Tirs radio réalisés sur 42 joints soudés - 0 défaut',
+        },
+      ];
+    }
+
+    if (!p.tasks || p.tasks.length === 0) {
+      p.tasks = [
+        {
+          id: `tsk-${p.id}-1`,
+          code: 'TSK-01',
+          name: 'Mise en place base de vie & sécurisation chantier ATEX',
+          description: 'Installation baraquements, balisage zone, obtention permis de feu Sonatrach et vérification explosimètres.',
+          projectId: p.id,
+          assignedToId: 'usr-rp-001',
+          assignedToName: 'Karim Mansouri (Conducteur)',
+          team: 'Équipe HSE & Sécurité',
+          plannedStartDate: p.startDate,
+          plannedEndDate: new Date(new Date(p.startDate).getTime() + 7 * 86400000).toISOString().split('T')[0],
+          actualStartDate: p.startDate,
+          actualEndDate: new Date(new Date(p.startDate).getTime() + 6 * 86400000).toISOString().split('T')[0],
+          estimatedHours: 120,
+          actualHours: 110,
+          priority: 'CRITIQUE',
+          status: 'TERMINEE',
+          progress: 100,
+          dependencies: [],
+          observations: 'Permis de travail N°2026-PT-04 délivré.',
+          isDelayed: false,
+        },
+        {
+          id: `tsk-${p.id}-2`,
+          code: 'TSK-02',
+          name: 'Montage échafaudages de service Layher autour des collecteurs',
+          description: 'Échafaudages tubulaires hauteur 14m avec plinthes, trappes d\'accès et filets pare-gravats.',
+          projectId: p.id,
+          assignedToId: 'usr-chf-001',
+          assignedToName: 'Mourad Zitouni (Superviseur)',
+          team: 'Équipe Échafaudeurs',
+          plannedStartDate: new Date(new Date(p.startDate).getTime() + 6 * 86400000).toISOString().split('T')[0],
+          plannedEndDate: new Date(new Date(p.startDate).getTime() + 18 * 86400000).toISOString().split('T')[0],
+          actualStartDate: new Date(new Date(p.startDate).getTime() + 6 * 86400000).toISOString().split('T')[0],
+          actualEndDate: new Date(new Date(p.startDate).getTime() + 17 * 86400000).toISOString().split('T')[0],
+          estimatedHours: 240,
+          actualHours: 235,
+          priority: 'ELEVEE',
+          status: 'TERMINEE',
+          progress: 100,
+          dependencies: ['TSK-01'],
+          observations: 'PV de réception échafaudage signé conforme.',
+          isDelayed: false,
+        },
+        {
+          id: `tsk-${p.id}-3`,
+          code: 'TSK-03',
+          name: 'Préfabrication spools tuyauterie DN150/200 atelier Annaba',
+          description: 'Débit, chanfreinage, pointage et soudage TIG/ARC 6G sur vireurs.',
+          projectId: p.id,
+          assignedToId: 'usr-rp-001',
+          assignedToName: 'Amine Khelifi (Chef Projet)',
+          team: 'Atelier Chaudronnerie SILEX',
+          plannedStartDate: new Date(new Date(p.startDate).getTime() + 10 * 86400000).toISOString().split('T')[0],
+          plannedEndDate: new Date(new Date(p.startDate).getTime() + 35 * 86400000).toISOString().split('T')[0],
+          actualStartDate: new Date(new Date(p.startDate).getTime() + 10 * 86400000).toISOString().split('T')[0],
+          estimatedHours: 520,
+          actualHours: 380,
+          priority: 'CRITIQUE',
+          status: 'EN_COURS',
+          progress: 75,
+          dependencies: ['TSK-01'],
+          observations: '32 spools sur 45 achevés et contrôlés radio.',
+          isDelayed: false,
+        },
+        {
+          id: `tsk-${p.id}-4`,
+          code: 'TSK-04',
+          name: 'Dépose tuyauteries usagées & transport vers zone ferraille',
+          description: 'Déboulonnage brides, découpe thermique contrôlée sous jet d\'azote.',
+          projectId: p.id,
+          assignedToId: 'usr-chf-001',
+          assignedToName: 'Karim Mansouri',
+          team: 'Équipe Démontage',
+          plannedStartDate: new Date(new Date(p.startDate).getTime() + 20 * 86400000).toISOString().split('T')[0],
+          plannedEndDate: new Date(new Date(p.startDate).getTime() + 32 * 86400000).toISOString().split('T')[0],
+          actualStartDate: new Date(new Date(p.startDate).getTime() + 20 * 86400000).toISOString().split('T')[0],
+          estimatedHours: 280,
+          actualHours: 210,
+          priority: 'ELEVEE',
+          status: 'EN_COURS',
+          progress: 60,
+          dependencies: ['TSK-02'],
+          observations: 'Zone 1 et 2 entièrement dégagées.',
+          isDelayed: false,
+        },
+        {
+          id: `tsk-${p.id}-5`,
+          code: 'TSK-05',
+          name: 'Pose et raccordement sur site des nouveaux spools',
+          description: 'Levage à la grue 50T, alignement laser, soudage des joints de position.',
+          projectId: p.id,
+          assignedToId: 'usr-rp-001',
+          assignedToName: 'Amine Khelifi',
+          team: 'Équipe Montage Tuyauterie',
+          plannedStartDate: new Date(new Date(p.startDate).getTime() + 30 * 86400000).toISOString().split('T')[0],
+          plannedEndDate: new Date(new Date(p.startDate).getTime() + 55 * 86400000).toISOString().split('T')[0],
+          estimatedHours: 640,
+          actualHours: 120,
+          priority: 'CRITIQUE',
+          status: 'EN_COURS',
+          progress: 25,
+          dependencies: ['TSK-03', 'TSK-04'],
+          observations: 'Joints J-01 à J-14 soudés.',
+          isDelayed: false,
+        },
+        {
+          id: `tsk-${p.id}-6`,
+          code: 'TSK-06',
+          name: 'Contrôles CND radio 100% et ressuage resine',
+          description: 'Contrôle gammagraphie Iridium 192 de nuit avec périmètre de sécurité 30m.',
+          projectId: p.id,
+          assignedToId: 'usr-qhse-001',
+          assignedToName: 'Nadia Chaib (QHSE)',
+          team: 'Sous-traitance CND spécialisée',
+          plannedStartDate: new Date(new Date(p.startDate).getTime() + 45 * 86400000).toISOString().split('T')[0],
+          plannedEndDate: new Date(new Date(p.startDate).getTime() + 65 * 86400000).toISOString().split('T')[0],
+          estimatedHours: 160,
+          actualHours: 0,
+          priority: 'CRITIQUE',
+          status: 'A_FAIRE',
+          progress: 0,
+          dependencies: ['TSK-05'],
+          observations: 'Plan de tir approuvé par l\'autorité de sûreté radiologique.',
+          isDelayed: false,
+        },
+        {
+          id: `tsk-${p.id}-7`,
+          code: 'TSK-07',
+          name: 'Épreuve hydraulique à 45 bars et réception provisoire',
+          description: 'Remplissage eau désminéralisée, montée en pression par paliers, PV contradictoire.',
+          projectId: p.id,
+          assignedToId: 'usr-rp-001',
+          assignedToName: 'Amine Khelifi',
+          team: 'Équipe Essais & Réception',
+          plannedStartDate: new Date(new Date(p.startDate).getTime() + 60 * 86400000).toISOString().split('T')[0],
+          plannedEndDate: new Date(new Date(p.startDate).getTime() + 75 * 86400000).toISOString().split('T')[0],
+          estimatedHours: 180,
+          actualHours: 0,
+          priority: 'CRITIQUE',
+          status: 'A_FAIRE',
+          progress: 0,
+          dependencies: ['TSK-06'],
+          observations: 'Manomètres étalonnés certifiés.',
+          isDelayed: false,
+        },
+      ];
+    }
+
+    if (!p.dailyReports || p.dailyReports.length === 0) {
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      p.dailyReports = [
+        {
+          id: `rjc-${p.id}-01`,
+          reportNumber: `RJC-${p.code}-001`,
+          projectId: p.id,
+          projectCode: p.code,
+          projectName: p.name,
+          clientName: p.clientName,
+          siteLocation: p.siteLocation,
+          date: yesterday,
+          weatherConditions: 'ENSOLEILLE',
+          siteCondition: 'Bonne, sol sec, accès sécurisé zone 100',
+          preparedById: 'usr-chf-001',
+          preparedByName: 'Karim Mansouri (Chef de Chantier)',
+          verifiedById: 'usr-rp-001',
+          verifiedByName: 'Amine Khelifi (Resp. Projet)',
+          status: 'VALIDE',
+          manpower: [
+            { trade: 'Chef de chantier', plannedCount: 1, presentCount: 1, hoursWorked: 10, notes: 'Supervision continue' },
+            { trade: 'Superviseur tuyauterie', plannedCount: 2, presentCount: 2, hoursWorked: 20, notes: 'Contrôle alignement spools' },
+            { trade: 'Tuyauteurs qualifiés', plannedCount: 8, presentCount: 8, hoursWorked: 80, notes: 'Ajustage et boulonnage' },
+            { trade: 'Soudeurs certifiés 6G TIG/ARC', plannedCount: 6, presentCount: 6, hoursWorked: 60, notes: 'Soudage joints J-10 à J-14' },
+            { trade: 'Animateur HSE dédié', plannedCount: 1, presentCount: 1, hoursWorked: 10, notes: 'Surveillance ATEX et permis de feu' },
+            { trade: 'Manoeuvres & Échafaudeurs', plannedCount: 4, presentCount: 4, hoursWorked: 40, notes: 'Manutention et bardage' },
+          ],
+          activities: [
+            {
+              id: 'act-1',
+              designation: 'Levage et mise en place spools DN200 rack Sud',
+              taskId: 'TSK-05',
+              plannedQty: 4,
+              realizedQty: 4,
+              unit: 'spool',
+              workersCount: 6,
+              hoursSpent: 30,
+              observations: 'Manœuvre exécutée avec grue 50T sans incident.',
+            },
+            {
+              id: 'act-2',
+              designation: 'Soudage en position de 4 joints circulaires DN150 sch 80',
+              taskId: 'TSK-05',
+              plannedQty: 4,
+              realizedQty: 4,
+              unit: 'joint',
+              workersCount: 4,
+              hoursSpent: 28,
+              observations: 'Soudure ARC/TIG passes de racine et remplissage terminées.',
+            },
+            {
+              id: 'act-3',
+              designation: 'Broyage et nettoyage des chanfreins zone collecteur B',
+              taskId: 'TSK-04',
+              plannedQty: 6,
+              realizedQty: 6,
+              unit: 'chanfrein',
+              workersCount: 2,
+              hoursSpent: 12,
+              observations: 'Contrôle ressuage visuel favorable.',
+            },
+          ],
+          equipmentUsed: [
+            { equipmentName: 'Grue mobile 50T Liebherr', quantity: 1, hoursUsed: 8, condition: 'BON', notes: 'Inspection journalière OK' },
+            { equipmentName: 'Postes à souder Miller TIG/ARC 400A', quantity: 6, hoursUsed: 9, condition: 'BON', notes: 'Mise à la terre vérifiée' },
+            { equipmentName: 'Compresseur de chantier Atlas Copco 12 bars', quantity: 1, hoursUsed: 7, condition: 'BON', notes: 'Alimentation meuleuses' },
+          ],
+          materialsConsumed: [
+            { itemId: 'art-001', designation: 'Tubes acier carbone A106 Gr B sch 80 DN150', quantity: 36, unit: 'ml', stockMovementRef: 'SM-2026-088', notes: 'Bordereau sortie magasin N°88' },
+            { itemId: 'art-002', designation: 'Électrodes basiques E7018 diamètre 3.2mm', quantity: 15, unit: 'kg', stockMovementRef: 'SM-2026-089', notes: 'Étuve à 350°C respectée' },
+            { itemId: 'art-003', designation: 'Boulonnerie B7/2H diamètre 3/4" x 90mm', quantity: 64, unit: 'u', stockMovementRef: 'SM-2026-090', notes: 'Graissage au cuivre' },
+          ],
+          incidents: [
+            {
+              type: 'SECURITE',
+              description: 'Presque-accident : chute d\'une clé à molette retenue par longe antichute.',
+              severity: 'MINEURE',
+              actionTaken: 'Rappel des consignes de travail en hauteur lors du quart d\'heure sécurité.',
+              time: '14:20',
+              supervisor: 'Nadia Chaib (HSE)',
+            },
+          ],
+          generalObservations: 'Cadence de travail excellente. Avancement en avance de 1.5 jour sur le jalon contractuel J2.',
+          visaChantier: 'VISA-CHEF-CHANTIER-VALIDATED-2026',
+          createdAt: new Date(Date.now() - 86400000).toISOString(),
+          updatedAt: new Date(Date.now() - 86400000).toISOString(),
+        },
+      ];
+    }
+
+    if (!p.situationReports || p.situationReports.length === 0) {
+      p.situationReports = [
+        {
+          id: `rsp-${p.id}-01`,
+          reportNumber: `RSP-${p.code}-001`,
+          projectId: p.id,
+          projectCode: p.code,
+          projectName: p.name,
+          clientName: p.clientName,
+          periodStart: p.startDate,
+          periodEnd: new Date(new Date(p.startDate).getTime() + 30 * 86400000).toISOString().split('T')[0],
+          reportDate: new Date().toISOString().split('T')[0],
+          preparedByName: p.managerName || 'Amine Khelifi (Resp. Projet)',
+          physicalStatus: {
+            plannedProgress: 42,
+            actualProgress: p.physicalProgress || 44,
+            completedTasksCount: 2,
+            delayedTasksCount: 0,
+            summary: 'Travaux de tuyauterie en ligne avec les engagements QCD. Phase dépose et préfabrication achevées dans les délais.',
+          },
+          financialStatus: {
+            initialBudget: p.budgetAmount,
+            revisedBudget: p.budgetAmount,
+            committedCost: p.committedBudget || Math.round(p.budgetAmount * 0.55),
+            actualCost: p.spentBudget || Math.round(p.budgetAmount * 0.38),
+            billedAmount: Math.round(p.contractAmount * 0.35),
+            forecastAtCompletion: p.budgetAmount,
+            budgetVariance: 0,
+          },
+          logisticsStatus: {
+            criticalProcurementNeeds: 'Fourniture de 8 vannes de purge spéciales sous 12 jours.',
+            pendingOrdersCount: 2,
+            stockAlertsCount: 0,
+          },
+          hrStatus: {
+            mobilizedHeadcount: 22,
+            totalHoursWorked: 2840,
+            absentCount: 1,
+            additionalNeeds: '2 soudeurs 6G supplémentaires requis pour la phase d\'épreuve hydro.',
+          },
+          risksStatus: {
+            openConstraintsCount: 1,
+            criticalRisksSummary: 'Co-activité temporaire avec l\'équipe instrumentation du client.',
+            correctiveActions: [
+              { action: 'Coordination journalière à 07h30 avec le chef d\'unité Sonatrach', responsible: 'Karim Mansouri', status: 'EN_COURS' },
+            ],
+          },
+          generalAppraisal: 'Chantier sous excellente maîtrise opérationnelle, zéro accident avec arrêt, relation client constructive.',
+          createdAt: new Date().toISOString(),
+        },
+      ];
+    }
+
+    if (!p.constraints || p.constraints.length === 0) {
+      p.constraints = [
+        {
+          id: `ctr-${p.id}-1`,
+          reference: `CTR-${p.code}-01`,
+          projectId: p.id,
+          projectCode: p.code,
+          dateDetected: p.startDate,
+          type: 'APPROVISIONNEMENT',
+          description: 'Délai d\'acheminement des brides forgées classe 600 depuis l\'importateur rallongé de 4 jours.',
+          impact: 'Risque de décalage du montage sur le rack Sud.',
+          severity: 'ELEVEE',
+          assignedToName: 'Farouk Brahimi (Achats)',
+          correctiveAction: 'Dépannage d\'urgence via transfert inter-chantiers depuis le magasin central Annaba.',
+          deadline: new Date(new Date(p.startDate).getTime() + 10 * 86400000).toISOString().split('T')[0],
+          status: 'RESOLUE',
+          resolvedDate: new Date(new Date(p.startDate).getTime() + 8 * 86400000).toISOString().split('T')[0],
+          createdAt: p.startDate,
+        },
+        {
+          id: `ctr-${p.id}-2`,
+          reference: `CTR-${p.code}-02`,
+          projectId: p.id,
+          projectCode: p.code,
+          dateDetected: new Date(new Date(p.startDate).getTime() + 15 * 86400000).toISOString().split('T')[0],
+          type: 'SECURITE',
+          description: 'Présence d\'émissions résiduelles de vapeurs d\'hydrocarbures lors de l\'ouverture du circuit collecteur B.',
+          impact: 'Interdiction temporaire des travaux par point chaud (soudage / meulage).',
+          severity: 'BLOQUANTE',
+          assignedToName: 'Nadia Chaib (HSE)',
+          correctiveAction: 'Pose de ballons obturateurs et inertage à l\'azote par l\'exploitant avec vérification explosimètre.',
+          deadline: new Date(new Date(p.startDate).getTime() + 18 * 86400000).toISOString().split('T')[0],
+          status: 'RESOLUE',
+          resolvedDate: new Date(new Date(p.startDate).getTime() + 17 * 86400000).toISOString().split('T')[0],
+          createdAt: new Date(new Date(p.startDate).getTime() + 15 * 86400000).toISOString().split('T')[0],
+        },
+        {
+          id: `ctr-${p.id}-3`,
+          reference: `CTR-${p.code}-03`,
+          projectId: p.id,
+          projectCode: p.code,
+          dateDetected: new Date().toISOString().split('T')[0],
+          type: 'RH',
+          description: 'Besoin de 2 tuyauteurs supplémentaires certifiés pour anticiper le raccordement de la boucle Nord.',
+          impact: 'Garantir la date cible d\'épreuve hydro sans recours aux heures supplémentaires excessives.',
+          severity: 'MOYENNE',
+          assignedToName: 'Sabrina Haddad (RH)',
+          correctiveAction: 'Mobilisation de 2 opérateurs qualifiés de la base Annaba dès lundi matin.',
+          deadline: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
+          status: 'EN_COURS',
+          createdAt: new Date().toISOString(),
+        },
+      ];
+    }
+
+    if (!p.hseIncidents || p.hseIncidents.length === 0) {
+      p.hseIncidents = [
+        {
+          id: `hse-${p.id}-1`,
+          reference: `HSE-${p.code}-01`,
+          projectId: p.id,
+          projectCode: p.code,
+          incidentDate: new Date(new Date(p.startDate).getTime() + 12 * 86400000).toISOString().split('T')[0],
+          type: 'PRESQUE_ACCIDENT',
+          severity: 'SIGNIFICATIVE',
+          locationZone: 'Zone 100 - Tour de distillation T-101',
+          description: 'Désolidarisation d\'une pince de levage à vide lors de la descente du palan. Aucun blessé.',
+          immediateAction: 'Arrêt immédiat de la manœuvre et remplacement de la pince par un modèle certifié à verrouillage automatique.',
+          correctiveAction: 'Inspection et contrôle CND magnétoscopie de tous les apparaux de levage du chantier.',
+          responsibleName: 'Nadia Chaib (QHSE)',
+          deadline: new Date(new Date(p.startDate).getTime() + 15 * 86400000).toISOString().split('T')[0],
+          status: 'CLOTURE',
+          closedDate: new Date(new Date(p.startDate).getTime() + 14 * 86400000).toISOString().split('T')[0],
+          createdAt: new Date(new Date(p.startDate).getTime() + 12 * 86400000).toISOString(),
+        },
+        {
+          id: `hse-${p.id}-2`,
+          reference: `HSE-${p.code}-02`,
+          projectId: p.id,
+          projectCode: p.code,
+          incidentDate: new Date().toISOString().split('T')[0],
+          type: 'INSPECTION_HSE',
+          severity: 'MINEURE',
+          locationZone: 'Atelier de préfabrication temporaire chantier',
+          description: 'Inspection périodique de sécurité : vérification des extincteurs CO2 et des harnais de sécurité.',
+          immediateAction: 'Remplacement d\'un extincteur dont la goupille était corrodée.',
+          correctiveAction: 'Registre de vérification semestrielle émargé sans réserve.',
+          responsibleName: 'Karim Mansouri (Chef de Chantier)',
+          deadline: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0],
+          status: 'EN_TRAITEMENT',
+          createdAt: new Date().toISOString(),
+        },
+      ];
+    }
+  }
+
+  // --- TACHES DE CHANTIER (PLANNING OPERATIONNEL) ---
+
+  getProjectTasks(codeOrId: string): StoredProjectTask[] {
+    const project = this.getProject(codeOrId);
+    if (!project) return [];
+    this.ensureProjectDefaults(project);
+    const today = new Date().toISOString().split('T')[0];
+    return (project.tasks || []).map(t => ({
+      ...t,
+      isDelayed: t.status !== 'TERMINEE' && t.status !== 'ANNULEE' && t.plannedEndDate < today,
+    }));
+  }
+
+  createProjectTask(codeOrId: string, data: any, user?: any): StoredProjectTask {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    const taskNum = String((project.tasks || []).length + 1).padStart(2, '0');
+    const taskCode = data.code || `TSK-${taskNum}`;
+
+    const newTask: StoredProjectTask = {
+      id: `tsk-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      code: taskCode,
+      name: data.name || 'Nouvelle Tâche',
+      description: data.description || '',
+      projectId: project.id,
+      milestoneId: data.milestoneId,
+      assignedToId: data.assignedToId,
+      assignedToName: data.assignedToName || user?.name || 'Chef d\'équipe',
+      team: data.team || 'Équipe Chantier',
+      plannedStartDate: data.plannedStartDate || new Date().toISOString().split('T')[0],
+      plannedEndDate: data.plannedEndDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+      actualStartDate: data.actualStartDate,
+      actualEndDate: data.actualEndDate,
+      estimatedHours: Number(data.estimatedHours) || 8,
+      actualHours: Number(data.actualHours) || 0,
+      priority: data.priority || 'NORMALE',
+      status: data.status || 'A_FAIRE',
+      progress: Math.min(100, Math.max(0, Number(data.progress) || 0)),
+      dependencies: Array.isArray(data.dependencies) ? data.dependencies : [],
+      observations: data.observations || '',
+      isDelayed: false,
+    };
+
+    project.tasks.push(newTask);
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('CREATE_TASK', 'PROJECT', project.code, `Tâche ${taskCode} (${newTask.name}) créée sur le chantier ${project.code}`, user);
+    return newTask;
+  }
+
+  updateProjectTask(codeOrId: string, taskId: string, data: any, user?: any): StoredProjectTask {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    const task = project.tasks.find(t => t.id === taskId || t.code === taskId);
+    if (!task) throw new Error('Tâche introuvable');
+
+    if (data.name) task.name = data.name;
+    if (data.description !== undefined) task.description = data.description;
+    if (data.assignedToId) task.assignedToId = data.assignedToId;
+    if (data.assignedToName) task.assignedToName = data.assignedToName;
+    if (data.team) task.team = data.team;
+    if (data.plannedStartDate) task.plannedStartDate = data.plannedStartDate;
+    if (data.plannedEndDate) task.plannedEndDate = data.plannedEndDate;
+    if (data.actualStartDate) task.actualStartDate = data.actualStartDate;
+    if (data.actualEndDate) task.actualEndDate = data.actualEndDate;
+    if (data.estimatedHours !== undefined) task.estimatedHours = Number(data.estimatedHours);
+    if (data.actualHours !== undefined) task.actualHours = Number(data.actualHours);
+    if (data.priority) task.priority = data.priority;
+    if (data.dependencies) task.dependencies = data.dependencies;
+    if (data.observations !== undefined) task.observations = data.observations;
+
+    if (data.status) {
+      task.status = data.status;
+      if (data.status === 'TERMINEE') {
+        task.progress = 100;
+        if (!task.actualEndDate) task.actualEndDate = new Date().toISOString().split('T')[0];
+      }
+    }
+
+    if (data.progress !== undefined) {
+      task.progress = Math.min(100, Math.max(0, Number(data.progress)));
+      if (task.progress === 100 && task.status !== 'TERMINEE') {
+        task.status = 'TERMINEE';
+        if (!task.actualEndDate) task.actualEndDate = new Date().toISOString().split('T')[0];
+      }
+    }
+
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('UPDATE_TASK', 'PROJECT', project.code, `Tâche ${task.code} mise à jour (Statut: ${task.status}, ${task.progress}%)`, user);
+    return task;
+  }
+
+  deleteProjectTask(codeOrId: string, taskId: string, user?: any) {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    const idx = project.tasks.findIndex(t => t.id === taskId || t.code === taskId);
+    if (idx === -1) throw new Error('Tâche introuvable');
+    const removed = project.tasks.splice(idx, 1)[0];
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('DELETE_TASK', 'PROJECT', project.code, `Tâche ${removed.code} supprimée`, user);
+    return { success: true };
+  }
+
+  // --- SUIVI DE L'AVANCEMENT PHYSIQUE PONDERE ---
+
+  getContractItems(codeOrId: string): StoredContractItem[] {
+    const project = this.getProject(codeOrId);
+    if (!project) return [];
+    this.ensureProjectDefaults(project);
+    return project.contractItems || [];
+  }
+
+  updateContractItem(codeOrId: string, itemId: string, data: any, user?: any): StoredContractItem {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    const item = project.contractItems.find(i => i.id === itemId || i.itemCode === itemId);
+    if (!item) throw new Error('Prestation contractuelle introuvable');
+
+    if (data.realizedQty !== undefined) item.realizedQty = Number(data.realizedQty);
+    if (data.validatedQty !== undefined) item.validatedQty = Number(data.validatedQty);
+    if (data.weightPercentage !== undefined) item.weightPercentage = Number(data.weightPercentage);
+    if (data.notes !== undefined) item.notes = data.notes;
+    item.dateMeasured = new Date().toISOString().split('T')[0];
+    item.measuredBy = user?.name || item.measuredBy;
+
+    if (item.contractQty > 0) {
+      item.progress = Math.min(100, Math.round((item.validatedQty / item.contractQty) * 1000) / 10);
+    }
+
+    this.recalculateWeightedPhysicalProgress(project);
+
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('UPDATE_CONTRACT_ITEM', 'PROJECT', project.code, `Métré validé sur ${item.itemCode} (${item.validatedQty}/${item.contractQty} ${item.unit})`, user);
+    return item;
+  }
+
+  recalculateWeightedPhysicalProgress(projectOrCode: StoredProject | string): number {
+    const project = typeof projectOrCode === 'string' ? this.getProject(projectOrCode) : projectOrCode;
+    if (!project) return 0;
+    this.ensureProjectDefaults(project);
+
+    const items = project.contractItems || [];
+    if (items.length === 0) return project.physicalProgress || 0;
+
+    const totalWeight = items.reduce((sum, it) => sum + (it.weightPercentage || 0), 0);
+    let weightedSum = 0;
+
+    for (const it of items) {
+      const completionRatio = it.contractQty > 0 ? Math.min(1, it.validatedQty / it.contractQty) : 0;
+      const weight = totalWeight > 0 ? (it.weightPercentage / totalWeight) : (1 / items.length);
+      weightedSum += completionRatio * weight;
+    }
+
+    const calculatedProgress = Math.round(weightedSum * 100);
+    project.physicalProgress = calculatedProgress;
+    return calculatedProgress;
+  }
+
+  // --- RAPPORTS JOURNALIERS DE CHANTIER (DAILY SITE REPORTS) ---
+
+  getDailyReports(codeOrId: string): StoredDailyReport[] {
+    const project = this.getProject(codeOrId);
+    if (!project) return [];
+    this.ensureProjectDefaults(project);
+    return project.dailyReports || [];
+  }
+
+  getDailyReport(codeOrId: string, reportId: string): StoredDailyReport | undefined {
+    const project = this.getProject(codeOrId);
+    if (!project) return undefined;
+    this.ensureProjectDefaults(project);
+    return project.dailyReports.find(r => r.id === reportId || r.reportNumber === reportId);
+  }
+
+  createDailyReport(codeOrId: string, data: any, user?: any): StoredDailyReport {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    const reportNum = String((project.dailyReports || []).length + 1).padStart(3, '0');
+    const reportRef = `RJC-${project.code}-${reportNum}`;
+
+    const newReport: StoredDailyReport = {
+      id: `rjc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      reportNumber: reportRef,
+      projectId: project.id,
+      projectCode: project.code,
+      projectName: project.name,
+      clientName: project.clientName,
+      siteLocation: project.siteLocation,
+      date: data.date || new Date().toISOString().split('T')[0],
+      weatherConditions: data.weatherConditions || 'ENSOLEILLE',
+      siteCondition: data.siteCondition || 'Site opérationnel',
+      preparedById: user?.id || 'usr-chf-001',
+      preparedByName: user?.name || 'Chef de Chantier',
+      status: 'SOUMIS',
+      manpower: Array.isArray(data.manpower) ? data.manpower : [],
+      activities: Array.isArray(data.activities) ? data.activities : [],
+      equipmentUsed: Array.isArray(data.equipmentUsed) ? data.equipmentUsed : [],
+      materialsConsumed: Array.isArray(data.materialsConsumed) ? data.materialsConsumed : [],
+      incidents: Array.isArray(data.incidents) ? data.incidents : [],
+      generalObservations: data.generalObservations || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    project.dailyReports.unshift(newReport);
+
+    if (newReport.materialsConsumed && newReport.materialsConsumed.length > 0) {
+      for (const mat of newReport.materialsConsumed) {
+        if (mat.itemId && mat.quantity > 0) {
+          try {
+            this.recordProjectStockConsumption(project.code, {
+              itemId: mat.itemId,
+              quantity: mat.quantity,
+              unit: mat.unit,
+              reason: `Consommation sur rapport journalier ${reportRef}`,
+            }, user);
+          } catch (e) {
+            // continue
+          }
+        }
+      }
+    }
+
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('CREATE_DAILY_REPORT', 'PROJECT', project.code, `Rapport journalier ${reportRef} saisi pour le ${newReport.date}`, user);
+    return newReport;
+  }
+
+  updateDailyReport(codeOrId: string, reportId: string, data: any, user?: any): StoredDailyReport {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    const report = project.dailyReports.find(r => r.id === reportId || r.reportNumber === reportId);
+    if (!report) throw new Error('Rapport journalier introuvable');
+    if (report.status === 'VALIDE' && user?.role !== SystemRole.DIRECTEUR_GENERAL && user?.role !== SystemRole.ADMINISTRATEUR) {
+      throw new Error('Un rapport journalier validé ne peut être modifié sans autorisation de la Direction Générale.');
+    }
+
+    if (data.weatherConditions) report.weatherConditions = data.weatherConditions;
+    if (data.siteCondition) report.siteCondition = data.siteCondition;
+    if (data.manpower) report.manpower = data.manpower;
+    if (data.activities) report.activities = data.activities;
+    if (data.equipmentUsed) report.equipmentUsed = data.equipmentUsed;
+    if (data.materialsConsumed) report.materialsConsumed = data.materialsConsumed;
+    if (data.incidents) report.incidents = data.incidents;
+    if (data.generalObservations !== undefined) report.generalObservations = data.generalObservations;
+
+    report.updatedAt = new Date().toISOString();
+    this.addAuditLog('UPDATE_DAILY_REPORT', 'PROJECT', project.code, `Mise à jour rapport journalier ${report.reportNumber}`, user);
+    return report;
+  }
+
+  validateDailyReport(codeOrId: string, reportId: string, user?: any): StoredDailyReport {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    const report = project.dailyReports.find(r => r.id === reportId || r.reportNumber === reportId);
+    if (!report) throw new Error('Rapport journalier introuvable');
+
+    report.status = 'VALIDE';
+    report.verifiedById = user?.id || 'usr-rp-001';
+    report.verifiedByName = user?.name || 'Responsable Projet';
+    report.visaChantier = `VISA-PROJET-${Date.now().toString().slice(-6)}-VALIDE`;
+    report.updatedAt = new Date().toISOString();
+
+    this.addAuditLog('VALIDATE_DAILY_REPORT', 'PROJECT', project.code, `Validation officielle rapport journalier ${report.reportNumber}`, user);
+    return report;
+  }
+
+  // --- RAPPORTS DE SITUATION PERIODIQUES ---
+
+  getSituationReports(codeOrId: string): StoredSituationReport[] {
+    const project = this.getProject(codeOrId);
+    if (!project) return [];
+    this.ensureProjectDefaults(project);
+    return project.situationReports || [];
+  }
+
+  createSituationReport(codeOrId: string, data: any, user?: any): StoredSituationReport {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    const reportNum = String((project.situationReports || []).length + 1).padStart(3, '0');
+    const reportRef = `RSP-${project.code}-${reportNum}`;
+
+    const openConstraints = (project.constraints || []).filter(c => c.status !== 'RESOLUE' && c.status !== 'CLOTUREE');
+    const completedTasks = (project.tasks || []).filter(t => t.status === 'TERMINEE').length;
+    const delayedTasks = (project.tasks || []).filter(t => t.isDelayed).length;
+
+    const newReport: StoredSituationReport = {
+      id: `rsp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      reportNumber: reportRef,
+      projectId: project.id,
+      projectCode: project.code,
+      projectName: project.name,
+      clientName: project.clientName,
+      periodStart: data.periodStart || project.startDate,
+      periodEnd: data.periodEnd || new Date().toISOString().split('T')[0],
+      reportDate: new Date().toISOString().split('T')[0],
+      preparedByName: user?.name || project.managerName || 'Responsable Projet',
+      physicalStatus: {
+        plannedProgress: Number(data.plannedProgress) || project.physicalProgress || 50,
+        actualProgress: project.physicalProgress || 0,
+        completedTasksCount: completedTasks,
+        delayedTasksCount: delayedTasks,
+        summary: data.physicalSummary || `Avancement physique global de ${project.physicalProgress}%. ${completedTasks} tâches achevées.`,
+      },
+      financialStatus: {
+        initialBudget: project.budgetAmount,
+        revisedBudget: project.budgetAmount,
+        committedCost: project.committedBudget || 0,
+        actualCost: project.spentBudget || 0,
+        billedAmount: project.workSituations ? project.workSituations.reduce((sum, s) => sum + (s.amountHT || 0), 0) : 0,
+        forecastAtCompletion: project.budgetAmount,
+        budgetVariance: project.budgetAmount - (project.spentBudget || 0),
+      },
+      logisticsStatus: {
+        criticalProcurementNeeds: data.criticalProcurementNeeds || 'Aucune rupture critique de stock signalée.',
+        pendingOrdersCount: (this.purchaseOrders || []).filter(po => po.projectCode === project.code && po.status !== 'LIVRE').length,
+        stockAlertsCount: 0,
+      },
+      hrStatus: {
+        mobilizedHeadcount: data.mobilizedHeadcount || 20,
+        totalHoursWorked: data.totalHoursWorked || 1600,
+        absentCount: data.absentCount || 0,
+        additionalNeeds: data.additionalNeeds || 'Effectifs en adéquation avec la charge.',
+      },
+      risksStatus: {
+        openConstraintsCount: openConstraints.length,
+        criticalRisksSummary: data.criticalRisksSummary || (openConstraints.length > 0 ? `${openConstraints.length} contrainte(s) active(s) sous suivi.` : 'Tous les risques sous contrôle.'),
+        correctiveActions: openConstraints.map(c => ({ action: c.correctiveAction, responsible: c.assignedToName, status: c.status })),
+      },
+      generalAppraisal: data.generalAppraisal || 'Exécution conforme aux règles de l\'art et exigences contractuelles.',
+      createdAt: new Date().toISOString(),
+    };
+
+    project.situationReports.unshift(newReport);
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('CREATE_SITUATION_REPORT', 'PROJECT', project.code, `Rapport de situation périodique ${reportRef} généré`, user);
+    return newReport;
+  }
+
+  // --- REGISTRE DES CONTRAINTES ET DIFFICULTES ---
+
+  getProjectConstraints(codeOrId: string): StoredProjectConstraint[] {
+    const project = this.getProject(codeOrId);
+    if (!project) return [];
+    this.ensureProjectDefaults(project);
+    return project.constraints || [];
+  }
+
+  createProjectConstraint(codeOrId: string, data: any, user?: any): StoredProjectConstraint {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    const ctrNum = String((project.constraints || []).length + 1).padStart(2, '0');
+    const ctrRef = `CTR-${project.code}-${ctrNum}`;
+
+    const newConstraint: StoredProjectConstraint = {
+      id: `ctr-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      reference: ctrRef,
+      projectId: project.id,
+      projectCode: project.code,
+      dateDetected: data.dateDetected || new Date().toISOString().split('T')[0],
+      type: data.type || 'TECHNIQUE',
+      description: data.description || '',
+      impact: data.impact || '',
+      severity: data.severity || 'MOYENNE',
+      assignedToName: data.assignedToName || user?.name || 'Chef de Chantier',
+      assignedToId: data.assignedToId,
+      correctiveAction: data.correctiveAction || '',
+      deadline: data.deadline || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+      status: data.status || 'OUVERTE',
+      linkedTaskId: data.linkedTaskId,
+      linkedDailyReportId: data.linkedDailyReportId,
+      createdAt: new Date().toISOString(),
+    };
+
+    project.constraints.unshift(newConstraint);
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('CREATE_CONSTRAINT', 'PROJECT', project.code, `Contrainte ${ctrRef} signalée (Gravité: ${newConstraint.severity})`, user);
+    return newConstraint;
+  }
+
+  updateProjectConstraint(codeOrId: string, constraintId: string, data: any, user?: any): StoredProjectConstraint {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    const ctr = project.constraints.find(c => c.id === constraintId || c.reference === constraintId);
+    if (!ctr) throw new Error('Contrainte introuvable');
+
+    if (data.description !== undefined) ctr.description = data.description;
+    if (data.impact !== undefined) ctr.impact = data.impact;
+    if (data.severity) ctr.severity = data.severity;
+    if (data.assignedToName) ctr.assignedToName = data.assignedToName;
+    if (data.correctiveAction !== undefined) ctr.correctiveAction = data.correctiveAction;
+    if (data.deadline) ctr.deadline = data.deadline;
+    if (data.status) {
+      ctr.status = data.status;
+      if (data.status === 'RESOLUE' || data.status === 'CLOTUREE') {
+        ctr.resolvedDate = new Date().toISOString().split('T')[0];
+      }
+    }
+
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('UPDATE_CONSTRAINT', 'PROJECT', project.code, `Contrainte ${ctr.reference} mise à jour (Statut: ${ctr.status})`, user);
+    return ctr;
+  }
+
+  // --- QUALITE ET SECURITE HSE ---
+
+  getHseIncidents(codeOrId: string): StoredHseIncident[] {
+    const project = this.getProject(codeOrId);
+    if (!project) return [];
+    this.ensureProjectDefaults(project);
+    return project.hseIncidents || [];
+  }
+
+  createHseIncident(codeOrId: string, data: any, user?: any): StoredHseIncident {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    const hseNum = String((project.hseIncidents || []).length + 1).padStart(2, '0');
+    const hseRef = `HSE-${project.code}-${hseNum}`;
+
+    const newHse: StoredHseIncident = {
+      id: `hse-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      reference: hseRef,
+      projectId: project.id,
+      projectCode: project.code,
+      incidentDate: data.incidentDate || new Date().toISOString().split('T')[0],
+      type: data.type || 'OBSERVATION_SECURITE',
+      severity: data.severity || 'MINEURE',
+      locationZone: data.locationZone || project.siteLocation,
+      description: data.description || '',
+      immediateAction: data.immediateAction || '',
+      correctiveAction: data.correctiveAction || '',
+      responsibleName: data.responsibleName || user?.name || 'Responsable HSE',
+      deadline: data.deadline || new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+      status: 'OUVERT',
+      createdAt: new Date().toISOString(),
+    };
+
+    project.hseIncidents.unshift(newHse);
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('CREATE_HSE_INCIDENT', 'PROJECT', project.code, `Événement HSE ${hseRef} enregistré (${newHse.type} - ${newHse.severity})`, user);
+    return newHse;
+  }
+
+  updateHseIncident(codeOrId: string, incidentId: string, data: any, user?: any): StoredHseIncident {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    const hse = project.hseIncidents.find(h => h.id === incidentId || h.reference === incidentId);
+    if (!hse) throw new Error('Incident HSE introuvable');
+
+    if (data.description) hse.description = data.description;
+    if (data.immediateAction) hse.immediateAction = data.immediateAction;
+    if (data.correctiveAction) hse.correctiveAction = data.correctiveAction;
+    if (data.status) {
+      hse.status = data.status;
+      if (data.status === 'RESOLU' || data.status === 'CLOTURE') {
+        hse.closedDate = new Date().toISOString().split('T')[0];
+      }
+    }
+
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('UPDATE_HSE_INCIDENT', 'PROJECT', project.code, `Événement HSE ${hse.reference} mis à jour (Statut: ${hse.status})`, user);
+    return hse;
+  }
+
+  // --- INTERCONNEXION AVEC ACHATS & STOCKS ---
+
+  createProjectPurchaseRequest(codeOrId: string, data: any, user?: any) {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+
+    const num = String((this.purchaseRequests || []).length + 1).padStart(3, '0');
+    const daRef = `DA-${new Date().getFullYear()}-${num}`;
+
+    const pr = {
+      id: `pr-${Date.now()}`,
+      requestNumber: daRef,
+      code: daRef,
+      projectId: project.id,
+      projectCode: project.code,
+      projectName: project.name,
+      initiatorId: user?.id || 'usr-rp-001',
+      initiatorName: user?.name || 'Chef de Projet',
+      initiatorRole: user?.role || 'RESPONSABLE_PROJET',
+      departmentCode: 'OPERATIONS_PROJETS',
+      neededDate: data.neededDate || new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
+      purpose: data.purpose || `Approvisionnement chantier ${project.code} (${project.name})`,
+      status: 'SOUMISE',
+      priority: data.priority || 'NORMALE',
+      totalEstimated: Number(data.totalEstimated || 0),
+      lines: Array.isArray(data.lines) ? data.lines : [
+        {
+          id: `prl-${Date.now()}`,
+          itemCode: data.itemCode || 'FOURNITURE',
+          designation: data.designation || 'Fourniture chantier',
+          quantity: Number(data.quantity) || 1,
+          unit: data.unit || 'U',
+          estimatedUnitPrice: Number(data.estimatedUnitPrice) || Number(data.totalEstimated) || 0,
+        }
+      ],
+      createdAt: new Date().toISOString(),
+    };
+
+    if (!this.purchaseRequests) this.purchaseRequests = [];
+    this.purchaseRequests.unshift(pr);
+
+    if (pr.totalEstimated > 0) {
+      project.committedBudget = (project.committedBudget || 0) + pr.totalEstimated;
+    }
+
+    this.addAuditLog('CREATE_PURCHASE_REQUEST', 'PROCUREMENT', daRef, `Demande d'achat ${daRef} émise depuis le chantier ${project.code}`, user);
+    return pr;
+  }
+
+  recordProjectStockConsumption(codeOrId: string, data: any, user?: any) {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+
+    const smRef = `SM-${new Date().getFullYear()}-${String(Date.now()).slice(-4)}`;
+    const qty = Number(data.quantity) || 0;
+    const item = (this.inventoryItems || []).find((i: any) => i.id === data.itemId || i.code === data.itemId);
+
+    if (item && item.currentStock !== undefined) {
+      item.currentStock = Math.max(0, item.currentStock - qty);
+    }
+
+    const costAmount = (item?.averageCostPrice || data.unitPrice || 1000) * qty;
+
+    project.spentBudget = (project.spentBudget || 0) + costAmount;
+    if (!project.costEntries) project.costEntries = [];
+    project.costEntries.push({
+      id: `cst-${Date.now()}`,
+      category: 'MATIERE_STOCK',
+      amount: costAmount,
+      description: `Consommation stock ${item?.name || data.designation || 'Article'} (Réf: ${smRef})`,
+      sourceModule: 'INVENTORY',
+      date: new Date().toISOString(),
+    });
+
+    const movement = {
+      id: `sm-${Date.now()}`,
+      movementNumber: smRef,
+      type: 'SORTIE_CHANTIER',
+      itemId: item?.id || data.itemId,
+      itemCode: item?.code || 'ART',
+      itemName: item?.name || data.designation || 'Article de stock',
+      quantity: qty,
+      unit: item?.unit || data.unit || 'U',
+      projectId: project.id,
+      projectCode: project.code,
+      destinationSite: project.siteLocation,
+      reason: data.reason || `Consommation directe sur le chantier ${project.code}`,
+      performedBy: user?.name || 'Magasinier Chantier',
+      timestamp: new Date().toISOString(),
+    };
+
+    if (!this.stockMovements) this.stockMovements = [];
+    this.stockMovements.unshift(movement as any);
+
+    this.addAuditLog('STOCK_CONSUMPTION', 'INVENTORY', smRef, `Sortie stock ${qty} ${movement.unit} vers chantier ${project.code}`, user);
+    return movement;
   }
 
 }

@@ -212,7 +212,18 @@ export const dbBridge = {
             },
           },
         });
-        if (project) return project;
+        if (project) {
+          const storeP = serverStore.getProject(codeOrId);
+          return {
+            ...project,
+            contractItems: storeP?.contractItems || [],
+            tasks: storeP?.tasks || [],
+            dailyReports: storeP?.dailyReports || [],
+            situationReports: storeP?.situationReports || [],
+            constraints: storeP?.constraints || [],
+            hseIncidents: storeP?.hseIncidents || [],
+          };
+        }
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getProject:', err);
       }
@@ -1911,4 +1922,91 @@ export const dbBridge = {
       createdAt: l.timestamp,
     }));
   },
+
+  // --- MODULE 02 PROJET : METHODES INDUSTRIELLES (PHASE 3) ---
+
+  async getProjectTasks(code: string) {
+    return serverStore.getProjectTasks(code);
+  },
+
+  async createProjectTask(code: string, data: any, user?: any) {
+    return serverStore.createProjectTask(code, data, user);
+  },
+
+  async updateProjectTask(code: string, taskId: string, data: any, user?: any) {
+    return serverStore.updateProjectTask(code, taskId, data, user);
+  },
+
+  async deleteProjectTask(code: string, taskId: string, user?: any) {
+    return serverStore.deleteProjectTask(code, taskId, user);
+  },
+
+  async getContractItems(code: string) {
+    return serverStore.getContractItems(code);
+  },
+
+  async updateContractItem(code: string, itemId: string, data: any, user?: any) {
+    return serverStore.updateContractItem(code, itemId, data, user);
+  },
+
+  async getDailyReports(code: string) {
+    return serverStore.getDailyReports(code);
+  },
+
+  async getDailyReport(code: string, id: string) {
+    return serverStore.getDailyReport(code, id);
+  },
+
+  async createDailyReport(code: string, data: any, user?: any) {
+    return serverStore.createDailyReport(code, data, user);
+  },
+
+  async updateDailyReport(code: string, id: string, data: any, user?: any) {
+    return serverStore.updateDailyReport(code, id, data, user);
+  },
+
+  async validateDailyReport(code: string, id: string, user?: any) {
+    return serverStore.validateDailyReport(code, id, user);
+  },
+
+  async getSituationReports(code: string) {
+    return serverStore.getSituationReports(code);
+  },
+
+  async createSituationReport(code: string, data: any, user?: any) {
+    return serverStore.createSituationReport(code, data, user);
+  },
+
+  async getProjectConstraints(code: string) {
+    return serverStore.getProjectConstraints(code);
+  },
+
+  async createProjectConstraint(code: string, data: any, user?: any) {
+    return serverStore.createProjectConstraint(code, data, user);
+  },
+
+  async updateProjectConstraint(code: string, id: string, data: any, user?: any) {
+    return serverStore.updateProjectConstraint(code, id, data, user);
+  },
+
+  async getHseIncidents(code: string) {
+    return serverStore.getHseIncidents(code);
+  },
+
+  async createHseIncident(code: string, data: any, user?: any) {
+    return serverStore.createHseIncident(code, data, user);
+  },
+
+  async updateHseIncident(code: string, id: string, data: any, user?: any) {
+    return serverStore.updateHseIncident(code, id, data, user);
+  },
+
+  async createProjectPurchaseRequest(code: string, data: any, user?: any) {
+    return serverStore.createProjectPurchaseRequest(code, data, user);
+  },
+
+  async recordProjectStockConsumption(code: string, data: any, user?: any) {
+    return serverStore.recordProjectStockConsumption(code, data, user);
+  },
+
 };

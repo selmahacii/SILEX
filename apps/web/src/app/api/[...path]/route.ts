@@ -99,6 +99,37 @@ export async function GET(
       const kpis = await dbBridge.getProjectKpis();
       return NextResponse.json(kpis, { headers: corsHeaders() });
     }
+    const subRoute = (resolvedParams.path[2] || '').toLowerCase();
+    if (subRoute === 'tasks') {
+      const tasks = await dbBridge.getProjectTasks(code);
+      return NextResponse.json(tasks, { headers: corsHeaders() });
+    }
+    if (subRoute === 'contract-items') {
+      const items = await dbBridge.getContractItems(code);
+      return NextResponse.json(items, { headers: corsHeaders() });
+    }
+    if (subRoute === 'daily-reports') {
+      const reportId = resolvedParams.path[3];
+      if (reportId) {
+        const report = await dbBridge.getDailyReport(code, reportId);
+        if (!report) return NextResponse.json({ error: 'Rapport journalier introuvable' }, { status: 404, headers: corsHeaders() });
+        return NextResponse.json(report, { headers: corsHeaders() });
+      }
+      const reports = await dbBridge.getDailyReports(code);
+      return NextResponse.json(reports, { headers: corsHeaders() });
+    }
+    if (subRoute === 'situation-reports') {
+      const sitReports = await dbBridge.getSituationReports(code);
+      return NextResponse.json(sitReports, { headers: corsHeaders() });
+    }
+    if (subRoute === 'constraints') {
+      const constraints = await dbBridge.getProjectConstraints(code);
+      return NextResponse.json(constraints, { headers: corsHeaders() });
+    }
+    if (subRoute === 'hse-incidents') {
+      const hse = await dbBridge.getHseIncidents(code);
+      return NextResponse.json(hse, { headers: corsHeaders() });
+    }
     const proj = await dbBridge.getProject(code);
     if (!proj) {
       return NextResponse.json({ error: 'Projet introuvable' }, { status: 404, headers: corsHeaders() });
@@ -314,7 +345,58 @@ export async function POST(
     return NextResponse.json(quote, { status: 201, headers: corsHeaders() });
   }
 
+  // 2.8 Module 02 Project POST subactions (Phase 3)
+  if (clean.startsWith('/projects/') && resolvedParams.path.length >= 3) {
+    const projCode = resolvedParams.path[1];
+    const subAction = (resolvedParams.path[2] || '').toLowerCase();
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+
+    if (subAction === 'tasks') {
+      const task = await dbBridge.createProjectTask(projCode, body, user);
+      return NextResponse.json(task, { status: 201, headers: corsHeaders() });
+    }
+    if (subAction === 'daily-reports') {
+      if (resolvedParams.path[3] === 'validate' || resolvedParams.path[4] === 'validate') {
+        const reportId = resolvedParams.path[3] === 'validate' ? body.reportId : resolvedParams.path[3];
+        const validated = await dbBridge.validateDailyReport(projCode, reportId, user);
+        return NextResponse.json(validated, { headers: corsHeaders() });
+      }
+      const report = await dbBridge.createDailyReport(projCode, body, user);
+      return NextResponse.json(report, { status: 201, headers: corsHeaders() });
+    }
+    if (subAction === 'situation-reports') {
+      const sitRep = await dbBridge.createSituationReport(projCode, body, user);
+      return NextResponse.json(sitRep, { status: 201, headers: corsHeaders() });
+    }
+    if (subAction === 'constraints') {
+      const ctr = await dbBridge.createProjectConstraint(projCode, body, user);
+      return NextResponse.json(ctr, { status: 201, headers: corsHeaders() });
+    }
+    if (subAction === 'hse-incidents') {
+      const hse = await dbBridge.createHseIncident(projCode, body, user);
+      return NextResponse.json(hse, { status: 201, headers: corsHeaders() });
+    }
+    if (subAction === 'purchase-requests') {
+      const pr = await dbBridge.createProjectPurchaseRequest(projCode, body, user);
+      return NextResponse.json(pr, { status: 201, headers: corsHeaders() });
+    }
+    if (subAction === 'stock-consumptions') {
+      const sm = await dbBridge.recordProjectStockConsumption(projCode, body, user);
+      return NextResponse.json(sm, { status: 201, headers: corsHeaders() });
+    }
+  }
+
   // 3. Projects
+  if (clean.includes('/tasks/')) {
+    const projCode = resolvedParams.path[1];
+    const taskId = resolvedParams.path[3];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.deleteProjectTask(projCode, taskId, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
+  }
+
   if (clean.includes('/members')) {
     const projId = resolvedParams.path[1];
     const member = await dbBridge.assignMemberToProject(projId, body.userId, null);
@@ -492,6 +574,48 @@ export async function PATCH(
       Number(body.physicalProgress || 0),
       Number(body.financialProgress || 0),
     );
+    return NextResponse.json(updated, { headers: corsHeaders() });
+  }
+
+  // 1.8 Module 02 Project PATCH subactions (Phase 3)
+  if (clean.includes('/tasks/')) {
+    const projCode = resolvedParams.path[1];
+    const taskId = resolvedParams.path[3];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const updated = await dbBridge.updateProjectTask(projCode, taskId, body, user);
+    return NextResponse.json(updated, { headers: corsHeaders() });
+  }
+  if (clean.includes('/contract-items/')) {
+    const projCode = resolvedParams.path[1];
+    const itemId = resolvedParams.path[3];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const updated = await dbBridge.updateContractItem(projCode, itemId, body, user);
+    return NextResponse.json(updated, { headers: corsHeaders() });
+  }
+  if (clean.includes('/daily-reports/')) {
+    const projCode = resolvedParams.path[1];
+    const reportId = resolvedParams.path[3];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const updated = await dbBridge.updateDailyReport(projCode, reportId, body, user);
+    return NextResponse.json(updated, { headers: corsHeaders() });
+  }
+  if (clean.includes('/constraints/')) {
+    const projCode = resolvedParams.path[1];
+    const ctrId = resolvedParams.path[3];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const updated = await dbBridge.updateProjectConstraint(projCode, ctrId, body, user);
+    return NextResponse.json(updated, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hse-incidents/')) {
+    const projCode = resolvedParams.path[1];
+    const incidentId = resolvedParams.path[3];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const updated = await dbBridge.updateHseIncident(projCode, incidentId, body, user);
     return NextResponse.json(updated, { headers: corsHeaders() });
   }
 

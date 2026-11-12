@@ -102,13 +102,17 @@ erDiagram
 - **`CostSheetLine`** : Lignes unitaires détaillées par service (travaux, matières, main d'œuvre).
 - **`CustomerQuote`** (Devis Client) : Référence devis, montant HT, TVA, TTC, validité, conditions de règlement.
 
-### C. Module 02 — Projet
-- **`Project`** : Entité pivot du système (`code`, `name`, `clientName`, `sector`, `managerId`, `contractAmount`, `budgetAmount`, `committedCost`, `actualCost`, `physicalProgress`, `financialProgress`, `status`, `riskLevel`).
-- **`ProjectMilestone`** & **`ProjectTask`** : Découpage WBS du projet avec jalons contractuels et avancement unitaire.
-- **`ServiceOrder`** (ODS) : Ordres de service contractuels (démarrage, arrêt, reprise, avenant).
-- **`WorkSituation`** (Attachement / Situation) : Métrés contradictoires périodiques validés pour facturation.
-- **`DailyReport`** (Journal de Chantier) : Date, effectifs présents, engins mobilisés, météo, travaux accomplis, difficultés, photos/visas.
-- **`ProjectConstraint`** : Registre des difficultés et contraintes opérationnelles sur site.
+### C. Module 02 — Projet (Chantiers Industriels)
+- **`Project`** : Entité pivot du système (`code`, `name`, `clientName`, `sector`, `managerId`, `contractAmount`, `budgetAmount`, `committedCost`, `actualCost`, `physicalProgress`, `financialProgress`, `status`, `riskLevel`, `tvaRate`, `retentionRate`).
+- **`ContractItem`** : Découpage contractuel par lots avec métrés contradictoires (`itemCode`, `designation`, `unit`, `contractQty`, `realizedQty`, `validatedQty`, `unitPriceDA`, `totalContractAmountDA`, `weightPercent`).
+- **`ProjectTask`** : Tâches opérationnelles par corps d'état (`code`, `name`, `team`, `plannedStartDate`, `plannedEndDate`, `actualStartDate`, `actualEndDate`, `estimatedHours`, `actualHours`, `priority`, `status`, `progress`, `isDelayed`).
+- **`ProjectMilestone`** : Jalons contractuels majeurs avec pré-configurations industrielles (CND, arrêts LOTO, épreuves hydrauliques).
+- **`DailyReport` (RJC / DSR)** : Journal contradictoire quotidien (`reportNumber`, `date`, `weatherConditions`, `temperature`, `manpower`, `workDone`, `heavyEquipment`, `materialsConsumed`, `hseIncidentsCount`, `siteSupervisorName`, `validationVisa`, `status`).
+- **`SituationReport` (RSP)** : Rapports périodiques d'avancement croisé (`reportNumber`, `periodStart`, `periodEnd`, `physicalStatus`, `financialStatus`, `logisticsStatus`, `hrStatus`, `risksStatus`).
+- **`ProjectConstraint`** : Registre centralisé des difficultés chantier (`reference`, `type`, `severity`, `impactScheduleDays`, `impactCostDA`, `correctiveAction`, `deadline`, `status`, `resolvedDate`).
+- **`HseIncident`** : Consignation des événements de sécurité et contrôles CND (`reference`, `incidentDate`, `type`, `severity`, `description`, `immediateAction`, `correctiveAction`, `status`).
+- **`ServiceOrder` (ODS)** : Ordres de service contractuels (démarrage, arrêt, reprise, avenant).
+- **`WorkSituation` (Attachement / Situation)** : Métrés contradictoires périodiques validés pour facturation avec retenue de garantie légale (5%).
 
 ### D. Module 03 — Achats et Stocks
 - **`Supplier`** : Référentiel des sous-traitants et fournisseurs industriels avec spécialités, coordonnées et note.

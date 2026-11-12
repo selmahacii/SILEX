@@ -6,6 +6,13 @@ import { useAuth } from '@/lib/auth-context';
 import { api } from '@/lib/api-client';
 import { formatCurrencyDA, formatDateDZ, ServiceOrderType, SystemRole } from '@silex/shared';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { ProjectContractTab } from '@/components/project-tabs/project-contract-tab';
+import { ProjectTasksTab } from '@/components/project-tabs/project-tasks-tab';
+import { ProjectDailyReportsTab } from '@/components/project-tabs/project-daily-reports-tab';
+import { ProjectSituationReportsTab } from '@/components/project-tabs/project-situation-reports-tab';
+import { ProjectConstraintsTab } from '@/components/project-tabs/project-constraints-tab';
+import { ProjectHseTab } from '@/components/project-tabs/project-hse-tab';
+import { ProjectHrTab } from '@/components/project-tabs/project-hr-tab';
 import {
   ArrowLeft,
   Calendar,
@@ -217,6 +224,62 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
   const [costCategory, setCostCategory] = useState('AUTRE');
   const [costAmount, setCostAmount] = useState<number>(250000);
   const [costDescription, setCostDescription] = useState('Frais de mission & hébergement équipe base de vie Hassi Messaoud');
+
+  // Modales d'interconnexion Achats & Stocks Chantier
+  const [showPurchaseRequestModal, setShowPurchaseRequestModal] = useState(false);
+  const [prDescription, setPrDescription] = useState('Fourniture électrodes basiques E7018 et disques meulage');
+  const [prAmountHT, setPrAmountHT] = useState<number>(350000);
+  const [prUrgency, setPrUrgency] = useState<'NORMALE' | 'URGENTE'>('URGENTE');
+  const [prSubmitting, setPrSubmitting] = useState(false);
+
+  const handleCreatePurchaseRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setPrSubmitting(true);
+      await api.post('/projects/' + project.code + '/purchase-requests', {
+        description: prDescription,
+        estimatedAmountHT: Number(prAmountHT),
+        urgency: prUrgency,
+      });
+      setShowPurchaseRequestModal(false);
+      setNotification("Demande d'Achat Chantier (DA) émise avec succès ! Budget engagé actualisé.");
+      setTimeout(() => setNotification(null), 5000);
+      await fetchProject();
+    } catch (err: any) {
+      alert(err.message || 'Erreur DA');
+    } finally {
+      setPrSubmitting(false);
+    }
+  };
+
+  const [showStockConsumptionModal, setShowStockConsumptionModal] = useState(false);
+  const [stockItemName, setStockItemName] = useState('Électrodes basiques E7018 diam 3.2mm');
+  const [stockQty, setStockQty] = useState<number>(50);
+  const [stockUnitCost, setStockUnitCost] = useState<number>(4500);
+  const [stockWorkZone, setStockWorkZone] = useState('Skid Gaz HP - ISO 01');
+  const [stockSubmitting, setStockSubmitting] = useState(false);
+
+  const handleCreateStockConsumption = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setStockSubmitting(true);
+      await api.post('/projects/' + project.code + '/stock-consumptions', {
+        itemId: 'ITEM-ELEC-7018',
+        itemName: stockItemName,
+        quantity: Number(stockQty),
+        unitCost: Number(stockUnitCost),
+        workZone: stockWorkZone,
+      });
+      setShowStockConsumptionModal(false);
+      setNotification("Sortie réelle de stock enregistrée ! Dépenses réelles chantier imputées.");
+      setTimeout(() => setNotification(null), 5000);
+      await fetchProject();
+    } catch (err: any) {
+      alert(err.message || 'Erreur sortie stock');
+    } finally {
+      setStockSubmitting(false);
+    }
+  };
 
   const applyMilestonePreset = (
     title: string,
@@ -616,13 +679,19 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
 
   const tabs = [
     { id: 'overview', label: 'Vue d’ensemble' },
+    { id: 'contract', label: `Contrat & Métrés (${project.contractItems?.length || 0})` },
     { id: 'planning', label: `Planning & Jalons (${project.milestones?.length || 0})` },
+    { id: 'tasks', label: `Tâches Opérationnelles (${project.tasks?.length || 0})` },
+    { id: 'daily-reports', label: `Rapports Journaliers RJC (${project.dailyReports?.length || 0})` },
+    { id: 'situation-reports', label: `Rapports Périodiques (${project.situationReports?.length || 0})` },
+    { id: 'constraints', label: `Contraintes & Blocages (${project.constraints?.length || 0})` },
+    { id: 'quality-hse', label: `Sécurité HSE & CND (${project.hseIncidents?.length || 0})` },
+    { id: 'procurement', label: `Achats liés (${(project.purchaseOrders?.length || 0) + (project.purchaseRequests?.length || 0)})` },
+    { id: 'materials', label: `Stock & Sorties Chantier (${project.allocations?.length || 0})` },
+    { id: 'hr', label: `RH & Qualifications (${project.members?.length || 0})` },
     { id: 'budget', label: 'Budget & Coûts' },
-    { id: 'materials', label: `Matériel consommé (${project.allocations?.length || 0})` },
-    { id: 'procurement', label: `Achats liés (${project.purchaseOrders?.length || 0})` },
     { id: 'ods', label: `Ordres de Service (${project.serviceOrders?.length || 0})` },
     { id: 'situations', label: `Situations de travaux (${project.workSituations?.length || 0})` },
-    { id: 'quality', label: `Qualité & CND (${project.nonConformities?.length || 0})` },
   ];
 
   return (
@@ -668,6 +737,46 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => setActiveTab('tasks')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+          >
+            <Clock className="w-3.5 h-3.5 text-[#0B207D]" />
+            <span>Tâches ({project.tasks?.length || 0})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('daily-reports')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+          >
+            <FileText className="w-3.5 h-3.5 text-[#0B207D]" />
+            <span>+ Rapport RJC</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('constraints')}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-rose-300 text-rose-700 rounded-md hover:bg-rose-50 transition-colors shadow-2xs cursor-pointer"
+          >
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+            <span>Contraintes ({project.constraints?.length || 0})</span>
+          </button>
+
+          <button
+            onClick={() => setShowPurchaseRequestModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-blue-300 text-blue-700 rounded-md hover:bg-blue-50 transition-colors shadow-2xs cursor-pointer"
+          >
+            <ShoppingCart className="w-3.5 h-3.5 text-blue-600" />
+            <span>+ Demande d'Achat DA</span>
+          </button>
+
+          <button
+            onClick={() => setShowStockConsumptionModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-emerald-300 text-emerald-700 rounded-md hover:bg-emerald-50 transition-colors shadow-2xs cursor-pointer"
+          >
+            <Boxes className="w-3.5 h-3.5 text-emerald-600" />
+            <span>+ Sortie Stock</span>
+          </button>
+
           {canAdjustProgress && (
             <button
               onClick={handleOpenProgress}
@@ -1069,6 +1178,18 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
             </div>
           </div>
         </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: CONTRAT & PRESTATIONS CONTRACTUELLES */}
+      {/* ========================================================================= */}
+      {activeTab === 'contract' && (
+        <ProjectContractTab
+          project={project}
+          onRefresh={async () => { await fetchProject(true); }}
+          isDG={isDG}
+          isProjectManager={isProjectManager}
+        />
       )}
 
       {/* ========================================================================= */}
@@ -3087,6 +3208,130 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       {/* ========================================================================= */}
       {/* MODALE : MODIFIER LES DATES CONTRACTUELLES & DÉLAIS */}
       {/* ========================================================================= */}
+      {/* Modal Demande d'Achat Chantier */}
+      {showPurchaseRequestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-4 bg-[#0B207D] text-white flex items-center justify-between">
+              <div className="font-bold text-sm flex items-center gap-2">
+                <ShoppingCart className="w-4 h-4" />
+                <span>Émettre une Demande d'Achat Chantier (DA)</span>
+              </div>
+              <button onClick={() => setShowPurchaseRequestModal(false)} className="text-white/80 hover:text-white cursor-pointer">✕</button>
+            </div>
+            <form onSubmit={handleCreatePurchaseRequest} className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Désignation des Fournitures Requises *</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={prDescription}
+                  onChange={e => setPrDescription(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Montant Estimé HT (DA) *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={prAmountHT}
+                    onChange={e => setPrAmountHT(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Niveau d'Urgence</label>
+                  <select
+                    value={prUrgency}
+                    onChange={e => setPrUrgency(e.target.value as any)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                  >
+                    <option value="NORMALE">Normale</option>
+                    <option value="URGENTE">Urgente (Bloquante)</option>
+                  </select>
+                </div>
+              </div>
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button type="button" onClick={() => setShowPurchaseRequestModal(false)} className="px-4 py-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 cursor-pointer">Annuler</button>
+                <button type="submit" disabled={prSubmitting} className="px-4 py-2 bg-[#0B207D] text-white font-semibold rounded-md hover:bg-[#07164D] disabled:opacity-50 cursor-pointer">
+                  {prSubmitting ? 'Émission en cours...' : 'Transmettre aux Achats'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Sortie Réelle Stock */}
+      {showStockConsumptionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-4 bg-[#0A7F7C] text-white flex items-center justify-between">
+              <div className="font-bold text-sm flex items-center gap-2">
+                <Boxes className="w-4 h-4" />
+                <span>Déclarer une Sortie Réelle de Stock Chantier</span>
+              </div>
+              <button onClick={() => setShowStockConsumptionModal(false)} className="text-white/80 hover:text-white cursor-pointer">✕</button>
+            </div>
+            <form onSubmit={handleCreateStockConsumption} className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Désignation Article / Fourniture *</label>
+                <input
+                  type="text"
+                  required
+                  value={stockItemName}
+                  onChange={e => setStockItemName(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0A7F7C]"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Quantité Consommée *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={stockQty}
+                    onChange={e => setStockQty(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0A7F7C]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Coût Unitaire (DA) *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={stockUnitCost}
+                    onChange={e => setStockUnitCost(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0A7F7C]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Zone d'Imputation / ISO *</label>
+                <input
+                  type="text"
+                  required
+                  value={stockWorkZone}
+                  onChange={e => setStockWorkZone(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0A7F7C]"
+                />
+              </div>
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button type="button" onClick={() => setShowStockConsumptionModal(false)} className="px-4 py-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 cursor-pointer">Annuler</button>
+                <button type="submit" disabled={stockSubmitting} className="px-4 py-2 bg-[#0A7F7C] text-white font-semibold rounded-md hover:bg-[#086663] disabled:opacity-50 cursor-pointer">
+                  {stockSubmitting ? 'Enregistrement...' : 'Valider la Sortie'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showChangeDatesModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150 backdrop-blur-xs">
           <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-200">
