@@ -1007,6 +1007,146 @@ export interface StoredPayslipDemo {
 }
 
 
+
+export interface StoredFinancialAccount {
+  id: string;
+  code: string; // DEMO-CPT-01, CPT-BEA-01
+  name: string;
+  type: 'BANQUE_COURANT' | 'BANQUE_INVESTISSEMENT' | 'CAISSE_SIEGE' | 'CAISSE_CHANTIER';
+  bankName: string;
+  ribNumber: string;
+  currency: 'DZD' | 'EUR' | 'USD';
+  initialBalance: number;
+  currentBalance: number;
+  isDemoAccount: boolean;
+  isActive: boolean;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CashTransactionType =
+  | 'ENCAISSEMENT_CLIENT'
+  | 'DECAISSEMENT_FOURNISSEUR'
+  | 'PAIEMENT_SALAIRES'
+  | 'PAIEMENT_CHARGES_SOCIALES'
+  | 'VIREMENT_INTERNE_EMIS'
+  | 'VIREMENT_INTERNE_RECU'
+  | 'LIBERATION_RETENUE_GARANTIE'
+  | 'FRAIS_BANCAIRES'
+  | 'AVANCE_CHANTIER';
+
+export interface StoredCashTransaction {
+  id: string;
+  transactionNumber: string; // FLX-2026-NNN
+  transactionDate: string;
+  type: CashTransactionType;
+  amount: number;
+  accountId: string;
+  accountCode: string;
+  counterpartAccountId?: string;
+  counterpartAccountCode?: string;
+  customerInvoiceId?: string;
+  customerInvoiceNumber?: string;
+  supplierInvoiceId?: string;
+  supplierInvoiceNumber?: string;
+  projectId?: string;
+  projectCode?: string;
+  referenceDocument?: string;
+  paymentMethod: 'VIREMENT' | 'CHEQUE' | 'ESPECES' | 'LETTRE_DE_CHANGE';
+  category: string;
+  notes?: string;
+  performedById: string;
+  performedByName: string;
+  status: 'VALIDE' | 'ANNULE';
+  idempotencyKey?: string;
+  createdAt: string;
+}
+
+export type CustomerInvoiceStatus = 'BROUILLON' | 'EMISE' | 'PARTIELLEMENT_PAYEE' | 'PAYEE' | 'LITIGE' | 'ANNULEE';
+
+export interface StoredCustomerInvoice {
+  id: string;
+  invoiceNumber: string; // FAC-2026-NNN
+  clientId: string;
+  clientName: string;
+  projectId: string;
+  projectCode: string;
+  projectName?: string;
+  workSituationId?: string;
+  workSituationNumber?: string;
+  commercialQuoteId?: string;
+  issueDate: string;
+  dueDate: string;
+  amountHT: number;
+  vatRate: number; // e.g. 19, 9, 0
+  vatAmount: number;
+  retentionRate: number; // e.g. 5, 10, 0
+  retentionAmount: number;
+  amountTTC: number; // (amountHT - retentionAmount) + vatAmount
+  netReceivableAmount: number; // Montant exigible immédiat = amountTTC
+  paidAmount: number;
+  remainingAmount: number;
+  warrantyHeldAmount: number; // Retenue de garantie (exigible à PVRD)
+  warrantyReleasedAmount: number;
+  status: CustomerInvoiceStatus;
+  paymentTerms: string;
+  notes?: string;
+  isDemoInvoice?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SupplierInvoiceMatchingStatus = 'CONFORME_3_WAY' | 'ECART_PRIX' | 'ECART_QUANTITE' | 'SANS_RECEPTION' | 'NON_VERIFIE';
+export type SupplierInvoiceStatus = 'A_APPROUVER' | 'APPROUVEE' | 'EN_COURS_DE_PAIEMENT' | 'PARTIELLEMENT_PAYEE' | 'PAYEE' | 'REJETEE';
+
+export interface StoredSupplierInvoice {
+  id: string;
+  internalReference: string; // FAC-FOU-2026-NNN
+  invoiceNumber: string; // Numéro facture du fournisseur externe
+  supplierId: string;
+  supplierName: string;
+  purchaseOrderId: string;
+  purchaseOrderCode: string;
+  goodsReceiptId?: string;
+  goodsReceiptCode?: string;
+  projectId?: string;
+  projectCode?: string;
+  invoiceDate: string;
+  dueDate: string;
+  amountHT: number;
+  vatRate: number;
+  vatAmount: number;
+  amountTTC: number;
+  paidAmount: number;
+  remainingAmount: number;
+  matchingStatus: SupplierInvoiceMatchingStatus;
+  matchingDetails?: {
+    poAmountHT: number;
+    grTotalHT: number;
+    priceVarianceDA: number;
+    qtyVariancePct: number;
+    notes?: string;
+  };
+  approvalThresholdStatus?: 'AUTO_APPROVED' | 'PENDING_PM' | 'PENDING_DG' | 'APPROVED';
+  status: SupplierInvoiceStatus;
+  paymentTerms: string;
+  notes?: string;
+  isDemoInvoice?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoredFinancialConfig {
+  defaultVatRate: number; // 19%
+  defaultRetentionRate: number; // 5%
+  defaultWarrantyDurationMonths: number; // 12 mois
+  pmApprovalThresholdDA: number; // 500,000 DA
+  dgApprovalThresholdDA: number; // 2,000,000 DA
+  allowedPaymentTermsDays: number[]; // [30, 45, 60, 90]
+  vatRegimes: Array<{ code: string; label: string; rate: number }>;
+}
+
 class ServerStore {
   private users: ServerUser[] = [];
   private projects: StoredProject[] = [];
@@ -1030,6 +1170,25 @@ class ServerStore {
   public financePayments: any[] = [];
   private auditLogs: any[] = [];
   private rolePermissions: Record<string, any> = {};
+
+  // Données Phase 6 : Finance & Trésorerie Démo Isolée & Interconnexion
+  private financialAccounts: StoredFinancialAccount[] = [];
+  private cashTransactions: StoredCashTransaction[] = [];
+  private customerInvoices: StoredCustomerInvoice[] = [];
+  private supplierInvoices: StoredSupplierInvoice[] = [];
+  private financialConfig: StoredFinancialConfig = {
+    defaultVatRate: 19,
+    defaultRetentionRate: 5,
+    defaultWarrantyDurationMonths: 12,
+    pmApprovalThresholdDA: 500000,
+    dgApprovalThresholdDA: 2000000,
+    allowedPaymentTermsDays: [30, 45, 60, 90],
+    vatRegimes: [
+      { code: 'NORMAL', label: 'Régime Normal Standard (19%)', rate: 19 },
+      { code: 'REDUIT', label: 'Taux Réduit (9%)', rate: 9 },
+      { code: 'EXONERE_ANDI', label: 'Exonération Conventionnelle ANDI / ANSEJ (0%)', rate: 0 },
+    ],
+  };
 
   // Données Phase 5 : RH Industrielles, Compétences CQS, Mobilité & Paie
   private industrialCertifications: StoredIndustrialCertification[] = [];
@@ -1285,6 +1444,7 @@ class ServerStore {
     this.initProjectsBaseline();
     this.initProcurementBaseline();
     this.initHrBaseline();
+    this.initFinanceBaseline();
   }
 
 
@@ -3687,6 +3847,9 @@ class ServerStore {
   }
 
   private calculateClientReceivables(): number {
+    if (this.customerInvoices && this.customerInvoices.length > 0) {
+      return this.customerInvoices.reduce((sum, inv) => sum + (inv.remainingAmount || 0), 0);
+    }
     let billed = 0;
     for (const p of this.projects) {
       billed += p.workSituations.reduce((sum, s) => sum + (s.amountHT || 0), 0);
@@ -3696,10 +3859,893 @@ class ServerStore {
   }
 
   private calculateSupplierPayables(): number {
+    if (this.supplierInvoices && this.supplierInvoices.length > 0) {
+      return this.supplierInvoices.reduce((sum, inv) => sum + (inv.remainingAmount || 0), 0);
+    }
     return this.purchaseOrders.reduce((sum, po) => sum + (po.totalHT || 0), 0);
   }
 
   // ==========================================
+
+  // ==========================================
+  // --- MODULE 06 : FINANCE, TRÉSORERIE & COMPTABILITÉ CLIENT/FOURNISSEUR ---
+  // ==========================================
+
+  private initFinanceBaseline() {
+    // 1. Comptes bancaires et caisses Démo (Strictement isolés)
+    this.financialAccounts = [
+      {
+        id: 'cpt-demo-01',
+        code: 'DEMO-CPT-01',
+        name: 'Compte Courant Exploitation Démo BEA',
+        type: 'BANQUE_COURANT',
+        bankName: 'Banque Extérieure d’Algérie (BEA) — Agence Démo',
+        ribNumber: '002 00050 0500123456 78',
+        currency: 'DZD',
+        initialBalance: 45000000,
+        currentBalance: 45000000,
+        isDemoAccount: true,
+        isActive: true,
+        notes: 'Compte principal pour les règlements clients et fournisseurs industriels Démo',
+        createdAt: '2026-10-01T08:00:00Z',
+        updatedAt: '2026-11-10T12:00:00Z',
+      },
+      {
+        id: 'cpt-demo-02',
+        code: 'DEMO-CPT-02',
+        name: 'Compte Investissement & Équipements Démo BNA',
+        type: 'BANQUE_INVESTISSEMENT',
+        bankName: 'Banque Nationale d’Algérie (BNA) — Agence Démo',
+        ribNumber: '001 00010 0100987654 32',
+        currency: 'DZD',
+        initialBalance: 25000000,
+        currentBalance: 25000000,
+        isDemoAccount: true,
+        isActive: true,
+        notes: 'Ligne de financement Démo dédiée aux acquisitions machines et outillages HP',
+        createdAt: '2026-10-01T08:00:00Z',
+        updatedAt: '2026-11-10T12:00:00Z',
+      },
+      {
+        id: 'cpt-demo-03',
+        code: 'DEMO-CPT-03',
+        name: 'Caisse Régie Chantier Skikda Démo',
+        type: 'CAISSE_CHANTIER',
+        bankName: 'Caisse Menues Dépenses Chantier Démo',
+        ribNumber: 'N/A (Caisse physique Démo)',
+        currency: 'DZD',
+        initialBalance: 1500000,
+        currentBalance: 1500000,
+        isDemoAccount: true,
+        isActive: true,
+        notes: 'Avances et frais de vie déboursés sur le chantier Skikda Démo',
+        createdAt: '2026-10-05T08:00:00Z',
+        updatedAt: '2026-11-10T12:00:00Z',
+      },
+    ];
+
+    // 2. Factures Clients Démo issues de situations contractuelles
+    this.customerInvoices = [
+      {
+        id: 'fac-cli-2026-001',
+        invoiceNumber: 'DEMO-FAC-2026-001',
+        clientId: 'cli-sonatrach-skikda',
+        clientName: 'Sonatrach Raffinerie Skikda (RA1K)',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+        workSituationId: 'sit-001',
+        workSituationNumber: 'SIT-PRJ-2026-001-01',
+        issueDate: '2026-10-25',
+        dueDate: '2026-12-09', // 45 jours
+        amountHT: 12000000,
+        vatRate: 19,
+        vatAmount: 2280000,
+        retentionRate: 5,
+        retentionAmount: 600000,
+        amountTTC: 13680000, // (12M - 0.6M) + 2.28M
+        netReceivableAmount: 13680000,
+        paidAmount: 8000000,
+        remainingAmount: 5680000,
+        warrantyHeldAmount: 600000,
+        warrantyReleasedAmount: 0,
+        status: 'PARTIELLEMENT_PAYEE',
+        paymentTerms: '45 jours fin de mois par virement bancaire',
+        notes: 'Situation N°1 d’avancement préfabrication tuyauterie Skikda',
+        isDemoInvoice: true,
+        createdAt: '2026-10-25T10:00:00Z',
+        updatedAt: '2026-11-02T14:30:00Z',
+      },
+      {
+        id: 'fac-cli-2026-002',
+        invoiceNumber: 'DEMO-FAC-2026-002',
+        clientId: 'cli-fertial-arzew',
+        clientName: 'Fertial Algérie (Complexe Ammoniac & Engrais)',
+        projectId: 'prj-2026-002',
+        projectCode: 'PRJ-2026-002',
+        projectName: 'Installation HVAC salle blanche & compresseurs',
+        workSituationId: 'sit-002',
+        workSituationNumber: 'SIT-PRJ-2026-002-01',
+        issueDate: '2026-11-02',
+        dueDate: '2026-12-17',
+        amountHT: 8500000,
+        vatRate: 19,
+        vatAmount: 1615000,
+        retentionRate: 5,
+        retentionAmount: 425000,
+        amountTTC: 9690000,
+        netReceivableAmount: 9690000,
+        paidAmount: 0,
+        remainingAmount: 9690000,
+        warrantyHeldAmount: 425000,
+        warrantyReleasedAmount: 0,
+        status: 'EMISE',
+        paymentTerms: '45 jours fin de mois',
+        notes: 'Situation N°1 pose des gaines et supports',
+        isDemoInvoice: true,
+        createdAt: '2026-11-02T11:00:00Z',
+        updatedAt: '2026-11-02T11:00:00Z',
+      },
+    ];
+
+    // 3. Factures Fournisseurs Démo avec 3-way matching
+    this.supplierInvoices = [
+      {
+        id: 'fac-fou-2026-001',
+        internalReference: 'DEMO-FAC-FOU-2026-001',
+        invoiceNumber: 'TCX-DZ-2026-884',
+        supplierId: 'sup-001',
+        supplierName: 'Tubacex Algérie SPA',
+        purchaseOrderId: 'po-1',
+        purchaseOrderCode: 'BC-2026-014',
+        goodsReceiptId: 'rec-001',
+        goodsReceiptCode: 'BR-2026-001',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        invoiceDate: '2026-10-20',
+        dueDate: '2026-11-19', // 30 jours
+        amountHT: 8400000,
+        vatRate: 19,
+        vatAmount: 1596000,
+        amountTTC: 9996000,
+        paidAmount: 9996000,
+        remainingAmount: 0,
+        matchingStatus: 'CONFORME_3_WAY',
+        matchingDetails: {
+          poAmountHT: 8400000,
+          grTotalHT: 8400000,
+          priceVarianceDA: 0,
+          qtyVariancePct: 0,
+          notes: '3-way match parfait (BC-2026-014 / BR-2026-001 / Facture)',
+        },
+        approvalThresholdStatus: 'APPROVED',
+        status: 'PAYEE',
+        paymentTerms: '30 jours date de facture',
+        notes: 'Paiement intégral effectué par virement BEA',
+        isDemoInvoice: true,
+        createdAt: '2026-10-20T09:00:00Z',
+        updatedAt: '2026-10-28T16:00:00Z',
+      },
+      {
+        id: 'fac-fou-2026-002',
+        internalReference: 'DEMO-FAC-FOU-2026-002',
+        invoiceNumber: 'PV-DZ-9941',
+        supplierId: 'sup-002',
+        supplierName: 'PetroValve SPA',
+        purchaseOrderId: 'po-2',
+        purchaseOrderCode: 'BC-2026-022',
+        goodsReceiptId: 'rec-002',
+        goodsReceiptCode: 'BR-2026-002',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        invoiceDate: '2026-11-05',
+        dueDate: '2026-12-05',
+        amountHT: 3200000,
+        vatRate: 19,
+        vatAmount: 608000,
+        amountTTC: 3808000,
+        paidAmount: 0,
+        remainingAmount: 3808000,
+        matchingStatus: 'CONFORME_3_WAY',
+        matchingDetails: {
+          poAmountHT: 3200000,
+          grTotalHT: 3200000,
+          priceVarianceDA: 0,
+          qtyVariancePct: 0,
+          notes: 'Conforme au bon de commande et à la réception magasin',
+        },
+        approvalThresholdStatus: 'APPROVED',
+        status: 'APPROUVEE',
+        paymentTerms: '30 jours',
+        notes: 'Facture validée par le PM, programmée pour décaissement',
+        isDemoInvoice: true,
+        createdAt: '2026-11-05T14:00:00Z',
+        updatedAt: '2026-11-06T10:00:00Z',
+      },
+    ];
+
+    // 4. Mouvements de Trésorerie Démo initiaux
+    this.cashTransactions = [
+      {
+        id: 'flx-2026-001',
+        transactionNumber: 'DEMO-FLX-2026-001',
+        transactionDate: '2026-10-28',
+        type: 'DECAISSEMENT_FOURNISSEUR',
+        amount: 9996000,
+        accountId: 'cpt-demo-01',
+        accountCode: 'DEMO-CPT-01',
+        supplierInvoiceId: 'fac-fou-2026-001',
+        supplierInvoiceNumber: 'TCX-DZ-2026-884',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        referenceDocument: 'VIR-BEA-2026-1028',
+        paymentMethod: 'VIREMENT',
+        category: 'Règlement Fournisseur Tuyauterie',
+        notes: 'Règlement facture Tubacex BC-2026-014',
+        performedById: 'usr-fin-001',
+        performedByName: 'Réda Bouzid (Finance)',
+        status: 'VALIDE',
+        idempotencyKey: 'idemp-flx-001',
+        createdAt: '2026-10-28T16:00:00Z',
+      },
+      {
+        id: 'flx-2026-002',
+        transactionNumber: 'DEMO-FLX-2026-002',
+        transactionDate: '2026-11-02',
+        type: 'ENCAISSEMENT_CLIENT',
+        amount: 8000000,
+        accountId: 'cpt-demo-01',
+        accountCode: 'DEMO-CPT-01',
+        customerInvoiceId: 'fac-cli-2026-001',
+        customerInvoiceNumber: 'DEMO-FAC-2026-001',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        referenceDocument: 'VIR-CLIENT-SONATRACH-88',
+        paymentMethod: 'VIREMENT',
+        category: 'Acompte / Situation Client N°1',
+        notes: 'Premier encaissement partiel sur Situation 1 Skikda',
+        performedById: 'usr-fin-001',
+        performedByName: 'Réda Bouzid (Finance)',
+        status: 'VALIDE',
+        idempotencyKey: 'idemp-flx-002',
+        createdAt: '2026-11-02T14:30:00Z',
+      },
+    ];
+
+    // Ajuster le solde du compte courant BEA suite aux mouvements initiaux:
+    // Solde initial = 45M, - 9.996M (fournisseur) + 8M (client) = 43,004,000 DA
+    const bea = this.financialAccounts.find(a => a.id === 'cpt-demo-01');
+    if (bea) {
+      bea.currentBalance = bea.initialBalance - 9996000 + 8000000;
+    }
+  }
+
+  // --- CONFIGURATION FINANCIÈRE ---
+  getFinancialConfig(): StoredFinancialConfig {
+    return this.financialConfig;
+  }
+
+  updateFinancialConfig(data: Partial<StoredFinancialConfig>, user?: any): StoredFinancialConfig {
+    if (user?.role !== SystemRole.DIRECTEUR_GENERAL && user?.role !== SystemRole.ADMINISTRATEUR) {
+      throw new Error('Seule la Direction Générale ou l’Administrateur peut modifier la configuration financière.');
+    }
+    Object.assign(this.financialConfig, data);
+    this.addAuditLog('UPDATE_FINANCE_CONFIG', 'FINANCE', 'CONFIG', 'Mise à jour des paramètres financiers globaux', user);
+    return this.financialConfig;
+  }
+
+  // --- COMPTES FINANCIERS & TRÉSORERIE ---
+  getFinancialAccounts(): StoredFinancialAccount[] {
+    return this.financialAccounts;
+  }
+
+  getFinancialAccount(idOrCode: string): StoredFinancialAccount | undefined {
+    return this.financialAccounts.find(a => a.id === idOrCode || a.code === idOrCode);
+  }
+
+  createFinancialAccount(data: any, user?: any): StoredFinancialAccount {
+    const isDG = user?.role === SystemRole.DIRECTEUR_GENERAL || user?.role === SystemRole.ADMINISTRATEUR;
+    if (!isDG && user?.role !== SystemRole.RESPONSABLE_FINANCIER) {
+      throw new Error('Droits insuffisants pour créer un compte financier.');
+    }
+
+    const code = data.code || `CPT-${Date.now().toString().slice(-4)}`;
+    const newAccount: StoredFinancialAccount = {
+      id: `cpt-${Date.now()}`,
+      code,
+      name: data.name || 'Nouveau Compte Bancaire / Caisse',
+      type: data.type || 'BANQUE_COURANT',
+      bankName: data.bankName || 'Banque Démo',
+      ribNumber: data.ribNumber || '',
+      currency: data.currency || 'DZD',
+      initialBalance: Number(data.initialBalance || 0),
+      currentBalance: Number(data.initialBalance || 0),
+      isDemoAccount: data.isDemoAccount !== undefined ? Boolean(data.isDemoAccount) : false,
+      isActive: true,
+      notes: data.notes || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.financialAccounts.push(newAccount);
+    this.addAuditLog('CREATE_FINANCIAL_ACCOUNT', 'FINANCE', newAccount.code, `Création compte financier ${newAccount.code} (${newAccount.name})`, user);
+    return newAccount;
+  }
+
+  // --- MOUVEMENTS DE TRÉSORERIE & TRANSACTIONS ---
+  getCashTransactions(filter?: { accountId?: string; projectId?: string; type?: string }): StoredCashTransaction[] {
+    let list = this.cashTransactions;
+    if (filter?.accountId) list = list.filter(t => t.accountId === filter.accountId || t.counterpartAccountId === filter.accountId);
+    if (filter?.projectId) list = list.filter(t => t.projectId === filter.projectId);
+    if (filter?.type) list = list.filter(t => t.type === filter.type);
+    return list;
+  }
+
+  recordCashTransaction(data: any, user?: any): StoredCashTransaction {
+    const account = this.getFinancialAccount(data.accountId);
+    if (!account) throw new Error('Compte financier source introuvable');
+
+    // Vérification idempotence si une clé est fournie
+    if (data.idempotencyKey) {
+      const existing = this.cashTransactions.find(t => t.idempotencyKey === data.idempotencyKey);
+      if (existing) {
+        return existing;
+      }
+    }
+
+    const amount = Number(data.amount || 0);
+    if (amount <= 0) throw new Error('Le montant de la transaction doit être strictement positif');
+
+    const type: CashTransactionType = data.type;
+    const txNum = `FLX-${new Date().getFullYear()}-${String(this.cashTransactions.length + 1).padStart(4, '0')}`;
+
+    // Impact sur le solde
+    if (type === 'ENCAISSEMENT_CLIENT' || type === 'VIREMENT_INTERNE_RECU' || type === 'LIBERATION_RETENUE_GARANTIE') {
+      account.currentBalance += amount;
+    } else {
+      // Décaissement, paiement, virement émis
+      if (account.currentBalance < amount && account.type.startsWith('CAISSE')) {
+        throw new Error(`Solde de caisse insuffisant (Disponible: ${account.currentBalance.toLocaleString()} DA)`);
+      }
+      account.currentBalance -= amount;
+    }
+    account.updatedAt = new Date().toISOString();
+
+    const tx: StoredCashTransaction = {
+      id: `flx-${Date.now()}`,
+      transactionNumber: txNum,
+      transactionDate: data.transactionDate || new Date().toISOString().split('T')[0],
+      type,
+      amount,
+      accountId: account.id,
+      accountCode: account.code,
+      counterpartAccountId: data.counterpartAccountId,
+      counterpartAccountCode: data.counterpartAccountCode,
+      customerInvoiceId: data.customerInvoiceId,
+      customerInvoiceNumber: data.customerInvoiceNumber,
+      supplierInvoiceId: data.supplierInvoiceId,
+      supplierInvoiceNumber: data.supplierInvoiceNumber,
+      projectId: data.projectId,
+      projectCode: data.projectCode,
+      referenceDocument: data.referenceDocument || '',
+      paymentMethod: data.paymentMethod || 'VIREMENT',
+      category: data.category || 'Mouvement Trésorerie',
+      notes: data.notes || '',
+      performedById: user?.id || 'usr-fin-001',
+      performedByName: user?.name || 'Responsable Financier',
+      status: 'VALIDE',
+      idempotencyKey: data.idempotencyKey,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.cashTransactions.unshift(tx);
+    this.addAuditLog('RECORD_CASH_TRANSACTION', 'FINANCE', tx.transactionNumber, `${type} de ${amount.toLocaleString()} DA sur compte ${account.code}`, user);
+    return tx;
+  }
+
+  // Virement interne atomique (Double-entry internal transfer)
+  transferBetweenAccounts(data: { sourceAccountId: string; destinationAccountId: string; amount: number; notes?: string; idempotencyKey?: string }, user?: any) {
+    const source = this.getFinancialAccount(data.sourceAccountId);
+    const dest = this.getFinancialAccount(data.destinationAccountId);
+    if (!source || !dest) throw new Error('Compte source ou compte destination introuvable');
+    if (source.id === dest.id) throw new Error('Impossible de transférer vers le même compte');
+
+    const amount = Number(data.amount || 0);
+    if (amount <= 0) throw new Error('Le montant du virement doit être strictement positif');
+    if (source.currentBalance < amount) {
+      throw new Error(`Solde insuffisant sur ${source.name} (Solde: ${source.currentBalance.toLocaleString()} DA, Demandé: ${amount.toLocaleString()} DA)`);
+    }
+
+    // Débit du compte source
+    source.currentBalance -= amount;
+    source.updatedAt = new Date().toISOString();
+
+    // Crédit du compte destination
+    dest.currentBalance += amount;
+    dest.updatedAt = new Date().toISOString();
+
+    const transferRef = `TRF-${Date.now()}`;
+
+    const txDebit: StoredCashTransaction = {
+      id: `flx-out-${Date.now()}`,
+      transactionNumber: `FLX-${new Date().getFullYear()}-${String(this.cashTransactions.length + 1).padStart(4, '0')}`,
+      transactionDate: new Date().toISOString().split('T')[0],
+      type: 'VIREMENT_INTERNE_EMIS',
+      amount,
+      accountId: source.id,
+      accountCode: source.code,
+      counterpartAccountId: dest.id,
+      counterpartAccountCode: dest.code,
+      paymentMethod: 'VIREMENT',
+      category: 'Virement de compte à compte',
+      referenceDocument: transferRef,
+      notes: data.notes || `Transfert vers ${dest.name}`,
+      performedById: user?.id || 'usr-fin-001',
+      performedByName: user?.name || 'Responsable Financier',
+      status: 'VALIDE',
+      idempotencyKey: data.idempotencyKey ? `${data.idempotencyKey}-debit` : undefined,
+      createdAt: new Date().toISOString(),
+    };
+
+    const txCredit: StoredCashTransaction = {
+      id: `flx-in-${Date.now() + 1}`,
+      transactionNumber: `FLX-${new Date().getFullYear()}-${String(this.cashTransactions.length + 2).padStart(4, '0')}`,
+      transactionDate: new Date().toISOString().split('T')[0],
+      type: 'VIREMENT_INTERNE_RECU',
+      amount,
+      accountId: dest.id,
+      accountCode: dest.code,
+      counterpartAccountId: source.id,
+      counterpartAccountCode: source.code,
+      paymentMethod: 'VIREMENT',
+      category: 'Virement de compte à compte',
+      referenceDocument: transferRef,
+      notes: data.notes || `Transfert depuis ${source.name}`,
+      performedById: user?.id || 'usr-fin-001',
+      performedByName: user?.name || 'Responsable Financier',
+      status: 'VALIDE',
+      idempotencyKey: data.idempotencyKey ? `${data.idempotencyKey}-credit` : undefined,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.cashTransactions.unshift(txCredit);
+    this.cashTransactions.unshift(txDebit);
+
+    this.addAuditLog('INTERNAL_TRANSFER', 'FINANCE', transferRef, `Virement de ${amount.toLocaleString()} DA de ${source.code} vers ${dest.code}`, user);
+    return { success: true, transferRef, amount, sourceAccount: source, destinationAccount: dest };
+  }
+
+  // --- FACTURATION CLIENT ---
+  getCustomerInvoices(filter?: { projectId?: string; status?: string }): StoredCustomerInvoice[] {
+    let list = this.customerInvoices;
+    if (filter?.projectId) list = list.filter(i => i.projectId === filter.projectId);
+    if (filter?.status) list = list.filter(i => i.status === filter.status);
+    return list;
+  }
+
+  getCustomerInvoice(idOrNum: string): StoredCustomerInvoice | undefined {
+    return this.customerInvoices.find(i => i.id === idOrNum || i.invoiceNumber === idOrNum);
+  }
+
+  createCustomerInvoice(data: any, user?: any): StoredCustomerInvoice {
+    const invNum = data.invoiceNumber || `FAC-${new Date().getFullYear()}-${String(this.customerInvoices.length + 1).padStart(4, '0')}`;
+
+    const amountHT = Number(data.amountHT || 0);
+    const vatRate = data.vatRate !== undefined ? Number(data.vatRate) : this.financialConfig.defaultVatRate;
+    const retentionRate = data.retentionRate !== undefined ? Number(data.retentionRate) : this.financialConfig.defaultRetentionRate;
+
+    // Retenue de garantie calculée sur le montant HT (ex: 5%)
+    const retentionAmount = Math.round((amountHT * retentionRate) / 100);
+    // TVA légale (19% en Algérie)
+    const vatAmount = Math.round((amountHT * vatRate) / 100);
+    // Net exigible = (Montant HT - Retenue) + TVA
+    const netReceivableAmount = (amountHT - retentionAmount) + vatAmount;
+
+    let proj: StoredProject | undefined;
+    if (data.projectId || data.projectCode) {
+      proj = this.projects.find(p => p.id === data.projectId || p.code === data.projectCode);
+    }
+
+    const newInvoice: StoredCustomerInvoice = {
+      id: `fac-cli-${Date.now()}`,
+      invoiceNumber: invNum,
+      clientId: data.clientId || 'cli-001',
+      clientName: data.clientName || proj?.clientName || 'Client Industriel',
+      projectId: proj?.id || data.projectId || '',
+      projectCode: proj?.code || data.projectCode || '',
+      projectName: proj?.name,
+      workSituationId: data.workSituationId,
+      workSituationNumber: data.workSituationNumber,
+      commercialQuoteId: data.commercialQuoteId,
+      issueDate: data.issueDate || new Date().toISOString().split('T')[0],
+      dueDate: data.dueDate || new Date(Date.now() + 45 * 86400000).toISOString().split('T')[0],
+      amountHT,
+      vatRate,
+      vatAmount,
+      retentionRate,
+      retentionAmount,
+      amountTTC: netReceivableAmount,
+      netReceivableAmount,
+      paidAmount: 0,
+      remainingAmount: netReceivableAmount,
+      warrantyHeldAmount: retentionAmount,
+      warrantyReleasedAmount: 0,
+      status: 'EMISE',
+      paymentTerms: data.paymentTerms || '45 jours fin de mois',
+      notes: data.notes || '',
+      isDemoInvoice: data.isDemoInvoice !== undefined ? Boolean(data.isDemoInvoice) : false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.customerInvoices.unshift(newInvoice);
+
+    // Mettre à jour la situation de travaux si liée
+    if (proj && data.workSituationId) {
+      const sit = (proj.workSituations || []).find((s: any) => s.id === data.workSituationId || s.situationNumber === data.workSituationNumber);
+      if (sit) {
+        sit.status = 'FACTURE';
+        sit.invoiceNumber = newInvoice.invoiceNumber;
+      }
+    }
+
+    this.addAuditLog('CREATE_CUSTOMER_INVOICE', 'FINANCE', newInvoice.invoiceNumber, `Émission facture client ${newInvoice.invoiceNumber} (${netReceivableAmount.toLocaleString()} DA)`, user);
+    return newInvoice;
+  }
+
+  recordCustomerPayment(invoiceId: string, data: { amount: number; accountId: string; referenceDocument?: string; paymentDate?: string; notes?: string; idempotencyKey?: string }, user?: any) {
+    const invoice = this.getCustomerInvoice(invoiceId);
+    if (!invoice) throw new Error('Facture client introuvable');
+
+    const paymentAmount = Number(data.amount || 0);
+    if (paymentAmount <= 0) throw new Error('Le montant du paiement doit être supérieur à zéro');
+    if (paymentAmount > invoice.remainingAmount) {
+      throw new Error(`Le montant (${paymentAmount.toLocaleString()} DA) dépasse le solde restant dû (${invoice.remainingAmount.toLocaleString()} DA)`);
+    }
+
+    const account = this.getFinancialAccount(data.accountId);
+    if (!account) throw new Error('Compte financier récepteur introuvable');
+
+    // 1. Enregistrer le mouvement de trésorerie
+    const tx = this.recordCashTransaction({
+      type: 'ENCAISSEMENT_CLIENT',
+      amount: paymentAmount,
+      accountId: account.id,
+      customerInvoiceId: invoice.id,
+      customerInvoiceNumber: invoice.invoiceNumber,
+      projectId: invoice.projectId,
+      projectCode: invoice.projectCode,
+      referenceDocument: data.referenceDocument || `VIR-CLI-${invoice.invoiceNumber}`,
+      paymentMethod: 'VIREMENT',
+      category: `Encaissement Facture Client ${invoice.invoiceNumber}`,
+      notes: data.notes || `Règlement client ${invoice.clientName}`,
+      idempotencyKey: data.idempotencyKey,
+    }, user);
+
+    // 2. Mettre à jour la facture
+    invoice.paidAmount += paymentAmount;
+    invoice.remainingAmount = Math.max(0, invoice.netReceivableAmount - invoice.paidAmount);
+    if (invoice.remainingAmount === 0) {
+      invoice.status = 'PAYEE';
+    } else {
+      invoice.status = 'PARTIELLEMENT_PAYEE';
+    }
+    invoice.updatedAt = new Date().toISOString();
+
+    // 3. Synchroniser également la table legacy financePayments pour cohérence globale
+    this.financePayments.push({
+      id: `pay-${Date.now()}`,
+      projectId: invoice.projectId,
+      amount: paymentAmount,
+      paymentReference: data.referenceDocument || tx.transactionNumber,
+      bankName: account.bankName,
+      paymentDate: data.paymentDate || new Date().toISOString(),
+      notes: data.notes || `Règlement facture ${invoice.invoiceNumber}`,
+      createdAt: new Date().toISOString(),
+    });
+
+    this.addAuditLog('RECORD_CUSTOMER_PAYMENT', 'FINANCE', invoice.invoiceNumber, `Encaissement de ${paymentAmount.toLocaleString()} DA sur facture ${invoice.invoiceNumber}`, user);
+    return { invoice, transaction: tx };
+  }
+
+  releaseWarrantyRetention(invoiceId: string, data: { amount?: number; accountId: string; referenceDocument?: string; notes?: string }, user?: any) {
+    const invoice = this.getCustomerInvoice(invoiceId);
+    if (!invoice) throw new Error('Facture client introuvable');
+
+    const availableWarranty = invoice.warrantyHeldAmount - invoice.warrantyReleasedAmount;
+    if (availableWarranty <= 0) throw new Error('Aucune retenue de garantie disponible pour libération sur cette facture');
+
+    const releaseAmount = data.amount ? Number(data.amount) : availableWarranty;
+    if (releaseAmount > availableWarranty) {
+      throw new Error(`Le montant demandé (${releaseAmount} DA) dépasse la retenue disponible (${availableWarranty} DA)`);
+    }
+
+    const account = this.getFinancialAccount(data.accountId);
+    if (!account) throw new Error('Compte financier introuvable');
+
+    const tx = this.recordCashTransaction({
+      type: 'LIBERATION_RETENUE_GARANTIE',
+      amount: releaseAmount,
+      accountId: account.id,
+      customerInvoiceId: invoice.id,
+      customerInvoiceNumber: invoice.invoiceNumber,
+      projectId: invoice.projectId,
+      projectCode: invoice.projectCode,
+      referenceDocument: data.referenceDocument || `PVRD-${invoice.invoiceNumber}`,
+      paymentMethod: 'VIREMENT',
+      category: 'Libération Retenue de Garantie (PVRD)',
+      notes: data.notes || 'Levée des réserves et réception définitive',
+    }, user);
+
+    invoice.warrantyReleasedAmount += releaseAmount;
+    invoice.updatedAt = new Date().toISOString();
+
+    this.addAuditLog('RELEASE_WARRANTY', 'FINANCE', invoice.invoiceNumber, `Libération retenue de garantie : ${releaseAmount.toLocaleString()} DA sur ${invoice.invoiceNumber}`, user);
+    return { invoice, transaction: tx, releasedAmount: releaseAmount };
+  }
+
+  // --- FACTURATION FOURNISSEUR & 3-WAY MATCHING (BC vs BR vs Facture) ---
+  getSupplierInvoices(filter?: { supplierId?: string; projectId?: string; status?: string }): StoredSupplierInvoice[] {
+    let list = this.supplierInvoices;
+    if (filter?.supplierId) list = list.filter(i => i.supplierId === filter.supplierId);
+    if (filter?.projectId) list = list.filter(i => i.projectId === filter.projectId);
+    if (filter?.status) list = list.filter(i => i.status === filter.status);
+    return list;
+  }
+
+  getSupplierInvoice(idOrRef: string): StoredSupplierInvoice | undefined {
+    return this.supplierInvoices.find(i => i.id === idOrRef || i.internalReference === idOrRef || i.invoiceNumber === idOrRef);
+  }
+
+  createSupplierInvoice(data: any, user?: any): StoredSupplierInvoice {
+    const internalRef = `FAC-FOU-${new Date().getFullYear()}-${String(this.supplierInvoices.length + 1).padStart(4, '0')}`;
+
+    const po = this.purchaseOrders.find((p: any) => p.id === data.purchaseOrderId || p.orderNumber === data.purchaseOrderCode);
+    const gr = this.goodsReceipts.find(g => g.id === data.goodsReceiptId || g.receiptNumber === data.goodsReceiptCode);
+
+    const amountHT = Number(data.amountHT || 0);
+    const vatRate = data.vatRate !== undefined ? Number(data.vatRate) : this.financialConfig.defaultVatRate;
+    const vatAmount = Math.round((amountHT * vatRate) / 100);
+    const amountTTC = amountHT + vatAmount;
+
+    // ALGORITHME 3-WAY MATCHING
+    let matchingStatus: SupplierInvoiceMatchingStatus = 'NON_VERIFIE';
+    let priceVarianceDA = 0;
+    let qtyVariancePct = 0;
+    let matchingNotes = '';
+
+    const poAmountHT = po ? (po.totalHT || po.amount || 0) : 0;
+    const grTotalHT = gr ? gr.lines.reduce((acc, l) => acc + ((l.acceptedQuantity || l.deliveredQuantity || 0) * (l.unitPriceHT || 0)), 0) : 0;
+
+    if (!gr) {
+      matchingStatus = 'SANS_RECEPTION';
+      matchingNotes = 'Aucun Bon de Réception physique (BR) associé à cette facture';
+    } else {
+      priceVarianceDA = amountHT - poAmountHT;
+      if (Math.abs(priceVarianceDA) > 100) {
+        matchingStatus = 'ECART_PRIX';
+        matchingNotes = `Écart de prix constaté par rapport au BC (${priceVarianceDA > 0 ? '+' : ''}${priceVarianceDA.toLocaleString()} DA)`;
+      } else {
+        matchingStatus = 'CONFORME_3_WAY';
+        matchingNotes = '3-way matching validé : Bon de commande, Réception physique et Facture concordent';
+      }
+    }
+
+    // Seuil d'approbation SoD
+    let approvalThresholdStatus: 'AUTO_APPROVED' | 'PENDING_PM' | 'PENDING_DG' | 'APPROVED' = 'AUTO_APPROVED';
+    if (amountHT > this.financialConfig.dgApprovalThresholdDA) {
+      approvalThresholdStatus = 'PENDING_DG';
+    } else if (amountHT > this.financialConfig.pmApprovalThresholdDA) {
+      approvalThresholdStatus = 'PENDING_PM';
+    }
+
+    const newInvoice: StoredSupplierInvoice = {
+      id: `fac-fou-${Date.now()}`,
+      internalReference: internalRef,
+      invoiceNumber: data.invoiceNumber || `FOU-${Date.now().toString().slice(-4)}`,
+      supplierId: data.supplierId || po?.supplierId || 'sup-001',
+      supplierName: data.supplierName || po?.supplierName || 'Fournisseur',
+      purchaseOrderId: po?.id || data.purchaseOrderId || '',
+      purchaseOrderCode: po?.orderNumber || data.purchaseOrderCode || '',
+      goodsReceiptId: gr?.id || data.goodsReceiptId,
+      goodsReceiptCode: gr?.receiptNumber || data.goodsReceiptCode,
+      projectId: po?.projectId || data.projectId,
+      projectCode: po?.projectCode || data.projectCode,
+      invoiceDate: data.invoiceDate || new Date().toISOString().split('T')[0],
+      dueDate: data.dueDate || new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+      amountHT,
+      vatRate,
+      vatAmount,
+      amountTTC,
+      paidAmount: 0,
+      remainingAmount: amountTTC,
+      matchingStatus,
+      matchingDetails: {
+        poAmountHT,
+        grTotalHT,
+        priceVarianceDA,
+        qtyVariancePct,
+        notes: matchingNotes,
+      },
+      approvalThresholdStatus,
+      status: matchingStatus === 'CONFORME_3_WAY' && approvalThresholdStatus === 'AUTO_APPROVED' ? 'APPROUVEE' : 'A_APPROUVER',
+      paymentTerms: data.paymentTerms || '30 jours date de facture',
+      notes: data.notes || '',
+      isDemoInvoice: data.isDemoInvoice !== undefined ? Boolean(data.isDemoInvoice) : false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.supplierInvoices.unshift(newInvoice);
+
+    // Mettre à jour le statut du BC si nécessaire
+    if (po && newInvoice.status === 'APPROUVEE') {
+      po.invoiceStatus = 'FACTURE';
+    }
+
+    this.addAuditLog('CREATE_SUPPLIER_INVOICE', 'FINANCE', newInvoice.internalReference, `Enregistrement facture fournisseur ${newInvoice.internalReference} (${matchingStatus})`, user);
+    return newInvoice;
+  }
+
+  recordSupplierPayment(invoiceId: string, data: { amount: number; accountId: string; referenceDocument?: string; paymentDate?: string; notes?: string; idempotencyKey?: string }, user?: any) {
+    const invoice = this.getSupplierInvoice(invoiceId);
+    if (!invoice) throw new Error('Facture fournisseur introuvable');
+
+    if (invoice.status === 'REJETEE' || invoice.status === 'A_APPROUVER') {
+      throw new Error(`Impossible de payer une facture au statut ${invoice.status}. Une approbation préalable est requise.`);
+    }
+
+    const paymentAmount = Number(data.amount || 0);
+    if (paymentAmount <= 0) throw new Error('Le montant du paiement doit être supérieur à zéro');
+    if (paymentAmount > invoice.remainingAmount) {
+      throw new Error(`Le montant (${paymentAmount.toLocaleString()} DA) dépasse la dette restante (${invoice.remainingAmount.toLocaleString()} DA)`);
+    }
+
+    const account = this.getFinancialAccount(data.accountId);
+    if (!account) throw new Error('Compte financier émetteur introuvable');
+
+    // 1. Enregistrer le décaissement de trésorerie (vérifie la solvabilité)
+    const tx = this.recordCashTransaction({
+      type: 'DECAISSEMENT_FOURNISSEUR',
+      amount: paymentAmount,
+      accountId: account.id,
+      supplierInvoiceId: invoice.id,
+      supplierInvoiceNumber: invoice.invoiceNumber,
+      projectId: invoice.projectId,
+      projectCode: invoice.projectCode,
+      referenceDocument: data.referenceDocument || `VIR-FOU-${invoice.internalReference}`,
+      paymentMethod: 'VIREMENT',
+      category: `Règlement Fournisseur ${invoice.supplierName}`,
+      notes: data.notes || `Paiement facture ${invoice.invoiceNumber}`,
+      idempotencyKey: data.idempotencyKey,
+    }, user);
+
+    // 2. Mettre à jour la dette fournisseur
+    invoice.paidAmount += paymentAmount;
+    invoice.remainingAmount = Math.max(0, invoice.amountTTC - invoice.paidAmount);
+    if (invoice.remainingAmount === 0) {
+      invoice.status = 'PAYEE';
+    } else {
+      invoice.status = 'PARTIELLEMENT_PAYEE';
+    }
+    invoice.updatedAt = new Date().toISOString();
+
+    // NOTE SÉCURITÉ ANTI-DOUBLE-COMPTE :
+    // Le paiement de la dette fournisseur ne génère PAS de StoredCostEntry sur le projet.
+    // Le coût du projet a déjà été imputé lors de l'engagement (BC) ou de la réception physique (BR/Sortie stock).
+
+    this.addAuditLog('RECORD_SUPPLIER_PAYMENT', 'FINANCE', invoice.internalReference, `Décaissement de ${paymentAmount.toLocaleString()} DA en règlement de ${invoice.internalReference}`, user);
+    return { invoice, transaction: tx };
+  }
+
+  // --- BALANCE ÂGÉE & ÉCHÉANCIER CLIENT / FOURNISSEUR ---
+  getAgedTrialBalance() {
+    const today = new Date().getTime();
+
+    const clientBuckets = { current: 0, days30: 0, days60: 0, days90Plus: 0, total: 0 };
+    for (const inv of this.customerInvoices) {
+      if (inv.remainingAmount <= 0) continue;
+      const due = new Date(inv.dueDate).getTime();
+      const diffDays = Math.floor((today - due) / (1000 * 86400));
+
+      if (diffDays <= 0) clientBuckets.current += inv.remainingAmount;
+      else if (diffDays <= 30) clientBuckets.days30 += inv.remainingAmount;
+      else if (diffDays <= 60) clientBuckets.days60 += inv.remainingAmount;
+      else clientBuckets.days90Plus += inv.remainingAmount;
+      clientBuckets.total += inv.remainingAmount;
+    }
+
+    const supplierBuckets = { current: 0, days30: 0, days60: 0, days90Plus: 0, total: 0 };
+    for (const inv of this.supplierInvoices) {
+      if (inv.remainingAmount <= 0) continue;
+      const due = new Date(inv.dueDate).getTime();
+      const diffDays = Math.floor((today - due) / (1000 * 86400));
+
+      if (diffDays <= 0) supplierBuckets.current += inv.remainingAmount;
+      else if (diffDays <= 30) supplierBuckets.days30 += inv.remainingAmount;
+      else if (diffDays <= 60) supplierBuckets.days60 += inv.remainingAmount;
+      else supplierBuckets.days90Plus += inv.remainingAmount;
+      supplierBuckets.total += inv.remainingAmount;
+    }
+
+    return {
+      clients: clientBuckets,
+      suppliers: supplierBuckets,
+      netWorkingCapitalNeed: clientBuckets.total - supplierBuckets.total, // BFR simplifié
+    };
+  }
+
+  // --- RENTABILITÉ RÉELLE PAR PROJET (SYNTHÈSE MULTI-MODULES) ---
+  getProjectProfitability(projectIdOrCode: string) {
+    const proj = this.projects.find(p => p.id === projectIdOrCode || p.code === projectIdOrCode);
+    if (!proj) return null;
+
+    // 1. Chiffre d'Affaires Contractuel et Facturé
+    const contractAmount = proj.contractAmount || 0;
+    const billedSituationsHT = (proj.workSituations || []).reduce((sum: number, s: any) => sum + (s.amountHT || 0), 0);
+    const clientInvoicesHT = this.customerInvoices
+      .filter(i => i.projectId === proj.id || i.projectCode === proj.code)
+      .reduce((sum, i) => sum + i.amountHT, 0);
+
+    const actualBilledHT = clientInvoicesHT > 0 ? clientInvoicesHT : billedSituationsHT;
+
+    // Encaissements réels constatés
+    const collectedTTC = this.cashTransactions
+      .filter(t => (t.projectId === proj.id || t.projectCode === proj.code) && t.type === 'ENCAISSEMENT_CLIENT' && t.status === 'VALIDE')
+      .reduce((sum, t) => sum + t.amount, 0);
+
+    // 2. Décomposition des Coûts Réels par Source (Sans double comptage)
+    // Coûts Fournitures & Matières Réceptionnées (BR validés)
+    const materialsCost = this.goodsReceipts
+      .filter(gr => gr.projectId === proj.id || gr.projectCode === proj.code)
+      .reduce((sum, gr) => sum + gr.lines.reduce((acc, l) => acc + ((l.acceptedQuantity || l.deliveredQuantity || 0) * (l.unitPriceHT || 0)), 0), 0);
+
+    // Coûts Main d'Œuvre Chantier (Pointages réels)
+    const laborCost = this.attendances
+      .filter(att => att.projectId === proj.id)
+      .reduce((sum, att) => sum + ((att.hoursWorked || 0) * 800) + (att.allowanceAmount || 0), 0);
+
+    // Sous-traitance & Frais Généraux imputés sur le projet
+    const directOtherExpenses = (proj.costEntries || [])
+      .filter((c: any) => c.category !== 'MATIERE_STOCK') // Évite doublon avec consommations stock
+      .reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
+
+    const totalRealDirectCost = materialsCost + laborCost + directOtherExpenses;
+    const estimatedBudget = proj.budgetAmount || 0;
+
+    // Marge Réelle Dégagée sur le Réalisé
+    const grossMarginDA = actualBilledHT - totalRealDirectCost;
+    const grossMarginPercent = actualBilledHT > 0 ? Number(((grossMarginDA / actualBilledHT) * 100).toFixed(2)) : 0;
+
+    // Engagements restants (BC émis non encore réceptionnés)
+    const committedNotDelivered = this.purchaseOrders
+      .filter((po: any) => (po.projectId === proj.id || po.projectCode === proj.code) && po.status !== 'LIVRE' && po.status !== 'ANNULE')
+      .reduce((sum: number, po: any) => sum + (po.totalHT || po.amount || 0), 0);
+
+    return {
+      projectId: proj.id,
+      projectCode: proj.code,
+      projectName: proj.name,
+      clientName: proj.clientName,
+      contractAmount,
+      estimatedBudget,
+      actualBilledHT,
+      collectedTTC,
+      realCosts: {
+        materials: materialsCost,
+        labor: laborCost,
+        otherExpenses: directOtherExpenses,
+        totalDirectCost: totalRealDirectCost,
+      },
+      committedRemaining: committedNotDelivered,
+      projectedFinalCost: totalRealDirectCost + committedNotDelivered,
+      grossMarginDA,
+      grossMarginPercent,
+      budgetVarianceDA: estimatedBudget - (totalRealDirectCost + committedNotDelivered),
+      isProfitable: grossMarginDA >= 0,
+    };
+  }
+
   // --- MODULE COMMERCIAL & FICHE DE COÛT ---
   // ==========================================
 

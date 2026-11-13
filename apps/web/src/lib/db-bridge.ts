@@ -1841,6 +1841,84 @@ export const dbBridge = {
     return serverStore.getCostDistribution();
   },
 
+  // --- MODULE 06 : FINANCE & TRÉSORERIE ---
+  async getFinancialConfig() {
+    return serverStore.getFinancialConfig();
+  },
+
+  async updateFinancialConfig(data: any, user?: any) {
+    return serverStore.updateFinancialConfig(data, user);
+  },
+
+  async getFinancialAccounts() {
+    return serverStore.getFinancialAccounts();
+  },
+
+  async getFinancialAccount(idOrCode: string) {
+    return serverStore.getFinancialAccount(idOrCode);
+  },
+
+  async createFinancialAccount(data: any, user?: any) {
+    return serverStore.createFinancialAccount(data, user);
+  },
+
+  async getCashTransactions(filter?: any) {
+    return serverStore.getCashTransactions(filter);
+  },
+
+  async recordCashTransaction(data: any, user?: any) {
+    return serverStore.recordCashTransaction(data, user);
+  },
+
+  async transferBetweenAccounts(data: any, user?: any) {
+    return serverStore.transferBetweenAccounts(data, user);
+  },
+
+  async getCustomerInvoices(filter?: any) {
+    return serverStore.getCustomerInvoices(filter);
+  },
+
+  async getCustomerInvoice(idOrNum: string) {
+    return serverStore.getCustomerInvoice(idOrNum);
+  },
+
+  async createCustomerInvoice(data: any, user?: any) {
+    return serverStore.createCustomerInvoice(data, user);
+  },
+
+  async recordCustomerPayment(invoiceId: string, data: any, user?: any) {
+    return serverStore.recordCustomerPayment(invoiceId, data, user);
+  },
+
+  async releaseWarrantyRetention(invoiceId: string, data: any, user?: any) {
+    return serverStore.releaseWarrantyRetention(invoiceId, data, user);
+  },
+
+  async getSupplierInvoices(filter?: any) {
+    return serverStore.getSupplierInvoices(filter);
+  },
+
+  async getSupplierInvoice(idOrRef: string) {
+    return serverStore.getSupplierInvoice(idOrRef);
+  },
+
+  async createSupplierInvoice(data: any, user?: any) {
+    return serverStore.createSupplierInvoice(data, user);
+  },
+
+  async recordSupplierPayment(invoiceId: string, data: any, user?: any) {
+    return serverStore.recordSupplierPayment(invoiceId, data, user);
+  },
+
+  async getAgedTrialBalance() {
+    return serverStore.getAgedTrialBalance();
+  },
+
+  async getProjectProfitability(projectIdOrCode: string) {
+    return serverStore.getProjectProfitability(projectIdOrCode);
+  },
+
+
 
   // --- MODULE COMMERCIAL & DEVIS ---
   async getCommercialKpis() {
