@@ -223,6 +223,49 @@ export async function GET(
     return NextResponse.json(items, { headers: corsHeaders() });
   }
 
+  // 7. Phase 5 HR Endpoints
+  if (clean.includes('/hr/kpis')) {
+    const kpis = await dbBridge.getHrKpis();
+    return NextResponse.json(kpis, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/industrial-certifications')) {
+    const empId = req.nextUrl.searchParams.get('employeeId') || undefined;
+    const certs = await dbBridge.getIndustrialCertifications(empId);
+    return NextResponse.json(certs, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/leaves') || clean.includes('/hr/leave-requests')) {
+    const empId = req.nextUrl.searchParams.get('employeeId') || undefined;
+    const leaves = await dbBridge.getLeaveRequests(empId);
+    return NextResponse.json(leaves, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/missions') || clean.includes('/hr/mission-orders')) {
+    const empId = req.nextUrl.searchParams.get('employeeId') || undefined;
+    const missions = await dbBridge.getMissionOrders(empId);
+    return NextResponse.json(missions, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/recruitments') || clean.includes('/hr/recruitment-requests')) {
+    const projId = req.nextUrl.searchParams.get('projectId') || undefined;
+    const recs = await dbBridge.getRecruitmentRequests(projId);
+    return NextResponse.json(recs, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/rotations')) {
+    const rots = await dbBridge.getRotationCycles();
+    return NextResponse.json(rots, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/salary-rubrics')) {
+    const rubrics = await dbBridge.getSalaryRubrics();
+    return NextResponse.json(rubrics, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/payslip-demo')) {
+    const empId = req.nextUrl.searchParams.get('employeeId') || 'DEMO-EMP-001';
+    const month = req.nextUrl.searchParams.get('month') ? Number(req.nextUrl.searchParams.get('month')) : undefined;
+    const year = req.nextUrl.searchParams.get('year') ? Number(req.nextUrl.searchParams.get('year')) : undefined;
+    const hs50 = req.nextUrl.searchParams.get('hs50') ? Number(req.nextUrl.searchParams.get('hs50')) : undefined;
+    const hs100 = req.nextUrl.searchParams.get('hs100') ? Number(req.nextUrl.searchParams.get('hs100')) : undefined;
+    const slip = await dbBridge.calculatePayslipDemo(empId, { periodMonth: month, periodYear: year, overtimeHours50: hs50, overtimeHours100: hs100 });
+    return NextResponse.json(slip, { headers: corsHeaders() });
+  }
+
   // 7. HR
   if (clean.includes('/hr/certifications')) {
     const certs = await dbBridge.getCertifications();
@@ -629,6 +672,83 @@ export async function POST(
     }
     const item = await dbBridge.createInventoryItem(body);
     return NextResponse.json(item, { status: 201, headers: corsHeaders() });
+  }
+
+  // 7. Phase 5 HR Action Endpoints
+  // Certifications CQS & Audit
+  if (clean.includes('/hr/industrial-certifications') && clean.includes('/audit')) {
+    const id = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.auditIndustrialCertification(id, body.decision || 'VALIDE', body.motif, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/industrial-certifications')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const cert = await dbBridge.createIndustrialCertification(body, user);
+    return NextResponse.json(cert, { status: 201, headers: corsHeaders() });
+  }
+
+  // Congés & Titres de congé
+  if ((clean.includes('/hr/leaves') || clean.includes('/hr/leave-requests')) && clean.includes('/visa-rh')) {
+    const id = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.approveLeaveRH(id, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
+  }
+  if ((clean.includes('/hr/leaves') || clean.includes('/hr/leave-requests')) && clean.includes('/approve-dg')) {
+    const id = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.approveLeaveDG(id, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/leaves') || clean.includes('/hr/leave-requests')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const lv = await dbBridge.createLeaveRequest(body, user);
+    return NextResponse.json(lv, { status: 201, headers: corsHeaders() });
+  }
+
+  // Ordres de mission
+  if ((clean.includes('/hr/missions') || clean.includes('/hr/mission-orders')) && clean.includes('/approve-dg')) {
+    const id = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.approveMissionOrderDG(id, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/missions') || clean.includes('/hr/mission-orders')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const mis = await dbBridge.createMissionOrder(body, user);
+    return NextResponse.json(mis, { status: 201, headers: corsHeaders() });
+  }
+
+  // Recrutements
+  if ((clean.includes('/hr/recruitments') || clean.includes('/hr/recruitment-requests')) && clean.includes('/approve-dg')) {
+    const id = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.approveRecruitmentRequestDG(id, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/recruitments') || clean.includes('/hr/recruitment-requests')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const rec = await dbBridge.createRecruitmentRequest(body, user);
+    return NextResponse.json(rec, { status: 201, headers: corsHeaders() });
+  }
+
+  // Rotations
+  if (clean.includes('/hr/rotations') && clean.includes('/assign')) {
+    const rotId = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const res = await dbBridge.assignEmployeeToRotation(rotId, body.employeeId, user);
+    return NextResponse.json(res, { headers: corsHeaders() });
   }
 
   // 7. HR

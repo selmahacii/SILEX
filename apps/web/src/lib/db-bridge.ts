@@ -2108,5 +2108,81 @@ export const dbBridge = {
     return serverStore.getInventoryKpis();
   },
 
+  // ============================================================================
+  // PHASE 5 : RESSOURCES HUMAINES INDUSTRIELLES, CQS, CONGÉS, MISSIONS & PAIE
+  // ============================================================================
+
+  async getIndustrialCertifications(employeeId?: string) {
+    return serverStore.getIndustrialCertifications(employeeId);
+  },
+
+  async createIndustrialCertification(data: any, user?: any) {
+    return serverStore.createIndustrialCertification(data, user);
+  },
+
+  async auditIndustrialCertification(id: string, decision: 'VALIDE' | 'REJETE', motif?: string, user?: any) {
+    return serverStore.auditIndustrialCertification(id, decision, motif, user);
+  },
+
+  async getLeaveRequests(employeeId?: string) {
+    return serverStore.getLeaveRequests(employeeId);
+  },
+
+  async createLeaveRequest(data: any, user?: any) {
+    return serverStore.createLeaveRequest(data, user);
+  },
+
+  async approveLeaveRH(id: string, user?: any) {
+    return serverStore.approveLeaveRH(id, user);
+  },
+
+  async approveLeaveDG(id: string, user?: any) {
+    return serverStore.approveLeaveDG(id, user);
+  },
+
+  async getMissionOrders(employeeId?: string) {
+    return serverStore.getMissionOrders(employeeId);
+  },
+
+  async createMissionOrder(data: any, user?: any) {
+    return serverStore.createMissionOrder(data, user);
+  },
+
+  async approveMissionOrderDG(id: string, user?: any) {
+    return serverStore.approveMissionOrderDG(id, user);
+  },
+
+  async getRecruitmentRequests(projectId?: string) {
+    return serverStore.getRecruitmentRequests(projectId);
+  },
+
+  async createRecruitmentRequest(data: any, user?: any) {
+    return serverStore.createRecruitmentRequest(data, user);
+  },
+
+  async approveRecruitmentRequestDG(id: string, user?: any) {
+    return serverStore.approveRecruitmentRequestDG(id, user);
+  },
+
+  async getRotationCycles() {
+    return serverStore.getRotationCycles();
+  },
+
+  async assignEmployeeToRotation(rotationId: string, employeeId: string, user?: any) {
+    return serverStore.assignEmployeeToRotation(rotationId, employeeId, user);
+  },
+
+  async getSalaryRubrics() {
+    return serverStore.getSalaryRubrics();
+  },
+
+  async calculatePayslipDemo(employeeId: string, options?: any) {
+    return serverStore.calculatePayslipDemo(employeeId, options);
+  },
+
+  async getHrKpis() {
+    return serverStore.getHrKpis();
+  },
+
 
 };

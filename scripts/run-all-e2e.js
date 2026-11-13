@@ -9,4 +9,7 @@ execSync('npx tsx scripts/test-project-e2e.js', { stdio: 'inherit' });
 console.log('\n--- SUITE 3 : MODULE 03 ACHATS, TCO & STOCKS ---');
 execSync('npx tsx scripts/test-procurement-e2e.js', { stdio: 'inherit' });
 
-console.log('\n🎉 TOUTES LES SUITES E2E DES MODULES 01, 02 ET 03 ONT RÉUSSI À 100% !');
+console.log('\n--- SUITE 4 : MODULE 04 RESSOURCES HUMAINES & MOBILITÉ ---');
+execSync('npx tsx scripts/test-hr-e2e.js', { stdio: 'inherit' });
+
+console.log('\n🎉 TOUTES LES SUITES E2E DES MODULES 01, 02, 03 ET 04 ONT RÉUSSI À 100% !');

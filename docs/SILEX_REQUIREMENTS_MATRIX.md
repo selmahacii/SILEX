@@ -13,10 +13,10 @@
 | **Module 01 — Commercial** | 12 | 11 | 0 | 0 | 1 |
 | **Module 02 — Projet** | 13 | 13 | 0 | 0 | 0 |
 | **Module 03 — Achats & Stocks**| 12 | 12 | 0 | 0 | 0 |
-| **Module 04 — Ressources Humaines** | 12 | 5 | 3 | 3 | 1 |
+| **Module 04 — Ressources Humaines** | 12 | 11 | 0 | 0 | 1 |
 | **Module 05 — Finance & Comptabilité** | 11 | 4 | 4 | 3 | 0 |
 | **Transversal & Direction Générale** | 10 | 7 | 2 | 1 | 0 |
-| **TOTAL** | **70** | **52** | **9** | **7** | **2** |
+| **TOTAL** | **70** | **58** | **6** | **4** | **2** |
 
 ---
 
@@ -88,14 +88,14 @@
 | **RH-02** | Compétences, Habilitations & CQS | Suivi des certifications industrielles (soudage ASME, CQS, habilitation électrique, visite médicale). | `/hr` | Resp. RH, Qualité | En cours → Valide → Expiré | Certificat de Qualification | **EXISTANT ET FONCTIONNEL** | P1 | Gestion des dates d'expiration et statut de validité. |
 | **RH-03** | Affectation aux Chantiers | Mobilisation du personnel sur les projets avec dates d'intervention. | `/hr`, `/projects/[code]` | Resp. RH, Resp. Projet | Affecté → Démobilisé | Ordre d'Affectation | **EXISTANT ET FONCTIONNEL** | P1 | Attribution des collaborateurs par projet. |
 | **RH-04** | Pointage Quotidien Chantier | Enregistrement des heures régulières et supplémentaires travaillées par chantier. | `/hr` | Chef de Chantier, RH | Pointé → Validé RH | Relevé des Pointages | **EXISTANT ET FONCTIONNEL** | P1 | Saisie d'heures et motifs d'absence. |
-| **RH-05** | Demandes de Congés & Absences | Saisie des congés payés, autorisations d'absence, récupération et maladie. | `/hr` | Tout collaborateur, RH, DG | Rédigé → Validé RH → Visa DG | Titre de Congé A4 | **À DÉVELOPPER** | **P1** | Formulaire demande de congé et circuit d'approbation. |
-| **RH-06** | Ordres de Mission & Déplacements | Émission d'ordres de mission pour les interventions sur chantiers distants (frais, transport, durée). | `/hr` | Resp. RH, DG | Demande → Ordre émis → Clôturé | Ordre de Mission A4 | **À DÉVELOPPER** | **P1** | Saisie mission avec destination, objet et génération PDF A4. |
-| **RH-07** | Expression de Besoin en Recrutement | Demande de renfort de personnel pour un projet (profil, qualification, nombre, durée). | `/hr` | Resp. Projet, RH, DG | Émis → Approuvé DG → Recrutement | Fiche Besoin RH | **À DÉVELOPPER** | **P2** | Formulaire de demande de recrutement rattaché au chantier. |
-| **RH-08** | Fiche de Paie de Démonstration (DEMO) | Spécimen de bulletin de paie industriel avec rubriques démo (salaire de base, paniers, déplacement, retenues). | `/hr` | Resp. RH, Finance, DG | Simulation mensuelle | Bulletin de Paie DEMO A4 | **À DÉVELOPPER** | **P2** | Modèle imprimable A4 mentionnant explicitement "DOCUMENT DÉMO". |
-| **RH-09** | Plan de Formation & Recyclage | Programmation des formations de recyclage sécurité et habilitations périodiques. | `/hr` | Resp. RH | Planifié → Dispensé | Registre des Formations | **EXISTANT MAIS INCOMPLET**| P3 | Calendrier des formations à venir. |
+| **RH-05** | Demandes de Congés & Absences | Saisie des congés payés, autorisations d'absence, récupération et maladie avec visa RH et accord DG. | `/hr` | Tout collaborateur, RH, DG | Rédigé → Validé RH → Visa DG | Titre de Congé A4 | **EXISTANT ET FONCTIONNEL** | P1 | Workflow de validation à 2 niveaux et génération du Titre de Congé A4 officiel. |
+| **RH-06** | Ordres de Mission & Déplacements | Émission d'ordres de mission pour les interventions sur chantiers distants (frais, transport, durée, per diem). | `/hr` | Resp. RH, DG | Demande → Ordre émis → Clôturé | Ordre de Mission A4 | **EXISTANT ET FONCTIONNEL** | P1 | Formulaire mission, calcul des indemnités journalières et validation DG avec édition A4. |
+| **RH-07** | Expression de Besoin en Recrutement | Demande de renfort de personnel pour un projet (profil, qualification, nombre, durée). | `/hr` | Resp. Projet, RH, DG | Émis → Approuvé DG → Recrutement | Fiche Besoin RH | **EXISTANT ET FONCTIONNEL** | P2 | Formulaire de demande de recrutement rattaché au chantier et circuit d'accord DG. |
+| **RH-08** | Fiche de Paie de Démonstration (DEMO) | Spécimen de bulletin de paie industriel algérien 2026 (SNMG 24 000 DA, Décret 26-01, CNAS 9% Décret 15-236, barème IRG). | `/hr` | Resp. RH, Finance, DG | Simulation mensuelle | Bulletin de Paie DEMO A4 | **EXISTANT ET FONCTIONNEL** | P2 | Moteur de paie démo paramétré par rubriques indépendantes et estampille "DOCUMENT DEMO". |
+| **RH-09** | Plan de Formation & Recyclage | Programmation des formations de recyclage sécurité et habilitations périodiques. | `/hr` | Resp. RH | Planifié → Dispensé | Registre des Formations | **EXISTANT ET FONCTIONNEL** | P3 | Suivi des sessions de recyclage CQS et habilitations électriques. |
 | **RH-10** | Déclarations Réglementaires (CNAS/DAS) | Spécimens indicatifs des états récapitulatifs pour la prévoyance sociale algérienne. | `/hr` | Resp. RH, Finance | Annuel / Trimestriel | État Récapitulatif DEMO | **À VALIDER AVEC LE CLIENT** | P3 | Mentionner en phase ultérieure d'intégration PC Paie. |
-| **RH-11** | Suivi de la Main-d'Œuvre Indirecte | Suivi des ratios d'encadrement chantier (chefs d'équipe, superviseurs HSE vs ouvriers). | `/hr`, `/dashboard` | DG, Resp. RH | Indicateurs de bord | Tableau Effectifs Chantier | **EXISTANT MAIS INCOMPLET**| P3 | Ratios calculés dans les vues analytiques. |
-| **RH-12** | Traçabilité des Mouvements de Personnel | Journal des mobilités entre chantiers et rotations d'équipes en zone sud. | `/hr` | Resp. RH | Historisé | Journal des Affectations | **EXISTANT MAIS INCOMPLET**| P3 | Historique des projets par salarié. |
+| **RH-11** | Suivi de la Main-d'Œuvre Indirecte | Suivi des ratios d'encadrement chantier (chefs d'équipe, superviseurs HSE vs ouvriers). | `/hr`, `/dashboard` | DG, Resp. RH | Indicateurs de bord | Tableau Effectifs Chantier | **EXISTANT ET FONCTIONNEL** | P3 | Ratios calculés dans les vues analytiques RH et KPIs. |
+| **RH-12** | Traçabilité des Mouvements & Rotations | Gestion des régimes de rotation Sud (4x4 et 6x2) et mobilités chantiers. | `/hr` | Resp. RH, DG | Historisé | Planning des Relèves Sud | **EXISTANT ET FONCTIONNEL** | P3 | Système de rotation paramétrable avec calendrier prévisionnel des relèves. |
 
 ---
 

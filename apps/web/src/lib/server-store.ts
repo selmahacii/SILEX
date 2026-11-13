@@ -825,6 +825,166 @@ export interface StoredSupplierEvaluation {
   createdAt: string;
 }
 
+// ============================================================================
+// PHASE 5 : MODULE 04 RESSOURCES HUMAINES & MOBILITÉ INDUSTRIELLE
+// ============================================================================
+
+export type EmployeeIndustrialStatus = 'ACTIF' | 'EN_MISSION' | 'EN_CONGE' | 'EN_FORMATION' | 'INACTIF' | 'SORTI';
+
+export interface StoredIndustrialCertification {
+  id: string;
+  employeeId: string;
+  employeeMatricule: string;
+  employeeName: string;
+  type: 'QUALIFICATION_SOUDAGE_CQS' | 'HABILITATION_ELECTRIQUE' | 'SECURITE_ESPACE_CONFINE' | 'TRAVAIL_EN_HAUTEUR' | 'VISITE_MEDICALE_APTITUDE' | 'FORMATION_CONTINUE';
+  certName: string;
+  certificateNumber: string;
+  issuingBody: string; // Ex: Bureau Veritas, TÜV, Apave, Médecine du Travail
+  issueDate: string;
+  expiryDate: string;
+  status: 'VALIDE' | 'EN_ATTENTE_VERIFICATION' | 'REJETE' | 'EXPIRE';
+  // Spécifications de soudage (CQS)
+  weldingProcess?: string; // Ex: 141 (TIG), 111 (SMAW / ARC), 135 (MAG)
+  weldingStandard?: string; // Ex: ASME IX, API 1104, EN ISO 9606-1
+  weldingPosition?: string; // Ex: 6G, 1G-4G, H-L045
+  baseMaterial?: string; // Ex: P1 (Acier Carbone A106 Gr.B), P8 (Inox 316L)
+  dimensionRange?: string; // Ex: Tubes OD 2" à 12", ép. 3 à 25 mm
+  // Contrôle & Audit documentaire
+  verifiedBy?: string;
+  verifiedAt?: string;
+  rejectionReason?: string;
+  attachmentUrl?: string;
+}
+
+export interface StoredLeaveRequest {
+  id: string;
+  reference: string; // LV-YYYY-NNN
+  employeeId: string;
+  employeeMatricule: string;
+  employeeName: string;
+  title: string;
+  leaveType: 'CONGE_PAYE' | 'RECUPERATION_ROTATION_SUD' | 'MALADIE' | 'EVENEMENT_FAMILIAL' | 'SANS_SOLDE';
+  startDate: string;
+  endDate: string;
+  durationDays: number;
+  reason?: string;
+  status: 'SOUMIS' | 'VISE_RH' | 'ACCORDE_DG' | 'REFUSE' | 'ANNULE';
+  submittedAt: string;
+  rhVisaSignature?: string;
+  rhVisaDate?: string;
+  rhReviewerName?: string;
+  dgVisaSignature?: string;
+  dgVisaDate?: string;
+  refusalReason?: string;
+  certificateNumber?: string; // Titre de congé officiel
+}
+
+export interface StoredMissionOrder {
+  id: string;
+  missionNumber: string; // MIS-YYYY-NNN
+  employeeId: string;
+  employeeMatricule: string;
+  employeeName: string;
+  title: string;
+  projectId?: string;
+  projectCode?: string;
+  projectName?: string;
+  destinationSite: string; // Ex: Zone Industrielle Skikda RA1K, Base Hassi Messaoud
+  purpose: string; // Ex: Supervision épreuves hydrauliques 45 bars
+  startDate: string;
+  endDate: string;
+  durationDays: number;
+  transportMode: 'VEHICULE_SERVICE' | 'AVION' | 'TRANSPORT_COMMUN' | 'VEHICULE_CLIENT';
+  vehiclePlate?: string;
+  advanceAmountDA: number;
+  dailyAllowanceDA: number;
+  totalEstimatedCostDA: number;
+  status: 'BROUILLON' | 'VISE_RH' | 'APPROUVE_DG' | 'CLOTURE';
+  dgVisaSignature?: string;
+  dgVisaDate?: string;
+  createdAt: string;
+}
+
+export interface StoredRecruitmentRequest {
+  id: string;
+  reference: string; // REC-YYYY-NNN
+  projectId: string;
+  projectCode: string;
+  projectName: string;
+  requestedBy: string;
+  requestedRole: string; // Ex: Soudeur Haute Pression 6G Radio, Tuyauteur Industriel ISO
+  headcountNeeded: number;
+  contractType: 'CHANTIER' | 'CDD' | 'INTERIM';
+  requiredQualifications: string[];
+  startDate: string;
+  durationMonths: number;
+  justification: string;
+  priority: 'NORMALE' | 'URGENTE' | 'CRITIQUE';
+  status: 'SOUMIS' | 'APPROUVE_DG' | 'EN_RECRUTEMENT' | 'POURVU' | 'REJETE';
+  dgApprovalDate?: string;
+  candidatesCount: number;
+  createdAt: string;
+}
+
+export interface StoredRotationCycle {
+  id: string;
+  rotationCode: string; // ROT-HMD-4X4
+  siteName: string; // Base de Vie SILEX Hassi Messaoud
+  type: '4X4' | '6X2' | '3X3';
+  workDays: number;
+  restDays: number;
+  cycleStartDate: string;
+  assignedEmployeeIds: string[];
+  status: 'ACTIF' | 'SUSPENDU';
+  notes: string;
+}
+
+export interface StoredSalaryRubricConfig {
+  code: string; // R100, R200, etc.
+  label: string;
+  type: 'GAIN' | 'RETENUE';
+  isVariable: boolean;
+  baseFormula: string;
+  isCnasSubject: boolean;
+  isIrgSubject: boolean;
+  effectiveFrom: string;
+  effectiveTo?: string;
+  regulatoryReference: string;
+  status: 'VALIDEE' | 'EN_REVISION';
+}
+
+export interface StoredPayslipDemo {
+  id: string;
+  slipNumber: string; // BS-DEMO-2026-NNN
+  employeeId: string;
+  employeeMatricule: string;
+  employeeName: string;
+  title: string;
+  department: string;
+  periodMonth: number;
+  periodYear: number;
+  workedDays: number;
+  workedHours: number;
+  overtimeHours50: number;
+  overtimeHours100: number;
+  // Rubriques
+  baseSalaryDA: number;
+  iepAmountDA: number;
+  siteBasketAmountDA: number;
+  transportAmountDA: number;
+  nuisanceAmountDA: number;
+  zoneSouthAllowanceDA: number;
+  overtimeAmountDA: number;
+  grossSalaryDA: number;
+  cnasDeduction9Pct: number;
+  taxableSalaryDA: number;
+  irgTaxAmountDA: number;
+  netPayableDA: number;
+  isDemoSimulation: true;
+  calculatedAt: string;
+}
+
+
 class ServerStore {
   private users: ServerUser[] = [];
   private projects: StoredProject[] = [];
@@ -848,6 +1008,14 @@ class ServerStore {
   public financePayments: any[] = [];
   private auditLogs: any[] = [];
   private rolePermissions: Record<string, any> = {};
+
+  // Données Phase 5 : RH Industrielles, Compétences CQS, Mobilité & Paie
+  private industrialCertifications: StoredIndustrialCertification[] = [];
+  private leaveRequests: StoredLeaveRequest[] = [];
+  private missionOrders: StoredMissionOrder[] = [];
+  private recruitmentRequests: StoredRecruitmentRequest[] = [];
+  private rotationCycles: StoredRotationCycle[] = [];
+  private salaryRubrics: StoredSalaryRubricConfig[] = [];
 
   // Données Phase 4 : Achats, RFQ, TCO, Stocks & Inventaires
   private needRequests: StoredNeedRequest[] = [];
@@ -1094,6 +1262,7 @@ class ServerStore {
     this.initCommercialBaseline();
     this.initProjectsBaseline();
     this.initProcurementBaseline();
+    this.initHrBaseline();
   }
 
 
@@ -2198,6 +2367,982 @@ class ServerStore {
     this.addAuditLog('STOCK_MOVEMENT', 'INVENTORY', movement.movementNumber, `${isEntry ? 'Entrée' : 'Sortie'} de ${qty} ${item?.unit || 'U'} pour ${item?.name || 'article'}`);
     return movement;
   }
+
+    // ============================================================================
+  // PHASE 5: INITIALISATION BASELINE RESSOURCES HUMAINES & MOBILITÉ INDUSTRIELLE
+  // ============================================================================
+
+  private initHrBaseline() {
+    // 12 Collaborateurs Fictifs de Démonstration (Zéro donnée réelle)
+    this.employees = [
+      {
+        id: 'DEMO-EMP-001',
+        matricule: 'DEMO-MAT-001',
+        firstName: 'Ahmed',
+        lastName: 'Benyahia',
+        name: 'Ahmed Benyahia',
+        title: 'Chef de Chantier Tuyauterie Industrielle',
+        department: 'OPERATIONS_PROJETS',
+        contractType: 'CDI',
+        dailyRate: 9500,
+        monthlyBaseSalaryDA: 135000,
+        yearsOfExperience: 14,
+        siteAssignment: 'Zone Industrielle Skikda RA1K',
+        rotationCycle: '6X2',
+        status: 'ACTIF',
+        phone: '+213 550 00 00 01',
+        email: 'ahmed.benyahia.demo@silex-services.dz',
+        hireDate: '2016-03-15',
+        active: true,
+      },
+      {
+        id: 'DEMO-EMP-002',
+        matricule: 'DEMO-MAT-002',
+        firstName: 'Karim',
+        lastName: 'Mebarki',
+        name: 'Karim Mebarki',
+        title: 'Soudeur Haute Pression TIG / ARC 6G (Radio 100%)',
+        department: 'OPERATIONS_PROJETS',
+        contractType: 'CDI',
+        dailyRate: 8500,
+        monthlyBaseSalaryDA: 110000,
+        yearsOfExperience: 11,
+        siteAssignment: 'Zone Industrielle Skikda RA1K',
+        rotationCycle: '6X2',
+        status: 'ACTIF',
+        phone: '+213 550 00 00 02',
+        email: 'karim.mebarki.demo@silex-services.dz',
+        hireDate: '2018-06-01',
+        active: true,
+      },
+      {
+        id: 'DEMO-EMP-003',
+        matricule: 'DEMO-MAT-003',
+        firstName: 'Mourad',
+        lastName: 'Bouzid',
+        name: 'Mourad Bouzid',
+        title: 'Tuyauteur Industriel Qualifié Isométrique',
+        department: 'OPERATIONS_PROJETS',
+        contractType: 'CDI',
+        dailyRate: 7500,
+        monthlyBaseSalaryDA: 95000,
+        yearsOfExperience: 8,
+        siteAssignment: 'Zone Industrielle Skikda RA1K',
+        rotationCycle: '6X2',
+        status: 'ACTIF',
+        phone: '+213 550 00 00 03',
+        email: 'mourad.bouzid.demo@silex-services.dz',
+        hireDate: '2020-02-10',
+        active: true,
+      },
+      {
+        id: 'DEMO-EMP-004',
+        matricule: 'DEMO-MAT-004',
+        firstName: 'Farid',
+        lastName: 'Zitouni',
+        name: 'Farid Zitouni',
+        title: 'Superviseur Qualité & Sécurité HSE Chantier',
+        department: 'HSE_QUALITE',
+        contractType: 'CDI',
+        dailyRate: 9000,
+        monthlyBaseSalaryDA: 125000,
+        yearsOfExperience: 10,
+        siteAssignment: 'Zone Industrielle Skikda RA1K',
+        rotationCycle: '6X2',
+        status: 'ACTIF',
+        phone: '+213 550 00 00 04',
+        email: 'farid.zitouni.demo@silex-services.dz',
+        hireDate: '2019-09-01',
+        active: true,
+      },
+      {
+        id: 'DEMO-EMP-005',
+        matricule: 'DEMO-MAT-005',
+        firstName: 'Yacine',
+        lastName: 'Brahimi',
+        name: 'Yacine Brahimi',
+        title: 'Soudeur TIG Pipe & Inox 316L (ASME IX)',
+        department: 'OPERATIONS_PROJETS',
+        contractType: 'CHANTIER',
+        dailyRate: 8000,
+        monthlyBaseSalaryDA: 105000,
+        yearsOfExperience: 7,
+        siteAssignment: 'Base de Vie SILEX Hassi Messaoud',
+        rotationCycle: '4X4',
+        status: 'ACTIF',
+        phone: '+213 550 00 00 05',
+        email: 'yacine.brahimi.demo@silex-services.dz',
+        hireDate: '2022-04-15',
+        active: true,
+      },
+      {
+        id: 'DEMO-EMP-006',
+        matricule: 'DEMO-MAT-006',
+        firstName: 'Tarek',
+        lastName: 'Meziani',
+        name: 'Tarek Meziani',
+        title: 'Gestionnaire Magasin Central & Logistique',
+        department: 'ACHATS_LOGISTIQUE',
+        contractType: 'CDI',
+        dailyRate: 6500,
+        monthlyBaseSalaryDA: 85000,
+        yearsOfExperience: 9,
+        siteAssignment: 'Magasin Central Arzew & Base Logistique',
+        rotationCycle: 'LOCAL',
+        status: 'ACTIF',
+        phone: '+213 550 00 00 06',
+        email: 'tarek.meziani.demo@silex-services.dz',
+        hireDate: '2019-11-01',
+        active: true,
+      },
+      {
+        id: 'DEMO-EMP-007',
+        matricule: 'DEMO-MAT-007',
+        firstName: 'Rachid',
+        lastName: 'Ghezzal',
+        name: 'Rachid Ghezzal',
+        title: 'Monteur-Ajusteur Équipements Sous Pression',
+        department: 'OPERATIONS_PROJETS',
+        contractType: 'CDD',
+        dailyRate: 6000,
+        monthlyBaseSalaryDA: 78000,
+        yearsOfExperience: 5,
+        siteAssignment: 'Zone Industrielle Skikda RA1K',
+        rotationCycle: '6X2',
+        status: 'ACTIF',
+        phone: '+213 550 00 00 07',
+        email: 'rachid.ghezzal.demo@silex-services.dz',
+        hireDate: '2023-01-10',
+        active: true,
+      },
+      {
+        id: 'DEMO-EMP-008',
+        matricule: 'DEMO-MAT-008',
+        firstName: 'Samir',
+        lastName: 'Cherfaoui',
+        name: 'Samir Cherfaoui',
+        title: 'Tuyauteur Traceur Atelier & Chantier',
+        department: 'OPERATIONS_PROJETS',
+        contractType: 'CDI',
+        dailyRate: 7200,
+        monthlyBaseSalaryDA: 92000,
+        yearsOfExperience: 8,
+        siteAssignment: 'Magasin Central Arzew & Base Logistique',
+        rotationCycle: 'LOCAL',
+        status: 'ACTIF',
+        phone: '+213 550 00 00 08',
+        email: 'samir.cherfaoui.demo@silex-services.dz',
+        hireDate: '2021-05-20',
+        active: true,
+      },
+      {
+        id: 'DEMO-EMP-009',
+        matricule: 'DEMO-MAT-009',
+        firstName: 'Djamel',
+        lastName: 'Belkacem',
+        name: 'Djamel Belkacem',
+        title: 'Électromécanicien Maintenance Outillage & Vireurs',
+        department: 'MAINTENANCE_MATERIEL',
+        contractType: 'CDI',
+        dailyRate: 6800,
+        monthlyBaseSalaryDA: 88000,
+        yearsOfExperience: 6,
+        siteAssignment: 'Magasin Central Arzew & Base Logistique',
+        rotationCycle: 'LOCAL',
+        status: 'ACTIF',
+        phone: '+213 550 00 00 09',
+        email: 'djamel.belkacem.demo@silex-services.dz',
+        hireDate: '2022-09-01',
+        active: true,
+      },
+      {
+        id: 'DEMO-EMP-010',
+        matricule: 'DEMO-MAT-010',
+        firstName: 'Mustapha',
+        lastName: 'Benali',
+        name: 'Mustapha Benali',
+        title: 'Ingénieur Travaux & Conduite de Projets',
+        department: 'DIRECTION_TECHNIQUE',
+        contractType: 'CDI',
+        dailyRate: 11000,
+        monthlyBaseSalaryDA: 160000,
+        yearsOfExperience: 12,
+        siteAssignment: 'Siège Social & Chantiers Nationaux',
+        rotationCycle: 'LOCAL',
+        status: 'ACTIF',
+        phone: '+213 550 00 00 10',
+        email: 'mustapha.benali.demo@silex-services.dz',
+        hireDate: '2017-01-05',
+        active: true,
+      },
+      {
+        id: 'DEMO-EMP-011',
+        matricule: 'DEMO-MAT-011',
+        firstName: 'Nabil',
+        lastName: 'Khelil',
+        name: 'Nabil Khelil',
+        title: 'Aide-Monteur Tuyauteur Chantier',
+        department: 'OPERATIONS_PROJETS',
+        contractType: 'CHANTIER',
+        dailyRate: 4800,
+        monthlyBaseSalaryDA: 62000,
+        yearsOfExperience: 3,
+        siteAssignment: 'Base de Vie SILEX Hassi Messaoud',
+        rotationCycle: '4X4',
+        status: 'ACTIF',
+        phone: '+213 550 00 00 11',
+        email: 'nabil.khelil.demo@silex-services.dz',
+        hireDate: '2024-02-01',
+        active: true,
+      },
+      {
+        id: 'DEMO-EMP-012',
+        matricule: 'DEMO-MAT-012',
+        firstName: 'Sofiane',
+        lastName: 'Mansour',
+        name: 'Sofiane Mansour',
+        title: 'Opérateur Contrôle CND & Épreuves Hydrostatiques',
+        department: 'HSE_QUALITE',
+        contractType: 'CDI',
+        dailyRate: 8800,
+        monthlyBaseSalaryDA: 118000,
+        yearsOfExperience: 9,
+        siteAssignment: 'Zone Industrielle Skikda RA1K',
+        rotationCycle: '6X2',
+        status: 'ACTIF',
+        phone: '+213 550 00 00 12',
+        email: 'sofiane.mansour.demo@silex-services.dz',
+        hireDate: '2020-10-15',
+        active: true,
+      },
+    ];
+
+    // Certifications Industrielles & Qualifications CQS Vérifiées
+    this.industrialCertifications = [
+      {
+        id: 'cqs-001',
+        employeeId: 'DEMO-EMP-002',
+        employeeMatricule: 'DEMO-MAT-002',
+        employeeName: 'Karim Mebarki',
+        type: 'QUALIFICATION_SOUDAGE_CQS',
+        certName: 'CQS Soudeur HP 6G - Tubes ASTM A106 Gr.B (Procédé 141/111)',
+        certificateNumber: 'CQS-BV-2025-9981',
+        issuingBody: 'Bureau Veritas Algérie SPA',
+        issueDate: '2025-06-15',
+        expiryDate: '2027-06-14',
+        status: 'VALIDE',
+        weldingProcess: '141 (TIG) passe de pénétration + 111 (SMAW / ARC basique)',
+        weldingStandard: 'ASME IX / Sonatrach GS-EP-EXP-103',
+        weldingPosition: '6G fixe inclinée à 45°',
+        baseMaterial: 'P1 Acier Carbone haute température (Gr.B)',
+        dimensionRange: 'Diamètre extérieur > 2" (50.8 mm), épaisseur 3.5 à 24 mm',
+        verifiedBy: 'Farid Zitouni (Superviseur HSE / Qualité)',
+        verifiedAt: '2025-06-20T10:00:00.000Z',
+      },
+      {
+        id: 'cqs-002',
+        employeeId: 'DEMO-EMP-005',
+        employeeMatricule: 'DEMO-MAT-005',
+        employeeName: 'Yacine Brahimi',
+        type: 'QUALIFICATION_SOUDAGE_CQS',
+        certName: 'CQS TIG Tube Inox Austénitique 316L (Procédé 141)',
+        certificateNumber: 'CQS-TUV-2025-4412',
+        issuingBody: 'TÜV Rheinland Algérie',
+        issueDate: '2025-04-10',
+        expiryDate: '2027-04-09',
+        status: 'VALIDE',
+        weldingProcess: '141 TIG orbital manuel sous gaz inerte Argon pur',
+        weldingStandard: 'EN ISO 9606-1 / ASME IX',
+        weldingPosition: '6G',
+        baseMaterial: 'P8 Acier Inoxydable 316L',
+        dimensionRange: 'Diamètre 1" à 8", épaisseur 2.0 à 12.5 mm',
+        verifiedBy: 'Farid Zitouni',
+        verifiedAt: '2025-04-15T09:30:00.000Z',
+      },
+      {
+        id: 'cqs-003',
+        employeeId: 'DEMO-EMP-004',
+        employeeMatricule: 'DEMO-MAT-004',
+        employeeName: 'Farid Zitouni',
+        type: 'HABILITATION_ELECTRIQUE',
+        certName: 'Habilitation Électrique Travaux Hors Tension B2V / BR / H0V',
+        certificateNumber: 'HAB-ELEC-2026-081',
+        issuingBody: 'Centre National de Formation Industrielle (CNFI)',
+        issueDate: '2026-01-15',
+        expiryDate: '2029-01-14',
+        status: 'VALIDE',
+        verifiedBy: 'Direction Technique SILEX',
+        verifiedAt: '2026-01-20T14:00:00.000Z',
+      },
+      {
+        id: 'cqs-004',
+        employeeId: 'DEMO-EMP-001',
+        employeeMatricule: 'DEMO-MAT-001',
+        employeeName: 'Ahmed Benyahia',
+        type: 'SECURITE_ESPACE_CONFINE',
+        certName: 'Supervision des Interventions en Espaces Confinés & Milieu ATEX',
+        certificateNumber: 'SEC-ATEX-2025-119',
+        issuingBody: 'Institut Algérien du Pétrole (IAP)',
+        issueDate: '2025-03-01',
+        expiryDate: '2027-02-28',
+        status: 'VALIDE',
+        verifiedBy: 'Directeur Général SILEX',
+        verifiedAt: '2025-03-05T11:00:00.000Z',
+      },
+      {
+        id: 'cqs-005',
+        employeeId: 'DEMO-EMP-012',
+        employeeMatricule: 'DEMO-MAT-012',
+        employeeName: 'Sofiane Mansour',
+        type: 'VISITE_MEDICALE_APTITUDE',
+        certName: 'Aptitude Médicale Annuelle Travaux Industriels & Hauteur',
+        certificateNumber: 'MED-TRAV-2026-0045',
+        issuingBody: 'Service de Médecine du Travail Wilaya de Skikda',
+        issueDate: '2026-01-10',
+        expiryDate: '2027-01-09',
+        status: 'VALIDE',
+        verifiedBy: 'Responsable RH SILEX',
+        verifiedAt: '2026-01-12T09:00:00.000Z',
+      },
+    ];
+
+    // Cycles de Rotation Industriels
+    this.rotationCycles = [
+      {
+        id: 'rot-001',
+        rotationCode: 'ROT-HMD-4X4',
+        siteName: 'Base de Vie SILEX Hassi Messaoud & Installations Pétrolières',
+        type: '4X4',
+        workDays: 28,
+        restDays: 28,
+        cycleStartDate: '2026-10-01',
+        assignedEmployeeIds: ['DEMO-EMP-005', 'DEMO-EMP-011'],
+        status: 'ACTIF',
+        notes: 'Rotation standard Sud : 4 semaines de travail 7j/7 puis 4 semaines de repos de récupération.',
+      },
+      {
+        id: 'rot-002',
+        rotationCode: 'ROT-SKI-6X2',
+        siteName: 'Chantier Rénovation Tuyauteries Raffinerie Skikda RA1K',
+        type: '6X2',
+        workDays: 42,
+        restDays: 14,
+        cycleStartDate: '2026-10-01',
+        assignedEmployeeIds: ['DEMO-EMP-001', 'DEMO-EMP-002', 'DEMO-EMP-003', 'DEMO-EMP-004', 'DEMO-EMP-007', 'DEMO-EMP-012'],
+        status: 'ACTIF',
+        notes: 'Régime Arrêt Technique Est : 6 semaines intensives sur site, 2 semaines de récupération.',
+      },
+    ];
+
+    // Architecture des Rubriques Salariales Conformes Réglementation 2026
+    this.salaryRubrics = [
+      {
+        code: 'R100',
+        label: 'Salaire de Base Mensuel Conventionnel',
+        type: 'GAIN',
+        isVariable: false,
+        baseFormula: 'Taux Horaire x 173.33h (SNMG 2026: 24 000 DA base)',
+        isCnasSubject: true,
+        isIrgSubject: true,
+        effectiveFrom: '2026-01-01',
+        regulatoryReference: 'Décret présidentiel n° 26-01 du 07/01/2026 (SNMG)',
+        status: 'VALIDEE',
+      },
+      {
+        code: 'R110',
+        label: 'Indemnité d\'Expérience Professionnelle (IEP)',
+        type: 'GAIN',
+        isVariable: false,
+        baseFormula: 'Salaire de Base x Ancienneté x 1.5%',
+        isCnasSubject: true,
+        isIrgSubject: true,
+        effectiveFrom: '2026-01-01',
+        regulatoryReference: 'Convention collective d\'entreprise Silex Services',
+        status: 'VALIDEE',
+      },
+      {
+        code: 'R120',
+        label: 'Heures Supplémentaires Majorées à 50% (HS 50)',
+        type: 'GAIN',
+        isVariable: true,
+        baseFormula: 'Taux Horaire x Heures HS x 1.5',
+        isCnasSubject: true,
+        isIrgSubject: true,
+        effectiveFrom: '2026-01-01',
+        regulatoryReference: 'Loi 90-11 sur les relations de travail, art. 32',
+        status: 'VALIDEE',
+      },
+      {
+        code: 'R125',
+        label: 'Heures Supplémentaires Nuit / Vendredi 100% (HS 100)',
+        type: 'GAIN',
+        isVariable: true,
+        baseFormula: 'Taux Horaire x Heures HS x 2.0',
+        isCnasSubject: true,
+        isIrgSubject: true,
+        effectiveFrom: '2026-01-01',
+        regulatoryReference: 'Loi 90-11 sur les relations de travail, art. 33',
+        status: 'VALIDEE',
+      },
+      {
+        code: 'R150',
+        label: 'Indemnité de Panier de Chantier (Restauration)',
+        type: 'GAIN',
+        isVariable: true,
+        baseFormula: '800 DA x Jours Travaillés sur Chantier',
+        isCnasSubject: false, // Exonéré CNAS selon plafond fiscal
+        isIrgSubject: false,
+        effectiveFrom: '2026-01-01',
+        regulatoryReference: 'Instruction fiscale DGI & Barème frais professionnels',
+        status: 'VALIDEE',
+      },
+      {
+        code: 'R160',
+        label: 'Indemnité de Transport Chantier',
+        type: 'GAIN',
+        isVariable: false,
+        baseFormula: 'Forfait 5 000 DA / mois',
+        isCnasSubject: false,
+        isIrgSubject: false,
+        effectiveFrom: '2026-01-01',
+        regulatoryReference: 'Barème professionnel transport',
+        status: 'VALIDEE',
+      },
+      {
+        code: 'R170',
+        label: 'Indemnité de Nuisance & Risque Métallurgie',
+        type: 'GAIN',
+        isVariable: false,
+        baseFormula: 'Forfait mensuel travaux en milieu confiné / chaud',
+        isCnasSubject: true,
+        isIrgSubject: true,
+        effectiveFrom: '2026-01-01',
+        regulatoryReference: 'Accord d\'établissement travaux dangereux',
+        status: 'VALIDEE',
+      },
+      {
+        code: 'R180',
+        label: 'Prime d\'Isolement & Zone Sud Hassi Messaoud',
+        type: 'GAIN',
+        isVariable: true,
+        baseFormula: '1 200 DA / jour de présence sur base Sud',
+        isCnasSubject: true,
+        isIrgSubject: true,
+        effectiveFrom: '2026-01-01',
+        regulatoryReference: 'Régime fiscal des zones Sud (Loi de Finances)',
+        status: 'VALIDEE',
+      },
+      {
+        code: 'R500',
+        label: 'Cotisation Sécurité Sociale CNAS (Part Ouvrière 9%)',
+        type: 'RETENUE',
+        isVariable: true,
+        baseFormula: 'Assiette Cotisable CNAS x 9.00%',
+        isCnasSubject: false,
+        isIrgSubject: false,
+        effectiveFrom: '2015-09-03',
+        regulatoryReference: 'Décret exécutif n° 15-236 du 03/09/2015 (JO n° 49)',
+        status: 'VALIDEE',
+      },
+      {
+        code: 'R600',
+        label: 'Retenue à la Source IRG (Barème Progressif Mensuel)',
+        type: 'RETENUE',
+        isVariable: true,
+        baseFormula: 'Barème progressif LF avec abattement 40% plafonné [1000, 1500] DA',
+        isCnasSubject: false,
+        isIrgSubject: false,
+        effectiveFrom: '2026-01-01',
+        regulatoryReference: 'Direction Générale des Impôts — Barème IRG Traitements & Salaires',
+        status: 'VALIDEE',
+      },
+    ];
+
+    // Exemples initiaux de Congés, Missions et Recrutements
+    this.leaveRequests = [
+      {
+        id: 'lv-001',
+        reference: 'LV-2026-001',
+        employeeId: 'DEMO-EMP-003',
+        employeeMatricule: 'DEMO-MAT-003',
+        employeeName: 'Mourad Bouzid',
+        title: 'Congé annuel de détente',
+        leaveType: 'CONGE_PAYE',
+        startDate: '2026-11-20',
+        endDate: '2026-11-26',
+        durationDays: 7,
+        reason: 'Congé annuel de détente après phase de préfabrication',
+        status: 'ACCORDE_DG',
+        submittedAt: '2026-11-05T08:00:00.000Z',
+        rhVisaSignature: 'VISA-RH-LV-001-OK',
+        rhVisaDate: '2026-11-06T10:00:00.000Z',
+        rhReviewerName: 'Responsable RH SILEX',
+        dgVisaSignature: 'VISA-DG-LV-001-ACCORDE',
+        dgVisaDate: '2026-11-07T14:30:00.000Z',
+        certificateNumber: 'TC-2026-001',
+      },
+    ];
+
+    this.missionOrders = [
+      {
+        id: 'mis-001',
+        missionNumber: 'MIS-2026-001',
+        employeeId: 'DEMO-EMP-010',
+        employeeMatricule: 'DEMO-MAT-010',
+        employeeName: 'Mustapha Benali',
+        title: 'Supervision technique & contradictoire client Skikda',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar',
+        destinationSite: 'Zone Industrielle Skikda RA1K',
+        purpose: 'Assister au contrôle radiographique des soudures spools et réunion d\'avancement avec Sonatrach',
+        startDate: '2026-11-15',
+        endDate: '2026-11-18',
+        durationDays: 4,
+        transportMode: 'VEHICULE_SERVICE',
+        vehiclePlate: '04821-126-31',
+        advanceAmountDA: 40000,
+        dailyAllowanceDA: 6500,
+        totalEstimatedCostDA: 66000,
+        status: 'APPROUVE_DG',
+        dgVisaSignature: 'VISA-DG-MIS-001-VALIDE',
+        dgVisaDate: '2026-11-10T16:00:00.000Z',
+        createdAt: '2026-11-09T09:00:00.000Z',
+      },
+    ];
+
+    this.recruitmentRequests = [
+      {
+        id: 'rec-001',
+        reference: 'REC-2026-001',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar',
+        requestedBy: 'Amine Khelifi (Chef de Projet)',
+        requestedRole: 'Soudeur TIG / ARC Haute Pression 6G',
+        headcountNeeded: 3,
+        contractType: 'CHANTIER',
+        requiredQualifications: ['CQS ASME IX 6G', 'Radio 100%', 'Aptitude médicale travaux chauds'],
+        startDate: '2026-11-25',
+        durationMonths: 2,
+        justification: 'Accélération cadence de soudage collecteurs pour respecter jalon ODS N°03 avant redémarrage unité',
+        priority: 'URGENTE',
+        status: 'APPROUVE_DG',
+        dgApprovalDate: '2026-11-08T11:00:00.000Z',
+        candidatesCount: 5,
+        createdAt: '2026-11-07T10:00:00.000Z',
+      },
+    ];
+  }
+
+
+  // ============================================================================
+  // PHASE 5: MÉTHODES MÉTIER RESSOURCES HUMAINES & MOBILITÉ INDUSTRIELLE
+  // ============================================================================
+
+  // --- CERTIFICATIONS INDUSTRIELLES & QUALIFICATIONS CQS ---
+  getIndustrialCertifications(employeeId?: string): StoredIndustrialCertification[] {
+    if (employeeId) {
+      return this.industrialCertifications.filter(c => c.employeeId === employeeId);
+    }
+    return this.industrialCertifications;
+  }
+
+  createIndustrialCertification(data: any, user?: any): StoredIndustrialCertification {
+    const emp = this.employees.find(e => e.id === data.employeeId || e.matricule === data.employeeMatricule);
+    const newCert: StoredIndustrialCertification = {
+      id: `cqs-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      employeeId: emp ? emp.id : (data.employeeId || 'DEMO-EMP-001'),
+      employeeMatricule: emp ? emp.matricule : (data.employeeMatricule || 'DEMO-MAT-001'),
+      employeeName: emp ? emp.name : (data.employeeName || 'Collaborateur SILEX'),
+      type: data.type || 'QUALIFICATION_SOUDAGE_CQS',
+      certName: data.certName || 'Qualification Soudage CQS',
+      certificateNumber: data.certificateNumber || `CQS-${Date.now()}`,
+      issuingBody: data.issuingBody || 'Bureau Veritas Algérie',
+      issueDate: data.issueDate || new Date().toISOString().split('T')[0],
+      expiryDate: data.expiryDate || new Date(Date.now() + 730 * 86400000).toISOString().split('T')[0],
+      status: 'EN_ATTENTE_VERIFICATION',
+      weldingProcess: data.weldingProcess,
+      weldingStandard: data.weldingStandard,
+      weldingPosition: data.weldingPosition,
+      baseMaterial: data.baseMaterial,
+      dimensionRange: data.dimensionRange,
+      attachmentUrl: data.attachmentUrl,
+    };
+
+    this.industrialCertifications.unshift(newCert);
+    this.addAuditLog('CREATE_CERTIFICATION', 'HR', newCert.certificateNumber, `Nouvelle qualification soumise pour ${newCert.employeeName}`, user);
+    return newCert;
+  }
+
+  auditIndustrialCertification(id: string, decision: 'VALIDE' | 'REJETE', motif?: string, user?: any): StoredIndustrialCertification {
+    const cert = this.industrialCertifications.find(c => c.id === id);
+    if (!cert) throw new Error('Certification industrielle introuvable');
+
+    cert.status = decision;
+    cert.verifiedBy = user?.name || 'Responsable Contrôle Qualité / HSE';
+    cert.verifiedAt = new Date().toISOString();
+    if (decision === 'REJETE') {
+      cert.rejectionReason = motif || 'Non-conformité aux exigences documentaires ou domaine de validité non respecté';
+    }
+
+    this.addAuditLog('AUDIT_CERTIFICATION', 'HR', cert.certificateNumber, `Qualification ${cert.certificateNumber} auditée: ${decision}`, user);
+    return cert;
+  }
+
+  // --- DEMANDES DE CONGÉS & TITRES DE CONGÉ A4 ---
+  getLeaveRequests(employeeId?: string): StoredLeaveRequest[] {
+    if (employeeId) {
+      return this.leaveRequests.filter(l => l.employeeId === employeeId);
+    }
+    return this.leaveRequests;
+  }
+
+  createLeaveRequest(data: any, user?: any): StoredLeaveRequest {
+    const emp = this.employees.find(e => e.id === data.employeeId || e.matricule === data.employeeMatricule) || this.employees[0];
+    const lvNum = String(this.leaveRequests.length + 1).padStart(3, '0');
+    const lvRef = `LV-${new Date().getFullYear()}-${lvNum}`;
+
+    const newLv: StoredLeaveRequest = {
+      id: `lv-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      reference: lvRef,
+      employeeId: emp.id,
+      employeeMatricule: emp.matricule,
+      employeeName: emp.name,
+      title: data.title || `Demande de ${data.leaveType || 'congé'}`,
+      leaveType: data.leaveType || 'CONGE_PAYE',
+      startDate: data.startDate,
+      endDate: data.endDate,
+      durationDays: Number(data.durationDays || 1),
+      reason: data.reason || '',
+      status: 'SOUMIS',
+      submittedAt: new Date().toISOString(),
+    };
+
+    this.leaveRequests.unshift(newLv);
+    this.addAuditLog('CREATE_LEAVE_REQUEST', 'HR', lvRef, `Demande de congé ${lvRef} soumise pour ${emp.name}`, user);
+    return newLv;
+  }
+
+  approveLeaveRH(id: string, user?: any): StoredLeaveRequest {
+    const lv = this.leaveRequests.find(l => l.id === id);
+    if (!lv) throw new Error('Demande de congé introuvable');
+    if (lv.status !== 'SOUMIS') throw new Error('Seule une demande au statut SOUMIS peut recevoir le visa RH');
+
+    lv.status = 'VISE_RH';
+    lv.rhVisaSignature = `VISA-RH-LV-${Date.now()}-OK`;
+    lv.rhVisaDate = new Date().toISOString();
+    lv.rhReviewerName = user?.name || 'Responsable Ressources Humaines';
+
+    this.addAuditLog('VISA_RH_LEAVE', 'HR', lv.reference, `Visa RH apposé sur ${lv.reference}`, user);
+    return lv;
+  }
+
+  approveLeaveDG(id: string, user?: any): StoredLeaveRequest {
+    const lv = this.leaveRequests.find(l => l.id === id);
+    if (!lv) throw new Error('Demande de congé introuvable');
+    if (lv.status !== 'VISE_RH') throw new Error('La demande doit obligatoirement avoir reçu le visa RH préalable');
+
+    lv.status = 'ACCORDE_DG';
+    lv.dgVisaSignature = `VISA-DG-LV-${Date.now()}-ACCORDE`;
+    lv.dgVisaDate = new Date().toISOString();
+    lv.certificateNumber = `TC-${new Date().getFullYear()}-${String(this.leaveRequests.length).padStart(3, '0')}`;
+
+    // Mise à jour statut employé
+    const emp = this.employees.find(e => e.id === lv.employeeId);
+    if (emp) emp.status = 'EN_CONGE';
+
+    this.addAuditLog('APPROVE_LEAVE_DG', 'HR', lv.reference, `Congé ${lv.reference} accordé par la DG. Titre de congé émis : ${lv.certificateNumber}`, user);
+    return lv;
+  }
+
+  // --- ORDRES DE MISSION & DÉPLACEMENTS CHANTIERS ---
+  getMissionOrders(employeeId?: string): StoredMissionOrder[] {
+    if (employeeId) {
+      return this.missionOrders.filter(m => m.employeeId === employeeId);
+    }
+    return this.missionOrders;
+  }
+
+  createMissionOrder(data: any, user?: any): StoredMissionOrder {
+    const emp = this.employees.find(e => e.id === data.employeeId || e.matricule === data.employeeMatricule) || this.employees[0];
+    const project = data.projectId ? this.getProject(data.projectId) : undefined;
+    const misNum = String(this.missionOrders.length + 1).padStart(3, '0');
+    const misRef = `MIS-${new Date().getFullYear()}-${misNum}`;
+
+    const durationDays = Number(data.durationDays || 1);
+    const dailyAllowanceDA = Number(data.dailyAllowanceDA || 6500);
+    const advanceAmountDA = Number(data.advanceAmountDA || 30000);
+    const totalEstimatedCostDA = (durationDays * dailyAllowanceDA) + advanceAmountDA;
+
+    const mission: StoredMissionOrder = {
+      id: `mis-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      missionNumber: misRef,
+      employeeId: emp.id,
+      employeeMatricule: emp.matricule,
+      employeeName: emp.name,
+      title: data.title || `Ordre de Mission ${misRef}`,
+      projectId: project?.id || data.projectId,
+      projectCode: project?.code || data.projectCode,
+      projectName: project?.name || data.projectName || 'Chantier Industriel SILEX',
+      destinationSite: data.destinationSite || project?.siteLocation || 'Site d\'intervention',
+      purpose: data.purpose || 'Intervention technique de tuyauterie/soudage',
+      startDate: data.startDate,
+      endDate: data.endDate,
+      durationDays,
+      transportMode: data.transportMode || 'VEHICULE_SERVICE',
+      vehiclePlate: data.vehiclePlate || '04821-126-31',
+      advanceAmountDA,
+      dailyAllowanceDA,
+      totalEstimatedCostDA,
+      status: 'VISE_RH',
+      createdAt: new Date().toISOString(),
+    };
+
+    this.missionOrders.unshift(mission);
+    this.addAuditLog('CREATE_MISSION_ORDER', 'HR', misRef, `Ordre de mission ${misRef} créé pour ${emp.name}`, user);
+    return mission;
+  }
+
+  approveMissionOrderDG(id: string, user?: any): StoredMissionOrder {
+    const mis = this.missionOrders.find(m => m.id === id);
+    if (!mis) throw new Error('Ordre de mission introuvable');
+
+    mis.status = 'APPROUVE_DG';
+    mis.dgVisaSignature = `VISA-DG-MIS-${Date.now()}-VALIDE`;
+    mis.dgVisaDate = new Date().toISOString();
+
+    const emp = this.employees.find(e => e.id === mis.employeeId);
+    if (emp) emp.status = 'EN_MISSION';
+
+    this.addAuditLog('APPROVE_MISSION_DG', 'HR', mis.missionNumber, `Ordre de mission ${mis.missionNumber} validé par la DG`, user);
+    return mis;
+  }
+
+  // --- BESOINS EN RECRUTEMENT / RENFORT CHANTIER ---
+  getRecruitmentRequests(projectId?: string): StoredRecruitmentRequest[] {
+    if (projectId) {
+      return this.recruitmentRequests.filter(r => r.projectId === projectId);
+    }
+    return this.recruitmentRequests;
+  }
+
+  createRecruitmentRequest(data: any, user?: any): StoredRecruitmentRequest {
+    const project = data.projectId ? this.getProject(data.projectId) : undefined;
+    const recNum = String(this.recruitmentRequests.length + 1).padStart(3, '0');
+    const recRef = `REC-${new Date().getFullYear()}-${recNum}`;
+
+    const rec: StoredRecruitmentRequest = {
+      id: `rec-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      reference: recRef,
+      projectId: project?.id || data.projectId || 'prj-2026-001',
+      projectCode: project?.code || data.projectCode || 'PRJ-2026-001',
+      projectName: project?.name || data.projectName || 'Chantier SILEX',
+      requestedBy: user?.name || data.requestedBy || 'Responsable Projet',
+      requestedRole: data.requestedRole || 'Tuyauteur Industriel Qualifié',
+      headcountNeeded: Number(data.headcountNeeded || 1),
+      contractType: data.contractType || 'CHANTIER',
+      requiredQualifications: Array.isArray(data.requiredQualifications) ? data.requiredQualifications : ['CQS Soudage / ISO'],
+      startDate: data.startDate || new Date().toISOString().split('T')[0],
+      durationMonths: Number(data.durationMonths || 1),
+      justification: data.justification || '',
+      priority: data.priority || 'NORMALE',
+      status: 'SOUMIS',
+      candidatesCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.recruitmentRequests.unshift(rec);
+    this.addAuditLog('CREATE_RECRUITMENT_REQUEST', 'HR', recRef, `Besoin recrutement ${recRef} émis pour ${rec.requestedRole}`, user);
+    return rec;
+  }
+
+  approveRecruitmentRequestDG(id: string, user?: any): StoredRecruitmentRequest {
+    const rec = this.recruitmentRequests.find(r => r.id === id);
+    if (!rec) throw new Error('Demande de recrutement introuvable');
+
+    rec.status = 'APPROUVE_DG';
+    rec.dgApprovalDate = new Date().toISOString();
+
+    this.addAuditLog('APPROVE_RECRUITMENT_DG', 'HR', rec.reference, `Besoin de renfort ${rec.reference} validé par la DG`, user);
+    return rec;
+  }
+
+  // --- CYCLES DE ROTATION SUD (4x4, 6x2) ---
+  getRotationCycles(): StoredRotationCycle[] {
+    return this.rotationCycles;
+  }
+
+  assignEmployeeToRotation(rotationId: string, employeeId: string, user?: any): StoredRotationCycle {
+    const rot = this.rotationCycles.find(r => r.id === rotationId || r.rotationCode === rotationId);
+    if (!rot) throw new Error('Cycle de rotation introuvable');
+
+    if (!rot.assignedEmployeeIds.includes(employeeId)) {
+      rot.assignedEmployeeIds.push(employeeId);
+    }
+
+    const emp = this.employees.find(e => e.id === employeeId);
+    if (emp) emp.rotationCycle = rot.type;
+
+    this.addAuditLog('ASSIGN_ROTATION', 'HR', rot.rotationCode, `Collaborateur ${emp?.name || employeeId} affecté à la rotation ${rot.rotationCode}`, user);
+    return rot;
+  }
+
+  // --- RUBRIQUES SALARIALES & MOTEUR DE SIMULATION PAIE DEMO 2026 ---
+  getSalaryRubrics(): StoredSalaryRubricConfig[] {
+    return this.salaryRubrics;
+  }
+
+  calculatePayslipDemo(employeeId: string, options: {
+    periodMonth?: number;
+    periodYear?: number;
+    workedDays?: number;
+    overtimeHours50?: number;
+    overtimeHours100?: number;
+  } = {}): StoredPayslipDemo {
+    const emp = this.employees.find(e => e.id === employeeId || e.matricule === employeeId) || this.employees[0];
+    const month = options.periodMonth || (new Date().getMonth() + 1);
+    const year = options.periodYear || new Date().getFullYear();
+
+    const baseSalary = Number(emp.monthlyBaseSalaryDA || 85000);
+    const hourlyRate = Math.round((baseSalary / 173.33) * 100) / 100; // Base 40h/semaine = 173.33h/mois
+    const expYears = Number(emp.yearsOfExperience || 5);
+
+    // R110 : IEP = Salaire de base x Années x 1.5%
+    const iepAmountDA = Math.round(baseSalary * expYears * 0.015);
+
+    // Heures Supplémentaires
+    const hs50Count = Number(options.overtimeHours50 || 0);
+    const hs100Count = Number(options.overtimeHours100 || 0);
+    const hsAmountDA = Math.round((hs50Count * hourlyRate * 1.5) + (hs100Count * hourlyRate * 2.0));
+
+    // Nuisance et Risque (milieu industriel haute pression / chaud)
+    const nuisanceAmountDA = 12000;
+
+    // Assiette Soumise à Cotisation CNAS (Part Ouvrière 9%)
+    const cnasBaseDA = baseSalary + iepAmountDA + hsAmountDA + nuisanceAmountDA;
+    const cnasDeduction9Pct = Math.round(cnasBaseDA * 0.09); // Décret 15-236 : 9%
+
+    // Primes et Indemnités Non Cotisables CNAS
+    const workedDays = Number(options.workedDays || 22);
+    const siteBasketAmountDA = workedDays * 800; // 800 DA / jour de panier
+    const transportAmountDA = 5000; // 5 000 DA forfait transport
+
+    // Prime de Zone Sud si affectation Hassi Messaoud
+    const isSouth = (emp.siteAssignment || '').includes('Hassi Messaoud') || emp.rotationCycle === '4X4';
+    const zoneSouthAllowanceDA = isSouth ? (workedDays * 1200) : 0;
+
+    // Salaire Brut Global
+    const grossSalaryDA = cnasBaseDA + siteBasketAmountDA + transportAmountDA + zoneSouthAllowanceDA;
+
+    // Salaire Imposable à l'IRG = Assiette CNAS - Cotisation CNAS 9% (+ indemnités imposables)
+    // Selon CGI : Panier et transport justifiés non imposables dans les limites légales
+    const taxableSalaryDA = Math.max(0, cnasBaseDA - cnasDeduction9Pct + (zoneSouthAllowanceDA * 0.5));
+
+    // Calcul de l'IRG selon Barème Progressif Loi de Finances :
+    // 0 à 20 000 DA : 0%
+    // 20 001 à 40 000 DA : 23%
+    // 40 001 à 80 000 DA : 27%
+    // 80 001 à 160 000 DA : 30%
+    // 160 001 à 320 000 DA : 33%
+    // > 320 000 DA : 35%
+    let rawIrg = 0;
+    if (taxableSalaryDA > 20000) {
+      if (taxableSalaryDA <= 40000) {
+        rawIrg = (taxableSalaryDA - 20000) * 0.23;
+      } else if (taxableSalaryDA <= 80000) {
+        rawIrg = (20000 * 0.23) + ((taxableSalaryDA - 40000) * 0.27);
+      } else if (taxableSalaryDA <= 160000) {
+        rawIrg = (20000 * 0.23) + (40000 * 0.27) + ((taxableSalaryDA - 80000) * 0.30);
+      } else if (taxableSalaryDA <= 320000) {
+        rawIrg = (20000 * 0.23) + (40000 * 0.27) + (80000 * 0.30) + ((taxableSalaryDA - 160000) * 0.33);
+      } else {
+        rawIrg = (20000 * 0.23) + (40000 * 0.27) + (80000 * 0.30) + (160000 * 0.33) + ((taxableSalaryDA - 320000) * 0.35);
+      }
+    }
+
+    // Abattement de 40% plafonné entre 1 000 DA et 1 500 DA / mois (Exonération si taxable <= 30 000 DA)
+    let irgTaxAmountDA = 0;
+    if (taxableSalaryDA > 30000) {
+      const rebate = Math.max(1000, Math.min(1500, rawIrg * 0.40));
+      irgTaxAmountDA = Math.max(0, Math.round(rawIrg - rebate));
+    }
+
+    // Net à Payer
+    const netPayableDA = grossSalaryDA - cnasDeduction9Pct - irgTaxAmountDA;
+
+    const slipNum = `BS-DEMO-${year}-${String(month).padStart(2, '0')}-${emp.matricule}`;
+
+    const payslip: StoredPayslipDemo = {
+      id: `bs-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      slipNumber: slipNum,
+      employeeId: emp.id,
+      employeeMatricule: emp.matricule,
+      employeeName: emp.name,
+      title: emp.title,
+      department: emp.department || 'OPERATIONS_PROJETS',
+      periodMonth: month,
+      periodYear: year,
+      workedDays,
+      workedHours: 173,
+      overtimeHours50: hs50Count,
+      overtimeHours100: hs100Count,
+      baseSalaryDA: baseSalary,
+      iepAmountDA,
+      siteBasketAmountDA,
+      transportAmountDA,
+      nuisanceAmountDA,
+      zoneSouthAllowanceDA,
+      overtimeAmountDA: hsAmountDA,
+      grossSalaryDA,
+      cnasDeduction9Pct,
+      taxableSalaryDA,
+      irgTaxAmountDA,
+      netPayableDA,
+      isDemoSimulation: true,
+      calculatedAt: new Date().toISOString(),
+    };
+
+    return payslip;
+  }
+
+  // --- KPIS RESSOURCES HUMAINES & MOBILITÉ ---
+  getHrKpis() {
+    const totalEmployees = this.employees.length;
+    const activeEmployees = this.employees.filter(e => e.active && e.status !== 'INACTIF' && e.status !== 'SORTI').length;
+    const onMissionCount = this.employees.filter(e => e.status === 'EN_MISSION').length;
+    const onLeaveCount = this.employees.filter(e => e.status === 'EN_CONGE').length;
+    
+    // Taux de certifications valides
+    const totalCerts = this.industrialCertifications.length;
+    const validCerts = this.industrialCertifications.filter(c => c.status === 'VALIDE').length;
+    const certComplianceRate = totalCerts > 0 ? Math.round((validCerts / totalCerts) * 100) : 100;
+
+    // Missions actives
+    const pendingMissionsCount = this.missionOrders.filter(m => m.status === 'VISE_RH').length;
+    const approvedMissionsCount = this.missionOrders.filter(m => m.status === 'APPROUVE_DG').length;
+
+    // Congés en attente DG
+    const pendingLeavesCount = this.leaveRequests.filter(l => l.status === 'VISE_RH' || l.status === 'SOUMIS').length;
+
+    // Recrutements chantiers ouverts
+    const openRecruitmentsCount = this.recruitmentRequests.filter(r => r.status === 'SOUMIS' || r.status === 'APPROUVE_DG').length;
+
+    return {
+      totalEmployees,
+      activeEmployees,
+      onMissionCount,
+      onLeaveCount,
+      totalCertifications: totalCerts,
+      validCertifications: validCerts,
+      certComplianceRate,
+      pendingMissionsCount,
+      approvedMissionsCount,
+      pendingLeavesCount,
+      openRecruitmentsCount,
+    };
+  }
+
 
   // --- HR (Collaborateurs, Certifications & Pointages) ---
   getEmployees() {
