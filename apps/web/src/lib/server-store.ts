@@ -977,7 +977,29 @@ export interface StoredPayslipDemo {
   overtimeAmountDA: number;
   grossSalaryDA: number;
   cnasDeduction9Pct: number;
+  // Décomposition Cotisations Sociales & Patronales
+  cnasBaseDA?: number;
+  cnasEmployerBreakdown?: {
+    assurancesSocialesEmployer26Pct: number; // 26%
+    maladieMaterniteInvaliditeDeces: number; // 12.5%
+    vieillesseRetraite: number;              // 10.0%
+    accidentsTravailMaladiesProf: number;    // 1.25%
+    assuranceChomage: number;                // 1.0%
+    retraiteAnticipee: number;               // 0.25%
+    oeuvresSocialesFOS: number;              // 1.0% (Contribution Fonds Œuvres Sociales)
+    totalEmployerContribution: number;       // 26% (CNAS) + 1% (FOS) = 27%
+  };
+  cnasEmployeeBreakdown?: {
+    assurancesSocialesEmployee9Pct: number; // 9%
+    maladieMaterniteInvaliditeDeces: number; // 1.5%
+    vieillesseRetraite: number;              // 6.75%
+    assuranceChomage: number;                // 0.5%
+    retraiteAnticipee: number;               // 0.25%
+  };
   taxableSalaryDA: number;
+  rawIrg?: number;
+  firstIrgRebate?: number;
+  secondIrgRebate?: number;
   irgTaxAmountDA: number;
   netPayableDA: number;
   isDemoSimulation: true;
@@ -3239,13 +3261,16 @@ class ServerStore {
     // Selon CGI : Panier et transport justifiés non imposables dans les limites légales
     const taxableSalaryDA = Math.max(0, cnasBaseDA - cnasDeduction9Pct + (zoneSouthAllowanceDA * 0.5));
 
-    // Calcul de l'IRG selon Barème Progressif Loi de Finances :
-    // 0 à 20 000 DA : 0%
-    // 20 001 à 40 000 DA : 23%
-    // 40 001 à 80 000 DA : 27%
-    // 80 001 à 160 000 DA : 30%
-    // 160 001 à 320 000 DA : 33%
-    // > 320 000 DA : 35%
+    // ========================================================================
+    // CALCUL OFFICIEL DE L'IRG SELON LE BARÈME PROGRESSIF ET LES CIRCULAIRES DGI
+    // ========================================================================
+    // Tranches du barème progressif mensuel :
+    // - 0 à 20 000 DA : 0%
+    // - 20 001 à 40 000 DA : 23%
+    // - 40 001 à 80 000 DA : 27%
+    // - 80 001 à 160 000 DA : 30%
+    // - 160 001 à 320 000 DA : 33%
+    // - Supérieur à 320 000 DA : 35%
     let rawIrg = 0;
     if (taxableSalaryDA > 20000) {
       if (taxableSalaryDA <= 40000) {
@@ -3261,12 +3286,51 @@ class ServerStore {
       }
     }
 
-    // Abattement de 40% plafonné entre 1 000 DA et 1 500 DA / mois (Exonération si taxable <= 30 000 DA)
+    let firstRebate = 0;
+    let secondRebate = 0;
     let irgTaxAmountDA = 0;
-    if (taxableSalaryDA > 30000) {
-      const rebate = Math.max(1000, Math.min(1500, rawIrg * 0.40));
-      irgTaxAmountDA = Math.max(0, Math.round(rawIrg - rebate));
+
+    // Condition d'exonération totale : salaires imposables <= 30 000 DA
+    if (taxableSalaryDA <= 30000) {
+      irgTaxAmountDA = 0;
+      firstRebate = 0;
+      secondRebate = 0;
+    } else {
+      // 1. Premier abattement général de 40% plafonné entre 1 000 DA (plancher) et 1 500 DA (plafond)
+      firstRebate = Math.max(1000, Math.min(1500, rawIrg * 0.40));
+      const irgAfterFirst = Math.max(0, rawIrg - firstRebate);
+
+      // 2. Deuxième abattement spécifique DGI pour salaires entre 30 001 et 35 000 DA :
+      // Formule légale DGI : IRG = IRG_apres_premier x (137/51) - (27925/8)
+      if (taxableSalaryDA > 30000 && taxableSalaryDA < 35000) {
+        const calculatedWithSecond = (irgAfterFirst * (137 / 51)) - (27925 / 8);
+        irgTaxAmountDA = Math.max(0, Math.round(calculatedWithSecond));
+        secondRebate = Math.max(0, Math.round(irgAfterFirst - irgTaxAmountDA));
+      } else {
+        irgTaxAmountDA = Math.round(irgAfterFirst);
+      }
     }
+
+    // Décomposition des cotisations sociales CNAS selon la Loi 83-11 et 83-12 et Décret 15-236
+    // Assiette cotisable : cnasBaseDA
+    const cnasEmployeeBreakdown = {
+      assurancesSocialesEmployee9Pct: cnasDeduction9Pct,
+      maladieMaterniteInvaliditeDeces: Math.round(cnasBaseDA * 0.015), // 1.5%
+      vieillesseRetraite: Math.round(cnasBaseDA * 0.0675),              // 6.75%
+      assuranceChomage: Math.round(cnasBaseDA * 0.005),                 // 0.5%
+      retraiteAnticipee: Math.round(cnasBaseDA * 0.0025),               // 0.25%
+    };
+
+    const cnasEmployerBreakdown = {
+      assurancesSocialesEmployer26Pct: Math.round(cnasBaseDA * 0.26),  // 26% légal CNAS
+      maladieMaterniteInvaliditeDeces: Math.round(cnasBaseDA * 0.125), // 12.5%
+      vieillesseRetraite: Math.round(cnasBaseDA * 0.100),              // 10.0%
+      accidentsTravailMaladiesProf: Math.round(cnasBaseDA * 0.0125),   // 1.25%
+      assuranceChomage: Math.round(cnasBaseDA * 0.010),                // 1.0%
+      retraiteAnticipee: Math.round(cnasBaseDA * 0.0025),              // 0.25%
+      oeuvresSocialesFOS: Math.round(cnasBaseDA * 0.010),              // 1.0% contribution FOS employeur
+      totalEmployerContribution: Math.round(cnasBaseDA * 0.27),       // 26% CNAS + 1% FOS
+    };
 
     // Net à Payer
     const netPayableDA = grossSalaryDA - cnasDeduction9Pct - irgTaxAmountDA;
@@ -3295,8 +3359,14 @@ class ServerStore {
       zoneSouthAllowanceDA,
       overtimeAmountDA: hsAmountDA,
       grossSalaryDA,
+      cnasBaseDA,
       cnasDeduction9Pct,
+      cnasEmployeeBreakdown,
+      cnasEmployerBreakdown,
       taxableSalaryDA,
+      rawIrg: Math.round(rawIrg),
+      firstIrgRebate: Math.round(firstRebate),
+      secondIrgRebate: Math.round(secondRebate),
       irgTaxAmountDA,
       netPayableDA,
       isDemoSimulation: true,

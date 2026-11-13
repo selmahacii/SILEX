@@ -32,6 +32,11 @@ import {
   ArrowRight,
   FileText,
   BadgeCheck,
+  Plane,
+  Compass,
+  UserPlus,
+  Send,
+  FileCheck,
 } from 'lucide-react';
 
 export default function HrPage() {
@@ -45,10 +50,42 @@ export default function HrPage() {
   const [certifications, setCertifications] = useState<any[]>([]);
   const [attendances, setAttendances] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'employees' | 'certs' | 'attendance' | 'payroll'>('employees');
+  const [activeTab, setActiveTab] = useState<
+    'employees' | 'certs' | 'attendance' | 'payroll' | 'leaves' | 'missions' | 'recruitments' | 'rotations'
+  >('employees');
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState<string | null>(null);
   const [selectedEmployeeForDetail, setSelectedEmployeeForDetail] = useState<any | null>(null);
+
+  // Nouvelles collections RH
+  const [leaves, setLeaves] = useState<any[]>([]);
+  const [missions, setMissions] = useState<any[]>([]);
+  const [recruitments, setRecruitments] = useState<any[]>([]);
+  const [rotations, setRotations] = useState<any[]>([]);
+  const [kpis, setKpis] = useState<any | null>(null);
+  const [selectedPayslip, setSelectedPayslip] = useState<any | null>(null);
+
+  // Modales d'actions rapides
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [lvEmployeeId, setLvEmployeeId] = useState('');
+  const [lvType, setLvType] = useState('CONGE_PAYE');
+  const [lvStart, setLvStart] = useState(new Date().toISOString().split('T')[0]);
+  const [lvEnd, setLvEnd] = useState(new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]);
+  const [lvDays, setLvDays] = useState(14);
+  const [lvReason, setLvReason] = useState('Congé annuel régulier');
+
+  const [showMissionModal, setShowMissionModal] = useState(false);
+  const [misEmployeeId, setMisEmployeeId] = useState('');
+  const [misDestination, setMisDestination] = useState('Zone Industrielle Skikda (RA1K)');
+  const [misPurpose, setMisPurpose] = useState('Supervision montage tuyauterie HP vapeur');
+  const [misDays, setMisDays] = useState(5);
+  const [misPerDiem, setMisPerDiem] = useState(4500);
+
+  const [showRecruitmentModal, setShowRecruitmentModal] = useState(false);
+  const [recRole, setRecRole] = useState('Soudeur Haute Pression TIG 6G');
+  const [recCount, setRecCount] = useState(2);
+  const [recDuration, setRecDuration] = useState(3);
+  const [recJustification, setRecJustification] = useState('Renfort d\'équipe pour arrêt technique');
 
   // Search
   const [searchEmp, setSearchEmp] = useState('');
@@ -95,21 +132,33 @@ export default function HrPage() {
   const loadHrData = async () => {
     try {
       setLoading(true);
-      const [emps, certs, atts, prjs] = await Promise.all([
+      const [emps, certs, atts, prjs, lvs, mis, recs, rots, hrKpis] = await Promise.all([
         api.get<any[]>('/hr/employees'),
         api.get<any[]>('/hr/certifications'),
         api.get<any[]>('/hr/attendances'),
         api.get<any[]>('/projects'),
+        api.get<any[]>('/hr/leaves').catch(() => []),
+        api.get<any[]>('/hr/missions').catch(() => []),
+        api.get<any[]>('/hr/recruitments').catch(() => []),
+        api.get<any[]>('/hr/rotations').catch(() => []),
+        api.get<any>('/hr/kpis').catch(() => null),
       ]);
       setEmployees(Array.isArray(emps) ? emps : []);
       setCertifications(Array.isArray(certs) ? certs : []);
       setAttendances(Array.isArray(atts) ? atts : []);
       setProjects(Array.isArray(prjs) ? prjs : []);
+      setLeaves(Array.isArray(lvs) ? lvs : []);
+      setMissions(Array.isArray(mis) ? mis : []);
+      setRecruitments(Array.isArray(recs) ? recs : []);
+      setRotations(Array.isArray(rots) ? rots : []);
+      setKpis(hrKpis);
 
       if (emps.length > 0) {
         if (!certEmployeeId) setCertEmployeeId(emps[0].id);
         if (!attEmployeeId) setAttEmployeeId(emps[0].id);
         if (!medEmployeeId) setMedEmployeeId(emps[0].id);
+        if (!lvEmployeeId) setLvEmployeeId(emps[0].id);
+        if (!misEmployeeId) setMisEmployeeId(emps[0].id);
       }
       if (prjs.length > 0 && !attProjectId) {
         setAttProjectId(prjs[0].id);
@@ -118,6 +167,125 @@ export default function HrPage() {
       console.error('Erreur RH:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateLeave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.post('/hr/leaves', {
+        employeeId: lvEmployeeId,
+        leaveType: lvType,
+        startDate: lvStart,
+        endDate: lvEnd,
+        durationDays: Number(lvDays),
+        reason: lvReason,
+      });
+      setShowLeaveModal(false);
+      await loadHrData();
+      setNotification('Demande de congé enregistrée avec succès (Statut: SOUMIS, en attente visa RH) !');
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la création de la demande de congé');
+    }
+  };
+
+  const handleApproveLeaveRH = async (leaveId: string) => {
+    try {
+      await api.post(`/hr/leaves/${leaveId}/approve-rh`, {});
+      await loadHrData();
+      setNotification('Visa RH apposé avec succès sur la demande de congé !');
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de l\'approbation RH');
+    }
+  };
+
+  const handleApproveLeaveDG = async (leaveId: string) => {
+    try {
+      await api.post(`/hr/leaves/${leaveId}/approve-dg`, {});
+      await loadHrData();
+      setNotification('Congé accordé par la Direction Générale et Titre de Congé A4 émis !');
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de l\'accord DG');
+    }
+  };
+
+  const handleCreateMission = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.post('/hr/missions', {
+        employeeId: misEmployeeId,
+        destinationSite: misDestination,
+        purpose: misPurpose,
+        durationDays: Number(misDays),
+        dailyAllowanceDA: Number(misPerDiem),
+        advanceAmountDA: Number(misDays) * Number(misPerDiem),
+        totalEstimatedCostDA: (Number(misDays) * Number(misPerDiem)) + 15000,
+        transportMode: 'VEHICULE_SERVICE',
+      });
+      setShowMissionModal(false);
+      await loadHrData();
+      setNotification('Ordre de mission créé avec succès et soumis pour arbitrage DG !');
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la création de l\'ordre de mission');
+    }
+  };
+
+  const handleApproveMissionDG = async (missionId: string) => {
+    try {
+      await api.post(`/hr/missions/${missionId}/approve`, {});
+      await loadHrData();
+      setNotification('Ordre de mission validé par la Direction Générale ! Statut collaborateur mis à jour : EN_MISSION.');
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de la validation DG de la mission');
+    }
+  };
+
+  const handleCreateRecruitment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const proj = projects[0];
+      await api.post('/hr/recruitments', {
+        projectId: proj ? proj.id : 'prj-2026-001',
+        projectCode: proj ? proj.code : 'PRJ-2026-001',
+        projectName: proj ? proj.name : 'Chantier Raffinerie Skikda',
+        requestedRole: recRole,
+        headcountNeeded: Number(recCount),
+        contractType: 'CHANTIER',
+        durationMonths: Number(recDuration),
+        justification: recJustification,
+        priority: 'URGENTE',
+      });
+      setShowRecruitmentModal(false);
+      await loadHrData();
+      setNotification('Demande de recrutement enregistrée et transmise à la Direction Générale !');
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur enregistrement besoin recrutement');
+    }
+  };
+
+  const handleApproveRecruitmentDG = async (recId: string) => {
+    try {
+      await api.post(`/hr/recruitments/${recId}/approve`, {});
+      await loadHrData();
+      setNotification('Besoin en recrutement validé par la Direction Générale ! Processus d\'embauche lancé.');
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur validation DG recrutement');
+    }
+  };
+
+  const handleSimulatePayslip = async (empId: string) => {
+    try {
+      const slip = await api.get<any>(`/hr/payslip-demo?employeeId=${empId}`);
+      setSelectedPayslip(slip);
+    } catch (err: any) {
+      alert(err.message || 'Erreur calcul bulletin de paie démo');
     }
   };
 
@@ -339,39 +507,71 @@ export default function HrPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200 gap-2 text-xs font-semibold">
+      {/* Tabs Multi-Périmètres RH */}
+      <div className="flex border-b border-slate-200 gap-1 text-xs font-semibold overflow-x-auto pb-1">
         <button
           onClick={() => setActiveTab('employees')}
-          className={`py-2 px-4 border-b-2 transition-colors ${
+          className={`py-2 px-3 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'employees' ? 'border-[#0A7F7C] text-[#0A7F7C]' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          Personnel Qualifié ({employees.length})
+          Personnel ({employees.length})
         </button>
         <button
           onClick={() => setActiveTab('certs')}
-          className={`py-2 px-4 border-b-2 transition-colors ${
+          className={`py-2 px-3 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'certs' ? 'border-[#0A7F7C] text-[#0A7F7C]' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          Habilitations Soudage CQS ({certifications.length})
+          Habilitations CQS ({certifications.length})
         </button>
         <button
           onClick={() => setActiveTab('attendance')}
-          className={`py-2 px-4 border-b-2 transition-colors ${
+          className={`py-2 px-3 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'attendance' ? 'border-[#0A7F7C] text-[#0A7F7C]' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
           Pointages & Feuilles de Site ({attendances.length})
         </button>
         <button
+          onClick={() => setActiveTab('leaves')}
+          className={`py-2 px-3 border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'leaves' ? 'border-[#0A7F7C] text-[#0A7F7C]' : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Congés & Absences ({leaves.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('missions')}
+          className={`py-2 px-3 border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'missions' ? 'border-[#0A7F7C] text-[#0A7F7C]' : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Ordres de Mission ({missions.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('recruitments')}
+          className={`py-2 px-3 border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'recruitments' ? 'border-[#0A7F7C] text-[#0A7F7C]' : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Besoins Recrutement ({recruitments.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('rotations')}
+          className={`py-2 px-3 border-b-2 transition-colors whitespace-nowrap ${
+            activeTab === 'rotations' ? 'border-[#0A7F7C] text-[#0A7F7C]' : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          Rotations Sud (4×4 & 6×2)
+        </button>
+        <button
           onClick={() => setActiveTab('payroll')}
-          className={`py-2 px-4 border-b-2 transition-colors ${
+          className={`py-2 px-3 border-b-2 transition-colors whitespace-nowrap ${
             activeTab === 'payroll' ? 'border-[#0A7F7C] text-[#0A7F7C]' : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
         >
-          Consolidation Débours & Paie
+          Moteur Paie & Débours 2026
         </button>
       </div>
 
@@ -695,6 +895,7 @@ export default function HrPage() {
                   <th className="py-2.5 px-3 text-right">Heures Sup.</th>
                   <th className="py-2.5 px-3 text-right">Panier / Déplacement</th>
                   <th className="py-2.5 px-3 text-right">Débours Brut Consolidé</th>
+                  <th className="py-2.5 px-3 text-right">Simulation Paie 2026</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -723,10 +924,339 @@ export default function HrPage() {
                     <td className="py-2.5 px-3 text-right font-bold text-[#0A7F7C]">
                       {formatCurrencyDA(row.grossPay, false)}
                     </td>
+                    <td className="py-2.5 px-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleSimulatePayslip(row.id)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#0B207D] text-white font-bold text-[10px] hover:bg-[#07164D] transition-colors cursor-pointer"
+                      >
+                        <DollarSign className="w-3 h-3" />
+                        <span>Bulletin DEMO</span>
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 5: Demandes de Congés & Absences */}
+      {activeTab === 'leaves' && (
+        <div className="bg-white rounded-lg border border-[#E1E6ED] shadow-2xs overflow-hidden space-y-4 p-5">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-[#0A7F7C]" />
+                Circuit des Demandes de Congés & Récupérations (SoD 2 Niveaux)
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Visa préalable obligatoire du Responsable RH suivi de l'arbitrage final de la Direction Générale.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowLeaveModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0B207D] text-white rounded-lg hover:bg-[#07164D] transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Nouvelle Demande de Congé
+            </button>
+          </div>
+
+          <div className="border border-slate-200 rounded overflow-hidden">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-[11px] uppercase tracking-wider">
+                <tr>
+                  <th className="py-2.5 px-3">Réf. Demande</th>
+                  <th className="py-2.5 px-3">Collaborateur</th>
+                  <th className="py-2.5 px-3">Type Congé</th>
+                  <th className="py-2.5 px-3">Période Demandée</th>
+                  <th className="py-2.5 px-3 text-center">Durée</th>
+                  <th className="py-2.5 px-3 text-center">Statut SoD</th>
+                  <th className="py-2.5 px-3 text-right">Actions Workflow</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {leaves.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-6 text-center text-slate-400">
+                      Aucune demande de congé enregistrée. Cliquez sur "Nouvelle Demande de Congé".
+                    </td>
+                  </tr>
+                ) : (
+                  leaves.map(lv => (
+                    <tr key={lv.id} className="hover:bg-slate-50">
+                      <td className="py-2.5 px-3 font-mono font-bold text-[#142B45]">{lv.reference}</td>
+                      <td className="py-2.5 px-3 font-semibold text-slate-800">{lv.employeeName}</td>
+                      <td className="py-2.5 px-3">
+                        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-800 font-medium text-[10px] border border-blue-200">
+                          {lv.leaveType}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-600">
+                        {lv.startDate} $\rightarrow$ {lv.endDate}
+                      </td>
+                      <td className="py-2.5 px-3 text-center font-bold text-slate-800">
+                        {lv.durationDays} j
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        {lv.status === 'SOUMIS' && (
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[10px] font-bold">
+                            En Attente Visa RH
+                          </span>
+                        )}
+                        {lv.status === 'VISE_RH' && (
+                          <span className="px-2 py-0.5 bg-blue-50 text-blue-800 border border-blue-200 rounded text-[10px] font-bold">
+                            Visé RH (Attente DG)
+                          </span>
+                        )}
+                        {lv.status === 'ACCORDE_DG' && (
+                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[10px] font-bold">
+                            Accordé DG ({lv.leaveCertificateNumber || 'Titre Émis'})
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-right space-x-1 whitespace-nowrap">
+                        {lv.status === 'SOUMIS' && canManageHR && (
+                          <button
+                            type="button"
+                            onClick={() => handleApproveLeaveRH(lv.id)}
+                            className="px-2 py-1 rounded bg-blue-700 text-white font-bold text-[10px] hover:bg-blue-800 cursor-pointer"
+                          >
+                            Apposer Visa RH
+                          </button>
+                        )}
+                        {lv.status === 'VISE_RH' && (activeRole === SystemRole.DIRECTEUR_GENERAL || activeRole === SystemRole.ADMINISTRATEUR) && (
+                          <button
+                            type="button"
+                            onClick={() => handleApproveLeaveDG(lv.id)}
+                            className="px-2 py-1 rounded bg-emerald-700 text-white font-bold text-[10px] hover:bg-emerald-800 cursor-pointer"
+                          >
+                            Accorder (DG)
+                          </button>
+                        )}
+                        {lv.status === 'ACCORDE_DG' && (
+                          <span className="text-[10px] font-bold text-emerald-700 inline-flex items-center gap-1">
+                            <FileCheck className="w-3 h-3" /> Titre A4 Émis
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 6: Ordres de Mission Chantiers */}
+      {activeTab === 'missions' && (
+        <div className="bg-white rounded-lg border border-[#E1E6ED] shadow-2xs overflow-hidden space-y-4 p-5">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">
+                <Plane className="w-4 h-4 text-[#0B207D]" />
+                Ordres de Mission Chantiers & Déplacements Sahariens
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Mandatement des interventions distantes avec per diem, avances de frais et visa hiérarchique DG.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowMissionModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0B207D] text-white rounded-lg hover:bg-[#07164D] transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Nouvel Ordre de Mission
+            </button>
+          </div>
+
+          <div className="border border-slate-200 rounded overflow-hidden">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-[11px] uppercase tracking-wider">
+                <tr>
+                  <th className="py-2.5 px-3">Réf. Mission</th>
+                  <th className="py-2.5 px-3">Collaborateur</th>
+                  <th className="py-2.5 px-3">Site Destination</th>
+                  <th className="py-2.5 px-3">Objet / Travaux</th>
+                  <th className="py-2.5 px-3 text-right">Durée</th>
+                  <th className="py-2.5 px-3 text-right">Coût Estimé</th>
+                  <th className="py-2.5 px-3 text-center">Visa DG</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {missions.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-6 text-center text-slate-400">
+                      Aucun ordre de mission enregistré. Cliquez sur "Nouvel Ordre de Mission".
+                    </td>
+                  </tr>
+                ) : (
+                  missions.map(mis => (
+                    <tr key={mis.id} className="hover:bg-slate-50">
+                      <td className="py-2.5 px-3 font-mono font-bold text-[#142B45]">{mis.reference}</td>
+                      <td className="py-2.5 px-3 font-semibold text-slate-800">{mis.employeeName}</td>
+                      <td className="py-2.5 px-3 text-slate-700 font-medium">{mis.destinationSite}</td>
+                      <td className="py-2.5 px-3 text-slate-600">{mis.purpose}</td>
+                      <td className="py-2.5 px-3 text-right font-medium">{mis.durationDays} j</td>
+                      <td className="py-2.5 px-3 text-right font-bold text-[#0A7F7C]">
+                        {formatCurrencyDA(mis.totalEstimatedCostDA, false)}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        {mis.status === 'APPROUVE_DG' ? (
+                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[10px] font-bold">
+                            Validé DG
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[10px] font-bold">
+                            En Attente Visa DG
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        {mis.status !== 'APPROUVE_DG' && (activeRole === SystemRole.DIRECTEUR_GENERAL || activeRole === SystemRole.ADMINISTRATEUR) ? (
+                          <button
+                            type="button"
+                            onClick={() => handleApproveMissionDG(mis.id)}
+                            className="px-2 py-1 rounded bg-[#0B207D] text-white font-bold text-[10px] hover:bg-[#07164D] cursor-pointer"
+                          >
+                            Viser Mission (DG)
+                          </button>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-500">Mission Active</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 7: Besoins Recrutement Chantiers */}
+      {activeTab === 'recruitments' && (
+        <div className="bg-white rounded-lg border border-[#E1E6ED] shadow-2xs overflow-hidden space-y-4 p-5">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-[#0A7F7C]" />
+                Expression de Besoins en Recrutement Chantiers
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Demandes de renfort émises par les chefs de projet (soudeurs, tuyauteurs, monteurs) avec arbitrage DG.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowRecruitmentModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#0B207D] text-white rounded-lg hover:bg-[#07164D] transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Nouveau Besoin Recrutement
+            </button>
+          </div>
+
+          <div className="border border-slate-200 rounded overflow-hidden">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-[11px] uppercase tracking-wider">
+                <tr>
+                  <th className="py-2.5 px-3">Réf. Besoin</th>
+                  <th className="py-2.5 px-3">Chantier / Projet</th>
+                  <th className="py-2.5 px-3">Profil & Spécialité</th>
+                  <th className="py-2.5 px-3 text-center">Effectif</th>
+                  <th className="py-2.5 px-3 text-center">Durée</th>
+                  <th className="py-2.5 px-3 text-center">Statut DG</th>
+                  <th className="py-2.5 px-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {recruitments.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-6 text-center text-slate-400">
+                      Aucune demande de recrutement active.
+                    </td>
+                  </tr>
+                ) : (
+                  recruitments.map(rec => (
+                    <tr key={rec.id} className="hover:bg-slate-50">
+                      <td className="py-2.5 px-3 font-mono font-bold text-[#142B45]">{rec.reference}</td>
+                      <td className="py-2.5 px-3 font-semibold text-slate-800">{rec.projectName}</td>
+                      <td className="py-2.5 px-3 text-slate-700">{rec.requestedRole}</td>
+                      <td className="py-2.5 px-3 text-center font-bold text-[#0B207D]">{rec.headcountNeeded} poste(s)</td>
+                      <td className="py-2.5 px-3 text-center text-slate-600">{rec.durationMonths} mois</td>
+                      <td className="py-2.5 px-3 text-center">
+                        {rec.status === 'APPROUVE_DG' ? (
+                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[10px] font-bold">
+                            Validé DG (En embauche)
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200 rounded text-[10px] font-bold">
+                            Soumis DG
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap">
+                        {rec.status !== 'APPROUVE_DG' && (activeRole === SystemRole.DIRECTEUR_GENERAL || activeRole === SystemRole.ADMINISTRATEUR) ? (
+                          <button
+                            type="button"
+                            onClick={() => handleApproveRecruitmentDG(rec.id)}
+                            className="px-2 py-1 rounded bg-emerald-700 text-white font-bold text-[10px] hover:bg-emerald-800 cursor-pointer"
+                          >
+                            Autoriser Embauche (DG)
+                          </button>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-500">Recrutement Actif</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 8: Rotations Sud (4×4 et 6×2) */}
+      {activeTab === 'rotations' && (
+        <div className="bg-white rounded-lg border border-[#E1E6ED] shadow-2xs overflow-hidden space-y-4 p-5">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">
+                <Compass className="w-4 h-4 text-[#0B207D]" />
+                Régimes de Rotation Sahariens (Régimes Sud 4×4 & 6×2)
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Planification des relèves sur les bases de vie et installations pétrolières distantes.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {rotations.map(rot => (
+              <div key={rot.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono text-xs font-bold px-2 py-0.5 bg-[#0B207D] text-white rounded">
+                    {rot.rotationCode}
+                  </span>
+                  <span className="text-xs font-bold text-slate-700 bg-white px-2 py-0.5 border rounded">
+                    Régime {rot.type} ({rot.workDays}j travail / {rot.restDays}j repos)
+                  </span>
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-800 text-xs">{rot.siteName}</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">{rot.notes}</p>
+                </div>
+                <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-medium">Personnel affecté au cycle :</span>
+                  <span className="font-bold text-[#0A7F7C]">{rot.assignedEmployeeIds?.length || 0} collaborateur(s)</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -1663,6 +2193,329 @@ export default function HrPage() {
                 >
                   Valider l'Aptitude Médicale
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL : BULLETIN DE PAIE DÉMONSTRATION 2026 (FILIGRANE NON CONTRACTUEL) */}
+      {/* ========================================================================= */}
+      {selectedPayslip && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-[#0A7F7C]" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#07164D]">
+                    Bulletin de Paie de Démonstration (Simulation Algérie 2026)
+                  </h3>
+                  <p className="text-[10px] text-amber-700 font-semibold">
+                    DOCUMENT DE DÉMONSTRATION — NON CONTRACTUEL — NE CONSTITUE PAS UN BULLETIN OFFICIEL
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedPayslip(null)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase font-bold">Collaborateur</div>
+                  <div className="font-bold text-slate-900">{selectedPayslip.employeeName}</div>
+                  <div className="font-mono text-slate-500">{selectedPayslip.employeeMatricule}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase font-bold">Fonction & Période</div>
+                  <div className="font-semibold text-slate-800">{selectedPayslip.title}</div>
+                  <div className="text-slate-500">Mois: {selectedPayslip.periodMonth}/{selectedPayslip.periodYear} ({selectedPayslip.workedDays} jours)</div>
+                </div>
+              </div>
+
+              {/* Tableau des rubriques */}
+              <div className="border border-slate-200 rounded overflow-hidden mt-3 bg-white">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 border-b border-slate-200 text-[10px] uppercase font-bold text-slate-600">
+                    <tr>
+                      <th className="py-2 px-3">Rubrique</th>
+                      <th className="py-2 px-3 text-right">Base / Taux</th>
+                      <th className="py-2 px-3 text-right">Gains (DA)</th>
+                      <th className="py-2 px-3 text-right">Retenues (DA)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-[11px]">
+                    <tr>
+                      <td className="py-1.5 px-3 font-medium">R100 — Salaire de Base (SNMG 24 000 DA)</td>
+                      <td className="py-1.5 px-3 text-right text-slate-500">173.33 h</td>
+                      <td className="py-1.5 px-3 text-right font-semibold text-slate-800">{formatCurrencyDA(selectedPayslip.baseSalaryDA, false)}</td>
+                      <td className="py-1.5 px-3 text-right text-slate-400">-</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 px-3 font-medium">R110 — Ind. Expérience Professionnelle (IEP)</td>
+                      <td className="py-1.5 px-3 text-right text-slate-500">1.5% / an</td>
+                      <td className="py-1.5 px-3 text-right font-semibold text-slate-800">{formatCurrencyDA(selectedPayslip.iepAmountDA, false)}</td>
+                      <td className="py-1.5 px-3 text-right text-slate-400">-</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 px-3 font-medium">R120/125 — Heures Supplémentaires</td>
+                      <td className="py-1.5 px-3 text-right text-slate-500">+{selectedPayslip.overtimeHours50 + selectedPayslip.overtimeHours100} h</td>
+                      <td className="py-1.5 px-3 text-right font-semibold text-slate-800">{formatCurrencyDA(selectedPayslip.overtimeAmountDA, false)}</td>
+                      <td className="py-1.5 px-3 text-right text-slate-400">-</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 px-3 font-medium">R170 — Nuisance & Risque Industriel ATEX</td>
+                      <td className="py-1.5 px-3 text-right text-slate-500">Forfait HP</td>
+                      <td className="py-1.5 px-3 text-right font-semibold text-slate-800">{formatCurrencyDA(selectedPayslip.nuisanceAmountDA, false)}</td>
+                      <td className="py-1.5 px-3 text-right text-slate-400">-</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 px-3 font-medium">R150 — Prime de Panier Chantier</td>
+                      <td className="py-1.5 px-3 text-right text-slate-500">800 DA/j</td>
+                      <td className="py-1.5 px-3 text-right font-semibold text-slate-800">{formatCurrencyDA(selectedPayslip.siteBasketAmountDA, false)}</td>
+                      <td className="py-1.5 px-3 text-right text-slate-400">-</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1.5 px-3 font-medium">R160 — Indemnité Forfaitaire de Transport</td>
+                      <td className="py-1.5 px-3 text-right text-slate-500">Forfait</td>
+                      <td className="py-1.5 px-3 text-right font-semibold text-slate-800">{formatCurrencyDA(selectedPayslip.transportAmountDA, false)}</td>
+                      <td className="py-1.5 px-3 text-right text-slate-400">-</td>
+                    </tr>
+                    {selectedPayslip.zoneSouthAllowanceDA > 0 && (
+                      <tr>
+                        <td className="py-1.5 px-3 font-medium">R180 — Indemnité Zone Sud & Isolement</td>
+                        <td className="py-1.5 px-3 text-right text-slate-500">1 200 DA/j</td>
+                        <td className="py-1.5 px-3 text-right font-semibold text-slate-800">{formatCurrencyDA(selectedPayslip.zoneSouthAllowanceDA, false)}</td>
+                        <td className="py-1.5 px-3 text-right text-slate-400">-</td>
+                      </tr>
+                    )}
+                    <tr className="bg-red-50/50">
+                      <td className="py-1.5 px-3 font-medium text-red-900">R500 — Retenue Sécurité Sociale (CNAS Salariale)</td>
+                      <td className="py-1.5 px-3 text-right text-red-700">9.00% (Décret 15-236)</td>
+                      <td className="py-1.5 px-3 text-right text-slate-400">-</td>
+                      <td className="py-1.5 px-3 text-right font-bold text-red-700">-{formatCurrencyDA(selectedPayslip.cnasDeduction9Pct, false)}</td>
+                    </tr>
+                    <tr className="bg-red-50/50">
+                      <td className="py-1.5 px-3 font-medium text-red-900">
+                        R600 — Impôt sur le Revenu Global (IRG Progressif)
+                        {selectedPayslip.secondIrgRebate ? ` (Abatt. DGI: -${selectedPayslip.secondIrgRebate} DA)` : ''}
+                      </td>
+                      <td className="py-1.5 px-3 text-right text-red-700">Barème DGI</td>
+                      <td className="py-1.5 px-3 text-right text-slate-400">-</td>
+                      <td className="py-1.5 px-3 text-right font-bold text-red-700">-{formatCurrencyDA(selectedPayslip.irgTaxAmountDA, false)}</td>
+                    </tr>
+                  </tbody>
+                  <tfoot className="bg-slate-100 font-bold text-xs border-t border-slate-200">
+                    <tr>
+                      <td colSpan={2} className="py-2.5 px-3 text-slate-900">TOTAL BRUT GLOBAL</td>
+                      <td className="py-2.5 px-3 text-right text-slate-900">{formatCurrencyDA(selectedPayslip.grossSalaryDA, false)}</td>
+                      <td className="py-2.5 px-3 text-right text-red-800">-{formatCurrencyDA(selectedPayslip.cnasDeduction9Pct + selectedPayslip.irgTaxAmountDA, false)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Encadré Cotisations Patronales Employeur */}
+              {selectedPayslip.cnasEmployerBreakdown && (
+                <div className="p-2.5 bg-blue-50/60 rounded border border-blue-200 text-[10px] space-y-1">
+                  <div className="font-bold text-[#0B207D] flex items-center justify-between">
+                    <span>CHARGES PATRONALES EMPLOYEUR NON DÉDUITES DU SALARIÉ (26% CNAS + 1% FOS) :</span>
+                    <span className="text-xs">{formatCurrencyDA(selectedPayslip.cnasEmployerBreakdown.totalEmployerContribution, false)}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-slate-600">
+                    <div>Maladie/Maternité (12.5%): {formatCurrencyDA(selectedPayslip.cnasEmployerBreakdown.maladieMaterniteInvaliditeDeces, false)}</div>
+                    <div>Retraite (10.0%): {formatCurrencyDA(selectedPayslip.cnasEmployerBreakdown.vieillesseRetraite, false)}</div>
+                    <div>Accidents Travail (1.25%): {formatCurrencyDA(selectedPayslip.cnasEmployerBreakdown.accidentsTravailMaladiesProf, false)}</div>
+                    <div>Chômage & Retraite Anticipée (1.25%): {formatCurrencyDA(selectedPayslip.cnasEmployerBreakdown.assuranceChomage + selectedPayslip.cnasEmployerBreakdown.retraiteAnticipee, false)}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Net à Payer */}
+              <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 flex items-center justify-between">
+                <div>
+                  <div className="text-[11px] font-bold text-emerald-900 uppercase">NET À PAYER (Simulation Chantiers)</div>
+                  <div className="text-[10px] text-emerald-700">Viré sur compte bancaire ou CCP</div>
+                </div>
+                <div className="text-lg font-extrabold text-emerald-800 font-mono">
+                  {formatCurrencyDA(selectedPayslip.netPayableDA, false)}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t">
+              <button
+                type="button"
+                onClick={() => setSelectedPayslip(null)}
+                className="px-4 py-1.5 bg-[#0B207D] text-white text-xs font-bold rounded hover:bg-[#07164D] cursor-pointer"
+              >
+                Fermer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NOUVELLE DEMANDE DE CONGÉ */}
+      {showLeaveModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 border-b">
+              <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-[#0A7F7C]" />
+                Nouvelle Demande de Congé
+              </h3>
+              <button onClick={() => setShowLeaveModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateLeave} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Collaborateur *</label>
+                <select
+                  value={lvEmployeeId}
+                  onChange={e => setLvEmployeeId(e.target.value)}
+                  className="w-full p-2 border rounded"
+                  required
+                >
+                  {employees.map(e => (
+                    <option key={e.id} value={e.id}>{e.registrationNumber} — {e.firstName} {e.lastName}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Date Début *</label>
+                  <input type="date" value={lvStart} onChange={e => setLvStart(e.target.value)} className="w-full p-2 border rounded" required />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Date Fin *</label>
+                  <input type="date" value={lvEnd} onChange={e => setLvEnd(e.target.value)} className="w-full p-2 border rounded" required />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Nombre de Jours *</label>
+                  <input type="number" value={lvDays} onChange={e => setLvDays(Number(e.target.value))} className="w-full p-2 border rounded" min={1} required />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Type de Congé</label>
+                  <select value={lvType} onChange={e => setLvType(e.target.value)} className="w-full p-2 border rounded">
+                    <option value="CONGE_PAYE">Congé Payé Annuel</option>
+                    <option value="RECUPERATION">Récupération Chantier</option>
+                    <option value="CONGE_SANS_SOLDE">Congé Sans Solde</option>
+                    <option value="EVENEMENT_FAMILIAL">Événement Familial</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Motif / Justification</label>
+                <textarea rows={2} value={lvReason} onChange={e => setLvReason(e.target.value)} className="w-full p-2 border rounded" />
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <button type="button" onClick={() => setShowLeaveModal(false)} className="px-3 py-1.5 border rounded">Annuler</button>
+                <button type="submit" className="px-4 py-1.5 bg-[#0B207D] text-white font-bold rounded">Soumettre la Demande</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NOUVEL ORDRE DE MISSION */}
+      {showMissionModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 border-b">
+              <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">
+                <Plane className="w-4 h-4 text-[#0B207D]" />
+                Nouvel Ordre de Mission Chantier
+              </h3>
+              <button onClick={() => setShowMissionModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateMission} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Missionnaire Affecté *</label>
+                <select
+                  value={misEmployeeId}
+                  onChange={e => setMisEmployeeId(e.target.value)}
+                  className="w-full p-2 border rounded"
+                  required
+                >
+                  {employees.map(e => (
+                    <option key={e.id} value={e.id}>{e.registrationNumber} — {e.firstName} {e.lastName} ({e.title})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Lieu d'Intervention / Site *</label>
+                <input type="text" value={misDestination} onChange={e => setMisDestination(e.target.value)} className="w-full p-2 border rounded" required />
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Objet Technique de la Mission *</label>
+                <input type="text" value={misPurpose} onChange={e => setMisPurpose(e.target.value)} className="w-full p-2 border rounded" required />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Durée (Jours) *</label>
+                  <input type="number" value={misDays} onChange={e => setMisDays(Number(e.target.value))} className="w-full p-2 border rounded" min={1} required />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Per Diem (DA/Jour)</label>
+                  <input type="number" value={misPerDiem} onChange={e => setMisPerDiem(Number(e.target.value))} className="w-full p-2 border rounded" required />
+                </div>
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <button type="button" onClick={() => setShowMissionModal(false)} className="px-3 py-1.5 border rounded">Annuler</button>
+                <button type="submit" className="px-4 py-1.5 bg-[#0B207D] text-white font-bold rounded">Émettre l'Ordre</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL NOUVEAU BESOIN RECRUTEMENT */}
+      {showRecruitmentModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-2 border-b">
+              <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">
+                <UserPlus className="w-4 h-4 text-[#0A7F7C]" />
+                Expression de Besoin Recrutement Chantier
+              </h3>
+              <button onClick={() => setShowRecruitmentModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateRecruitment} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Spécialité & Qualification Requise *</label>
+                <input type="text" value={recRole} onChange={e => setRecRole(e.target.value)} className="w-full p-2 border rounded" required />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Nombre de Postes *</label>
+                  <input type="number" value={recCount} onChange={e => setRecCount(Number(e.target.value))} className="w-full p-2 border rounded" min={1} required />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Durée (Mois) *</label>
+                  <input type="number" value={recDuration} onChange={e => setRecDuration(Number(e.target.value))} className="w-full p-2 border rounded" min={1} required />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Justification Technique *</label>
+                <textarea rows={2} value={recJustification} onChange={e => setRecJustification(e.target.value)} className="w-full p-2 border rounded" required />
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <button type="button" onClick={() => setShowRecruitmentModal(false)} className="px-3 py-1.5 border rounded">Annuler</button>
+                <button type="submit" className="px-4 py-1.5 bg-[#0B207D] text-white font-bold rounded">Transmettre à la DG</button>
               </div>
             </form>
           </div>

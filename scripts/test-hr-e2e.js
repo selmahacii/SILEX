@@ -1,9 +1,22 @@
 const assert = require('assert');
+const path = require('path');
 
 async function run() {
   console.log('=== TEST E2E: MODULE 04 RESSOURCES HUMAINES & MOBILITÉ INDUSTRIELLE SARL SILEX SERVICES ===\n');
 
-  const { serverStore } = require('../apps/web/src/lib/server-store');
+  let serverStore;
+  try {
+    const storeModule = require('../apps/web/src/lib/server-store');
+    serverStore = storeModule.serverStore;
+  } catch (err) {
+    // Si exécuté via node CommonJS pur, importer de façon asynchrone le fichier TypeScript via tsx ou dynamic import
+    try {
+      const storeModule = await import('../apps/web/src/lib/server-store.ts');
+      serverStore = storeModule.serverStore;
+    } catch (e) {
+      throw new Error(`Impossible de charger server-store: ${err.message} (fallback import: ${e.message})`);
+    }
+  }
 
   // ============================================================================
   // ÉTAPE 1 : CONTRÔLE DE SÉCURITÉ & VÉRIFICATION DE LA BASELINE FICTIVE (RH-01)
