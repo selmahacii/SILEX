@@ -3,6 +3,14 @@ import { serverStore } from './server-store';
 import { SystemRole } from '@silex/shared';
 
 const hasDb = Boolean(process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres'));
+const isProductionStrict = process.env.NODE_ENV === 'production' && process.env.SILEX_ENABLE_DEMO_MODE !== 'true';
+
+function handleDbPersistenceError(context: string, err: any): never | void {
+  console.error(`[DB Bridge] ${context} error:`, err);
+  if (isProductionStrict) {
+    throw new Error(`[DB Bridge Production Gate] Échec de persistance base de données PostgreSQL Neon lors de "${context}". Le basculement mémoire est strictement interdit en environnement de production.`);
+  }
+}
 
 function mapToSector(sector?: string): any {
   if (!sector) return 'OIL_AND_GAS';
@@ -1416,7 +1424,7 @@ export const dbBridge = {
         await this.logAudit('CREATE_EMPLOYEE', 'HR', created.registrationNumber, `Collaborateur créé : ${created.firstName} ${created.lastName}`, data.user);
         return created;
       } catch (err) {
-        console.warn('[DB Bridge] Error creating employee in DB:', err);
+        handleDbPersistenceError('createEmployee', err);
       }
     }
     const res = serverStore.createEmployee(data);
@@ -1459,7 +1467,7 @@ export const dbBridge = {
           return created;
         }
       } catch (err) {
-        console.warn('[DB Bridge] Error creating certification in DB:', err);
+        handleDbPersistenceError('createCertification', err);
       }
     }
     const res = serverStore.createCertification(data);
@@ -1516,7 +1524,7 @@ export const dbBridge = {
           return created;
         }
       } catch (err) {
-        console.warn('[DB Bridge] Error recording attendance in DB:', err);
+        handleDbPersistenceError('recordAttendance', err);
       }
     }
     const res = serverStore.recordAttendance(data);
