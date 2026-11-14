@@ -26,6 +26,7 @@ import { AccountsSummaryWidget, FinancialAccountSummary } from '@/components/fin
 import { FinancialAlertsWidget, FinancialAlertItem } from '@/components/finance/financial-alerts-widget';
 import { RecentTransactionsWidget, CashTransactionItem } from '@/components/finance/recent-transactions-widget';
 import { ProjectsMarginSummary, ProjectProfitabilitySummary } from '@/components/finance/projects-margin-summary';
+import { TreasuryView } from '@/components/finance/treasury-view';
 
 export default function FinanceDashboardPage() {
   const { activeRole } = useAuth();
@@ -147,6 +148,17 @@ export default function FinanceDashboardPage() {
       setLoading(false);
     }
   }, [includeDemo, payProjectId, warrantyProjectId]);
+
+  // Synchronisation de l'onglet actif avec l'URL (?tab=treasury, etc.)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab') as FinanceTab | null;
+      if (tabParam && ['dashboard', 'treasury', 'billing', 'matching', 'profitability'].includes(tabParam)) {
+        setActiveTab(tabParam);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     loadDashboardData();
@@ -372,8 +384,17 @@ export default function FinanceDashboardPage() {
         activeTab={activeTab}
         onTabChange={(tab) => {
           setActiveTab(tab);
-          if (tab !== 'dashboard') {
-            setNotification(`L'espace "${tab}" fait partie des sous-phases 6C.2 à 6C.5 en cours de déploiement.`);
+          if (typeof window !== 'undefined') {
+            const url = new URL(window.location.href);
+            if (tab === 'dashboard') {
+              url.searchParams.delete('tab');
+            } else {
+              url.searchParams.set('tab', tab);
+            }
+            window.history.replaceState({}, '', url.toString());
+          }
+          if (tab !== 'dashboard' && tab !== 'treasury') {
+            setNotification(`L'espace "${tab}" fait partie des sous-phases 6C.3 à 6C.5 en cours de déploiement.`);
             setTimeout(() => setNotification(null), 4000);
           }
         }}
@@ -489,15 +510,27 @@ export default function FinanceDashboardPage() {
             onNavigateProjects={() => setActiveTab('profitability')}
           />
         </div>
+      ) : activeTab === 'treasury' ? (
+        /* Phase 6C.2 : Vue Complète Trésorerie & Comptes Bancaires */
+        <TreasuryView
+          accounts={accounts}
+          transactions={transactions}
+          canManage={canManageFinances}
+          onRefresh={loadDashboardData}
+          onNotify={(msg) => {
+            setNotification(msg);
+            setTimeout(() => setNotification(null), 5000);
+          }}
+        />
       ) : (
-        /* Placeholder view when switching sub-phase tabs */
+        /* Placeholder view when switching sub-phase tabs (6C.3 à 6C.5) */
         <div className="rounded-lg border border-dashed border-slate-300 p-12 text-center bg-white space-y-3">
           <Coins className="w-10 h-10 text-slate-400 mx-auto" />
           <h3 className="text-sm font-bold text-slate-800">
             Espace {activeTab.toUpperCase()} — Phase suivante
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Ce sous-module est planifié dans le cadre des Phases 6C.2 à 6C.5.
+            Ce sous-module est planifié dans le cadre des Phases 6C.3 à 6C.5.
             Vous pouvez retourner au <strong>Tableau de Bord Finance</strong> pour consulter les indicateurs consolidés.
           </p>
           <button
