@@ -2365,6 +2365,27 @@ export const dbBridge = {
   },
 
   async recordCustomerPayment(invoiceId: string, data: any, user?: any) {
+    if (data?.accountId && !serverStore.getFinancialAccount(data.accountId) && hasDb) {
+      try {
+        const dbAcc = await (prisma as any).financialAccount.findUnique({ where: { id: data.accountId } });
+        if (dbAcc) {
+          (serverStore as any).financialAccounts.push({
+            id: dbAcc.id,
+            code: dbAcc.code,
+            name: dbAcc.name,
+            type: dbAcc.type,
+            bankName: dbAcc.bankName,
+            ribNumber: dbAcc.ribNumber,
+            currency: dbAcc.currency || 'DZD',
+            initialBalance: Number(dbAcc.initialBalance || 0),
+            currentBalance: Number(dbAcc.currentBalance || 0),
+            isDemoAccount: Boolean(dbAcc.isDemoAccount),
+            isActive: Boolean(dbAcc.isActive),
+          });
+        }
+      } catch {}
+    }
+
     const res = serverStore.recordCustomerPayment(invoiceId, data, user);
     if (hasDb && !data.isDemoPayment && !res.invoice?.isDemoInvoice) {
       let invInDb = null;
@@ -2375,13 +2396,21 @@ export const dbBridge = {
       }
       if (invInDb) {
         try {
-          await (prisma as any).customerInvoice.update({
-            where: { id: res.invoice.id },
-            data: {
-              paidAmount: res.invoice.paidAmount,
-              remainingAmount: res.invoice.remainingAmount,
-              status: res.invoice.status as any,
-            },
+          await (prisma as any).$transaction(async (txPrisma: any) => {
+            await txPrisma.customerInvoice.update({
+              where: { id: res.invoice.id },
+              data: {
+                paidAmount: res.invoice.paidAmount,
+                remainingAmount: res.invoice.remainingAmount,
+                status: res.invoice.status as any,
+              },
+            });
+            if (data.accountId) {
+              await txPrisma.financialAccount.update({
+                where: { id: data.accountId },
+                data: { currentBalance: { increment: Number(data.amount) } },
+              }).catch(() => null);
+            }
           });
           return { ...res, persisted: true };
         } catch (err: any) {
@@ -2393,6 +2422,27 @@ export const dbBridge = {
   },
 
   async releaseWarrantyRetention(invoiceId: string, data: any, user?: any) {
+    if (data?.accountId && !serverStore.getFinancialAccount(data.accountId) && hasDb) {
+      try {
+        const dbAcc = await (prisma as any).financialAccount.findUnique({ where: { id: data.accountId } });
+        if (dbAcc) {
+          (serverStore as any).financialAccounts.push({
+            id: dbAcc.id,
+            code: dbAcc.code,
+            name: dbAcc.name,
+            type: dbAcc.type,
+            bankName: dbAcc.bankName,
+            ribNumber: dbAcc.ribNumber,
+            currency: dbAcc.currency || 'DZD',
+            initialBalance: Number(dbAcc.initialBalance || 0),
+            currentBalance: Number(dbAcc.currentBalance || 0),
+            isDemoAccount: Boolean(dbAcc.isDemoAccount),
+            isActive: Boolean(dbAcc.isActive),
+          });
+        }
+      } catch {}
+    }
+
     const res = serverStore.releaseWarrantyRetention(invoiceId, data, user);
     if (hasDb && !data.isDemoRelease && !res.invoice?.isDemoInvoice) {
       let invInDb = null;
@@ -2403,11 +2453,19 @@ export const dbBridge = {
       }
       if (invInDb) {
         try {
-          await (prisma as any).customerInvoice.update({
-            where: { id: res.invoice.id },
-            data: {
-              warrantyReleasedAmount: res.invoice.warrantyReleasedAmount,
-            },
+          await (prisma as any).$transaction(async (txPrisma: any) => {
+            await txPrisma.customerInvoice.update({
+              where: { id: res.invoice.id },
+              data: {
+                warrantyReleasedAmount: res.invoice.warrantyReleasedAmount,
+              },
+            });
+            if (data.accountId && res.releasedAmount) {
+              await txPrisma.financialAccount.update({
+                where: { id: data.accountId },
+                data: { currentBalance: { increment: Number(res.releasedAmount) } },
+              }).catch(() => null);
+            }
           });
           return { ...res, persisted: true };
         } catch (err: any) {
