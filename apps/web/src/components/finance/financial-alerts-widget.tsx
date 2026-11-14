@@ -25,11 +25,15 @@ export interface FinancialAlertItem {
 
 interface FinancialAlertsWidgetProps {
   alerts: FinancialAlertItem[];
+  error?: string | null;
+  onRetry?: () => void;
   onNavigateAction?: (alert: FinancialAlertItem) => void;
 }
 
 export function FinancialAlertsWidget({
   alerts = [],
+  error,
+  onRetry,
   onNavigateAction,
 }: FinancialAlertsWidgetProps) {
   const getSeverityBadge = (sev: 'CRITICAL' | 'WARNING' | 'INFO') => {
@@ -69,59 +73,76 @@ export function FinancialAlertsWidget({
         <span className="text-[10px] text-slate-500 font-medium">Contrôle interne SoD</span>
       </div>
 
-      {/* Alert List */}
-      <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
-        {alerts.length === 0 ? (
-          <div className="p-6 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-1.5">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-            <span className="font-semibold text-slate-700">Aucune anomalie ou blocage détecté</span>
-            <span className="text-[11px] text-slate-400">Trésorerie équilibrée, factures rapprochées et échues à zéro.</span>
-          </div>
-        ) : (
-          alerts.map((alert) => (
-            <div
-              key={alert.id}
-              onClick={() => onNavigateAction && onNavigateAction(alert)}
-              className="p-3 hover:bg-slate-50/70 transition-colors flex items-start justify-between gap-3 cursor-pointer group"
+      {/* Error state */}
+      {error ? (
+        <div className="p-6 text-center text-xs text-rose-700 bg-rose-50/40 flex flex-col items-center justify-center gap-2">
+          <AlertCircle className="h-5 w-5 text-rose-600" />
+          <span className="font-semibold text-slate-800">Échec de détection des alertes financières</span>
+          <span className="text-[11px] text-rose-600 max-w-sm">{error}</span>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="mt-1 inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold text-[#0B207D] bg-white border border-slate-300 rounded hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
             >
-              <div className="flex items-start gap-2.5">
-                {getAlertIcon(alert.type)}
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900 group-hover:text-[#0B207D] transition-colors">
-                      {alert.title}
-                    </span>
-                    <span className={`rounded px-1.5 py-0.2 text-[9px] font-semibold border ${getSeverityBadge(alert.severity)}`}>
-                      {alert.severity}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-                    {alert.description}
-                  </p>
-                  {alert.reference && (
-                    <span className="mt-1 inline-block font-mono text-[10px] text-slate-400 bg-slate-50 px-1 rounded border border-slate-200">
-                      Réf: {alert.reference}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {alert.amount !== undefined && (
-                <div className="text-right shrink-0">
-                  <div className="text-xs font-bold font-mono text-slate-900">
-                    {formatCurrencyDA(alert.amount, false)}
-                  </div>
-                  {alert.dueDate && (
-                    <div className="text-[10px] text-rose-600 font-medium">
-                      Échéance: {alert.dueDate}
-                    </div>
-                  )}
-                </div>
-              )}
+              <span>Réessayer</span>
+            </button>
+          )}
+        </div>
+      ) : (
+        /* Alert List */
+        <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+          {alerts.length === 0 ? (
+            <div className="p-6 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-1.5">
+              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              <span className="font-semibold text-slate-700">Aucune anomalie ou blocage détecté</span>
+              <span className="text-[11px] text-slate-400">Trésorerie équilibrée, factures rapprochées et échues à zéro.</span>
             </div>
-          ))
-        )}
-      </div>
+          ) : (
+            alerts.map((alert) => (
+              <div
+                key={alert.id}
+                onClick={() => onNavigateAction && onNavigateAction(alert)}
+                className="p-3 hover:bg-slate-50/70 transition-colors flex items-start justify-between gap-3 cursor-pointer group"
+              >
+                <div className="flex items-start gap-2.5">
+                  {getAlertIcon(alert.type)}
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-900 group-hover:text-[#0B207D] transition-colors">
+                        {alert.title}
+                      </span>
+                      <span className={`rounded px-1.5 py-0.2 text-[9px] font-semibold border ${getSeverityBadge(alert.severity)}`}>
+                        {alert.severity}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                      {alert.description}
+                    </p>
+                    {alert.reference && (
+                      <span className="mt-1 inline-block font-mono text-[10px] text-slate-400 bg-slate-50 px-1 rounded border border-slate-200">
+                        Réf: {alert.reference}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {alert.amount !== undefined && (
+                  <div className="text-right shrink-0">
+                    <div className="text-xs font-bold font-mono text-slate-900">
+                      {formatCurrencyDA(alert.amount, false)}
+                    </div>
+                    {alert.dueDate && (
+                      <div className="text-[10px] text-rose-600 font-medium">
+                        Échéance: {alert.dueDate}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

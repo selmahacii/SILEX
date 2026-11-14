@@ -1060,6 +1060,7 @@ export interface StoredCashTransaction {
   performedByName: string;
   status: 'VALIDE' | 'ANNULE';
   idempotencyKey?: string;
+  isDemoTransaction?: boolean;
   createdAt: string;
 }
 
@@ -4198,7 +4199,10 @@ class ServerStore {
   }
 
   // --- COMPTES FINANCIERS & TRÉSORERIE ---
-  getFinancialAccounts(): StoredFinancialAccount[] {
+  getFinancialAccounts(filter?: { includeDemo?: boolean }): StoredFinancialAccount[] {
+    if (filter?.includeDemo === false) {
+      return this.financialAccounts.filter(a => !a.isDemoAccount && !a.code?.startsWith('DEMO-'));
+    }
     return this.financialAccounts;
   }
 
@@ -4236,8 +4240,11 @@ class ServerStore {
   }
 
   // --- MOUVEMENTS DE TRÉSORERIE & TRANSACTIONS ---
-  getCashTransactions(filter?: { accountId?: string; projectId?: string; type?: string }): StoredCashTransaction[] {
+  getCashTransactions(filter?: { accountId?: string; projectId?: string; type?: string; includeDemo?: boolean }): StoredCashTransaction[] {
     let list = this.cashTransactions;
+    if (filter?.includeDemo === false) {
+      list = list.filter(t => !t.isDemoTransaction && !t.accountCode?.startsWith('DEMO-') && !t.id?.startsWith('tx-demo-'));
+    }
     if (filter?.accountId) list = list.filter(t => t.accountId === filter.accountId || t.counterpartAccountId === filter.accountId);
     if (filter?.projectId) list = list.filter(t => t.projectId === filter.projectId);
     if (filter?.type) list = list.filter(t => t.type === filter.type);
@@ -4379,8 +4386,11 @@ class ServerStore {
   }
 
   // --- FACTURATION CLIENT ---
-  getCustomerInvoices(filter?: { projectId?: string; status?: string }): StoredCustomerInvoice[] {
+  getCustomerInvoices(filter?: { projectId?: string; status?: string; includeDemo?: boolean }): StoredCustomerInvoice[] {
     let list = this.customerInvoices;
+    if (filter?.includeDemo === false) {
+      list = list.filter(i => !i.isDemoInvoice && !i.id?.startsWith('fac-demo-') && !i.id?.startsWith('inv-demo-'));
+    }
     if (filter?.projectId) list = list.filter(i => i.projectId === filter.projectId);
     if (filter?.status) list = list.filter(i => i.status === filter.status);
     return list;
@@ -4548,8 +4558,11 @@ class ServerStore {
   }
 
   // --- FACTURATION FOURNISSEUR & 3-WAY MATCHING (BC vs BR vs Facture LIGNE PAR LIGNE) ---
-  getSupplierInvoices(filter?: { supplierId?: string; projectId?: string; status?: string }): StoredSupplierInvoice[] {
+  getSupplierInvoices(filter?: { supplierId?: string; projectId?: string; status?: string; includeDemo?: boolean }): StoredSupplierInvoice[] {
     let list = this.supplierInvoices;
+    if (filter?.includeDemo === false) {
+      list = list.filter(i => !i.isDemoInvoice && !i.id?.startsWith('fac-fou-demo-'));
+    }
     if (filter?.supplierId) list = list.filter(i => i.supplierId === filter.supplierId);
     if (filter?.projectId) list = list.filter(i => i.projectId === filter.projectId);
     if (filter?.status) list = list.filter(i => i.status === filter.status);
@@ -4917,11 +4930,15 @@ class ServerStore {
   }
 
   // --- BALANCE ÂGÉE & ÉCHÉANCIER CLIENT / FOURNISSEUR ---
-  getAgedTrialBalance() {
+  getAgedTrialBalance(filter?: { includeDemo?: boolean }) {
     const today = new Date().getTime();
+    const includeDemo = filter?.includeDemo !== false;
+
+    const relevantCustomerInvoices = this.customerInvoices.filter(i => includeDemo || (!i.isDemoInvoice && !i.id?.startsWith('fac-demo-') && !i.id?.startsWith('inv-demo-')));
+    const relevantSupplierInvoices = this.supplierInvoices.filter(i => includeDemo || (!i.isDemoInvoice && !i.id?.startsWith('fac-fou-demo-')));
 
     const clientBuckets = { current: 0, days30: 0, days60: 0, days90Plus: 0, total: 0 };
-    for (const inv of this.customerInvoices) {
+    for (const inv of relevantCustomerInvoices) {
       if (inv.remainingAmount <= 0) continue;
       const due = new Date(inv.dueDate).getTime();
       const diffDays = Math.floor((today - due) / (1000 * 86400));
@@ -4934,7 +4951,7 @@ class ServerStore {
     }
 
     const supplierBuckets = { current: 0, days30: 0, days60: 0, days90Plus: 0, total: 0 };
-    for (const inv of this.supplierInvoices) {
+    for (const inv of relevantSupplierInvoices) {
       if (inv.remainingAmount <= 0) continue;
       const due = new Date(inv.dueDate).getTime();
       const diffDays = Math.floor((today - due) / (1000 * 86400));
@@ -4946,10 +4963,21 @@ class ServerStore {
       supplierBuckets.total += inv.remainingAmount;
     }
 
+    const bfrDA = clientBuckets.total - supplierBuckets.total;
     return {
       clients: clientBuckets,
       suppliers: supplierBuckets,
-      netWorkingCapitalNeed: clientBuckets.total - supplierBuckets.total, // BFR simplifié
+      customerAging: clientBuckets,
+      supplierAging: supplierBuckets,
+      workingCapitalRequirement: {
+        customerReceivablesTotal: clientBuckets.total,
+        supplierPayablesTotal: supplierBuckets.total,
+        bfrDA,
+        status: bfrDA > 0 ? 'BESOIN_NET' : 'RESSOURCE_NETTE',
+        isDemoIncluded: includeDemo,
+      },
+      netWorkingCapitalNeed: bfrDA, // BFR simplifié (Créances - Dettes)
+      isDemoIncluded: includeDemo,
     };
   }
 

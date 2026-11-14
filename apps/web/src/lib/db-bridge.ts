@@ -1928,12 +1928,15 @@ export const dbBridge = {
     return serverStore.updateFinancialConfig(data, user);
   },
 
-  async getFinancialAccounts(filter?: any) {
+  async getFinancialAccounts(filter?: any, user?: any) {
+    const includeDemo = filter?.includeDemo !== false && filter?.isDemoAccount !== false;
     let list: any[] = [];
     if (hasDb) {
       try {
         const where: any = {};
-        if (filter?.isDemoAccount !== undefined) where.isDemoAccount = Boolean(filter.isDemoAccount);
+        if (!includeDemo) where.isDemoAccount = false;
+        else if (filter?.isDemoAccount !== undefined) where.isDemoAccount = Boolean(filter.isDemoAccount);
+
         const dbAccounts = await (prisma as any).financialAccount.findMany({
           where,
           orderBy: { code: 'asc' },
@@ -1949,15 +1952,44 @@ export const dbBridge = {
         handleDbPersistenceError('getFinancialAccounts', err);
       }
     }
-    // Inclure les comptes démo isolés en mémoire si non présents en base
-    const demoAccounts = serverStore.getFinancialAccounts().filter(a => a.isDemoAccount);
-    const combined = [...list];
-    for (const demoAcc of demoAccounts) {
-      if (!combined.some(a => a.code === demoAcc.code)) {
-        combined.push(demoAcc);
+
+    let finalAccounts: any[] = [];
+    if (list.length > 0) {
+      if (includeDemo) {
+        const demoAccounts = serverStore.getFinancialAccounts().filter(a => a.isDemoAccount);
+        const combined = [...list];
+        for (const demoAcc of demoAccounts) {
+          if (!combined.some(a => a.code === demoAcc.code)) {
+            combined.push(demoAcc);
+          }
+        }
+        finalAccounts = combined;
+      } else {
+        finalAccounts = list.filter((a: any) => !a.isDemoAccount);
       }
+    } else {
+      finalAccounts = serverStore.getFinancialAccounts({ includeDemo });
     }
-    return combined.length > 0 ? combined : serverStore.getFinancialAccounts();
+
+    // Masquage serveur du RIB pour les profils non autorisés (ex: RESPONSABLE_PROJET)
+    const isPrivilegedTreasuryRole = [
+      SystemRole.DIRECTEUR_GENERAL,
+      SystemRole.RESPONSABLE_FINANCIER,
+      SystemRole.ADMINISTRATEUR,
+    ].includes(user?.role);
+
+    if (!isPrivilegedTreasuryRole) {
+      finalAccounts = finalAccounts.map((a: any) => {
+        if (!a.ribNumber) return a;
+        const cleaned = String(a.ribNumber).replace(/\s+/g, '');
+        const masked = cleaned.length >= 8
+          ? `${cleaned.slice(0, 5)} ••••• •••••••••• ${cleaned.slice(-2)}`
+          : '•••• •••• •••• ••••';
+        return { ...a, ribNumber: masked, isRibMasked: true };
+      });
+    }
+
+    return finalAccounts;
   },
 
   async getFinancialAccount(idOrCode: string) {
@@ -2008,6 +2040,7 @@ export const dbBridge = {
   },
 
   async getCashTransactions(filter?: any) {
+    const includeDemo = filter?.includeDemo !== false;
     let list: any[] = [];
     if (hasDb) {
       try {
@@ -2030,14 +2063,20 @@ export const dbBridge = {
         handleDbPersistenceError('getCashTransactions', err);
       }
     }
-    const storeTxs = serverStore.getCashTransactions(filter);
-    const combined = [...list];
-    for (const st of storeTxs) {
-      if (!combined.some(t => t.id === st.id || t.transactionNumber === st.transactionNumber)) {
-        combined.push(st);
+    const storeTxs = serverStore.getCashTransactions({ ...filter, includeDemo });
+    if (list.length > 0) {
+      if (includeDemo) {
+        const combined = [...list];
+        for (const st of storeTxs) {
+          if (!combined.some(t => t.id === st.id || t.transactionNumber === st.transactionNumber)) {
+            combined.push(st);
+          }
+        }
+        return combined;
       }
+      return list;
     }
-    return combined.length > 0 ? combined : storeTxs;
+    return storeTxs;
   },
 
   async recordCashTransaction(data: any, user?: any) {
@@ -2212,9 +2251,11 @@ export const dbBridge = {
   },
 
   async getCustomerInvoices(filter?: any) {
+    const includeDemo = filter?.includeDemo !== false;
     if (hasDb) {
       try {
         const where: any = {};
+        if (!includeDemo) where.isDemoInvoice = false;
         if (filter?.projectId) where.projectId = filter.projectId;
         if (filter?.status) where.status = filter.status;
 
@@ -2242,7 +2283,7 @@ export const dbBridge = {
         handleDbPersistenceError('getCustomerInvoices', err);
       }
     }
-    return serverStore.getCustomerInvoices(filter);
+    return serverStore.getCustomerInvoices({ ...filter, includeDemo });
   },
 
   async getCustomerInvoice(idOrNum: string) {
@@ -2378,9 +2419,11 @@ export const dbBridge = {
   },
 
   async getSupplierInvoices(filter?: any) {
+    const includeDemo = filter?.includeDemo !== false;
     if (hasDb) {
       try {
         const where: any = {};
+        if (!includeDemo) where.isDemoInvoice = false;
         if (filter?.supplierId) where.supplierId = filter.supplierId;
         if (filter?.projectId) where.projectId = filter.projectId;
         if (filter?.status) where.status = filter.status;
@@ -2404,7 +2447,7 @@ export const dbBridge = {
         handleDbPersistenceError('getSupplierInvoices', err);
       }
     }
-    return serverStore.getSupplierInvoices(filter);
+    return serverStore.getSupplierInvoices({ ...filter, includeDemo });
   },
 
   async getSupplierInvoice(idOrRef: string) {
@@ -2608,8 +2651,9 @@ export const dbBridge = {
     return serverStore.approveSupplierInvoiceWithDerogation(invoiceId, reason, user);
   },
 
-  async getAgedTrialBalance() {
-    return serverStore.getAgedTrialBalance();
+  async getAgedTrialBalance(filter?: any) {
+    const includeDemo = filter?.includeDemo !== false;
+    return serverStore.getAgedTrialBalance({ includeDemo });
   },
 
   async getProjectProfitability(projectIdOrCode: string) {

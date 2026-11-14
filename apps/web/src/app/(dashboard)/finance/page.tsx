@@ -50,6 +50,22 @@ export default function FinanceDashboardPage() {
   const [customerInvoices, setCustomerInvoices] = useState<any[]>([]);
   const [supplierInvoices, setSupplierInvoices] = useState<any[]>([]);
   const [agedTrialBalance, setAgedTrialBalance] = useState<any>(null);
+  const [financialConfig, setFinancialConfig] = useState<any>(null);
+
+  // Granular per-widget error tracking (P2-1)
+  const [widgetErrors, setWidgetErrors] = useState<{
+    overview?: string | null;
+    accounts?: string | null;
+    transactions?: string | null;
+    customerInvoices?: string | null;
+    supplierInvoices?: string | null;
+    agedTrialBalance?: string | null;
+  }>({});
+
+  // Dynamic config thresholds (P3)
+  const dgApprovalThreshold = financialConfig?.dgApprovalThresholdDA || 500000;
+  const rawRetentionRate = financialConfig?.defaultRetentionRate !== undefined ? Number(financialConfig.defaultRetentionRate) : 5;
+  const retentionRateLabel = rawRetentionRate > 1 ? `${rawRetentionRate}%` : `${Math.round(rawRetentionRate * 100)}%`;
 
   // Modals state
   const [selectedProjectForDecompte, setSelectedProjectForDecompte] = useState<any | null>(null);
@@ -67,45 +83,58 @@ export default function FinanceDashboardPage() {
   const [warrantyDate, setWarrantyDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [warrantyNotes, setWarrantyNotes] = useState<string>('');
 
-  // Primary data loader
+  // Primary data loader with full parameter propagation and error isolation
   const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
+      const errors: typeof widgetErrors = {};
 
-      const [overviewRes, accountsRes, txsRes, custInvRes, suppInvRes, atbRes] = await Promise.all([
+      const [overviewRes, accountsRes, txsRes, custInvRes, suppInvRes, atbRes, cfgRes] = await Promise.all([
         api.get<any>(`/finance/overview?includeDemo=${includeDemo}`).catch(e => {
           console.warn('[Finance Dashboard] overview fallback:', e.message);
+          errors.overview = e.message || 'Erreur overview';
           return null;
         }),
         api.get<any[]>(`/finance/accounts?includeDemo=${includeDemo}`).catch(e => {
           console.warn('[Finance Dashboard] accounts fallback:', e.message);
-          return [];
+          errors.accounts = e.message || 'Erreur comptes financiers';
+          return null;
         }),
-        api.get<any[]>('/finance/transactions').catch(e => {
+        api.get<any[]>(`/finance/transactions?includeDemo=${includeDemo}`).catch(e => {
           console.warn('[Finance Dashboard] transactions fallback:', e.message);
-          return [];
+          errors.transactions = e.message || 'Erreur flux de trésorerie';
+          return null;
         }),
-        api.get<any[]>('/finance/customer-invoices').catch(e => {
+        api.get<any[]>(`/finance/customer-invoices?includeDemo=${includeDemo}`).catch(e => {
           console.warn('[Finance Dashboard] customer invoices fallback:', e.message);
-          return [];
+          errors.customerInvoices = e.message || 'Erreur factures clients';
+          return null;
         }),
-        api.get<any[]>('/finance/supplier-invoices').catch(e => {
+        api.get<any[]>(`/finance/supplier-invoices?includeDemo=${includeDemo}`).catch(e => {
           console.warn('[Finance Dashboard] supplier invoices fallback:', e.message);
-          return [];
+          errors.supplierInvoices = e.message || 'Erreur factures fournisseurs';
+          return null;
         }),
-        api.get<any>('/finance/aged-trial-balance').catch(e => {
+        api.get<any>(`/finance/aged-trial-balance?includeDemo=${includeDemo}`).catch(e => {
           console.warn('[Finance Dashboard] aged trial balance fallback:', e.message);
+          errors.agedTrialBalance = e.message || 'Erreur balance âgée';
+          return null;
+        }),
+        api.get<any>('/finance/config').catch(e => {
+          console.warn('[Finance Dashboard] config fallback:', e.message);
           return null;
         }),
       ]);
 
-      setFinanceOverview(overviewRes);
-      setAccounts(Array.isArray(accountsRes) ? accountsRes : []);
-      setTransactions(Array.isArray(txsRes) ? txsRes : []);
-      setCustomerInvoices(Array.isArray(custInvRes) ? custInvRes : []);
-      setSupplierInvoices(Array.isArray(suppInvRes) ? suppInvRes : []);
-      setAgedTrialBalance(atbRes);
+      setWidgetErrors(errors);
+      if (overviewRes) setFinanceOverview(overviewRes);
+      if (accountsRes) setAccounts(Array.isArray(accountsRes) ? accountsRes : []);
+      if (txsRes) setTransactions(Array.isArray(txsRes) ? txsRes : []);
+      if (custInvRes) setCustomerInvoices(Array.isArray(custInvRes) ? custInvRes : []);
+      if (suppInvRes) setSupplierInvoices(Array.isArray(suppInvRes) ? suppInvRes : []);
+      if (atbRes) setAgedTrialBalance(atbRes);
+      if (cfgRes) setFinancialConfig(cfgRes);
 
       if (overviewRes?.projects?.length > 0) {
         if (!payProjectId) setPayProjectId(overviewRes.projects[0].id);
@@ -207,24 +236,33 @@ export default function FinanceDashboardPage() {
       });
     });
 
-    // 3. High value invoice requiring DG validation (> 500,000 DA)
+    // 3. High value invoice requiring DG validation (> dgApprovalThreshold)
     const highValueInvoices = supplierInvoices.filter(
-      inv => inv.status === 'A_APPROUVER' && Number(inv.amountHT || 0) > 500000
+      inv => inv.status === 'A_APPROUVER' && Number(inv.amountHT || 0) > dgApprovalThreshold
     );
     highValueInvoices.forEach(inv => {
       list.push({
         id: `alert-dg-${inv.id}`,
         type: 'DG_APPROVAL_REQUIRED',
         severity: 'INFO',
-        title: 'Validation Direction Générale Requise (Seuil SoD > 500k DA)',
-        description: `Engagement fournisseur supérieur au plafond opérationnel pour ${inv.supplierName || 'Marché'}.`,
+        title: `Validation Direction Générale Requise (Seuil SoD > ${formatCurrencyDA(dgApprovalThreshold, false)})`,
+        description: `Engagement fournisseur supérieur au plafond opérationnel DG (${formatCurrencyDA(dgApprovalThreshold, false)}) pour ${inv.supplierName || 'Marché'}.`,
         amount: Number(inv.amountHT || 0),
         reference: inv.invoiceNumber || inv.internalReference,
       });
     });
 
     return list;
-  }, [supplierInvoices, customerInvoices]);
+  }, [supplierInvoices, customerInvoices, dgApprovalThreshold]);
+
+  // Aggregate KPI errors (P2-1)
+  const kpiErrors = useMemo(() => ({
+    treasury: widgetErrors.accounts,
+    receivables: widgetErrors.customerInvoices,
+    payables: widgetErrors.supplierInvoices,
+    warranty: widgetErrors.customerInvoices || widgetErrors.overview,
+    bfr: widgetErrors.agedTrialBalance || widgetErrors.customerInvoices || widgetErrors.supplierInvoices,
+  }), [widgetErrors]);
 
   // Analytical projects summary
   const projectsSummary = useMemo<ProjectProfitabilitySummary[]>(() => {
@@ -282,7 +320,7 @@ export default function FinanceDashboardPage() {
       });
       setShowWarrantyModal(false);
       const releasedAmt = res?.releasedAmount ? ` (${formatCurrencyDA(res.releasedAmount, false)})` : '';
-      setNotification(`Retenue de garantie (5%) débloquée avec succès${releasedAmt} suite au PV de réception définitive !`);
+      setNotification(`Retenue de garantie (${retentionRateLabel}) débloquée avec succès${releasedAmt} suite au PV de réception définitive !`);
       setTimeout(() => setNotification(null), 5000);
       loadDashboardData();
     } catch (err: any) {
@@ -380,7 +418,7 @@ export default function FinanceDashboardPage() {
               className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-amber-600 text-amber-800 rounded hover:bg-amber-50 transition-colors font-semibold cursor-pointer shadow-2xs"
             >
               <ShieldCheck className="w-3 h-3 text-amber-600" />
-              <span>Restituer Retenue (5%)</span>
+              <span>Restituer Retenue ({retentionRateLabel})</span>
             </button>
           </div>
         </div>
@@ -403,6 +441,8 @@ export default function FinanceDashboardPage() {
             warrantyHeld={kpisData.warrantyHeld}
             bfrDA={kpisData.bfrDA}
             bfrStatus={kpisData.bfrStatus}
+            retentionRateLabel={retentionRateLabel}
+            errors={kpiErrors}
             isLoading={loading}
           />
 
@@ -410,11 +450,15 @@ export default function FinanceDashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <AccountsSummaryWidget
               accounts={accounts}
+              error={widgetErrors.accounts}
+              onRetry={loadDashboardData}
               onNavigateTreasury={() => setActiveTab('treasury')}
             />
 
             <FinancialAlertsWidget
               alerts={operationalAlerts}
+              error={widgetErrors.customerInvoices || widgetErrors.supplierInvoices}
+              onRetry={loadDashboardData}
               onNavigateAction={(alert) => {
                 if (alert.type === 'MATCHING_DISCREPANCY') setActiveTab('matching');
                 else if (alert.type === 'OVERDUE_INVOICE') setActiveTab('billing');
@@ -425,12 +469,16 @@ export default function FinanceDashboardPage() {
           {/* 3. Lower Row: Recent Cash Transactions Journal */}
           <RecentTransactionsWidget
             transactions={transactions}
+            error={widgetErrors.transactions}
+            onRetry={loadDashboardData}
             onNavigateTransactions={() => setActiveTab('treasury')}
           />
 
           {/* 4. Bottom Row: Projects Analytical Rentability */}
           <ProjectsMarginSummary
             projects={projectsSummary}
+            error={widgetErrors.overview}
+            onRetry={loadDashboardData}
             onNavigateProjects={() => setActiveTab('profitability')}
           />
         </div>

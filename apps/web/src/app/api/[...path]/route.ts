@@ -326,6 +326,8 @@ export async function GET(
       );
     }
 
+    const includeDemo = req.nextUrl.searchParams.get('includeDemo') !== 'false';
+
     if (clean.includes('/finance/distribution')) {
       const dist = await dbBridge.getCostDistribution();
       return NextResponse.json(dist, { headers: corsHeaders() });
@@ -335,23 +337,23 @@ export async function GET(
       return NextResponse.json(cfg, { headers: corsHeaders() });
     }
     if (clean.includes('/finance/accounts')) {
-      const accounts = await dbBridge.getFinancialAccounts();
+      const accounts = await dbBridge.getFinancialAccounts({ includeDemo }, authUser);
       return NextResponse.json(accounts, { headers: corsHeaders() });
     }
     if (clean.includes('/finance/transactions')) {
-      const txs = await dbBridge.getCashTransactions();
+      const txs = await dbBridge.getCashTransactions({ includeDemo });
       return NextResponse.json(txs, { headers: corsHeaders() });
     }
     if (clean.includes('/finance/customer-invoices')) {
-      const invoices = await dbBridge.getCustomerInvoices();
+      const invoices = await dbBridge.getCustomerInvoices({ includeDemo });
       return NextResponse.json(invoices, { headers: corsHeaders() });
     }
     if (clean.includes('/finance/supplier-invoices')) {
-      const invoices = await dbBridge.getSupplierInvoices();
+      const invoices = await dbBridge.getSupplierInvoices({ includeDemo });
       return NextResponse.json(invoices, { headers: corsHeaders() });
     }
     if (clean.includes('/finance/aged-trial-balance')) {
-      const atb = await dbBridge.getAgedTrialBalance();
+      const atb = await dbBridge.getAgedTrialBalance({ includeDemo });
       return NextResponse.json(atb, { headers: corsHeaders() });
     }
     if (clean.includes('/finance/project-profitability')) {
@@ -360,7 +362,6 @@ export async function GET(
       return NextResponse.json(prof || { error: 'Projet introuvable' }, { headers: corsHeaders() });
     }
     if (clean.includes('/finance/overview') || clean === '/finance') {
-      const includeDemo = req.nextUrl.searchParams.get('includeDemo') !== 'false';
       const fin = await dbBridge.getFinanceOverview({ includeDemo });
       return NextResponse.json(fin, { headers: corsHeaders() });
     }
