@@ -1738,7 +1738,7 @@ export const dbBridge = {
     return payment;
   },
 
-  async getFinanceOverview() {
+  async getFinanceOverview(options?: { includeDemo?: boolean }) {
     let projs: any[] = [];
     if (hasDb) {
       try {
@@ -1834,6 +1834,7 @@ export const dbBridge = {
       summary: totals,
       projects: projectOverviews,
       distribution: serverStore.getCostDistribution(),
+      isDemoIncluded: options?.includeDemo !== false,
     };
   },
 
@@ -1841,73 +1842,488 @@ export const dbBridge = {
     return serverStore.getCostDistribution();
   },
 
-  // --- MODULE 06 : FINANCE & TRÉSORERIE ---
+  // --- MODULE 06 : FINANCE & TRÉSORERIE (PERSISTANCE PRISMA / NEON AVEC FALLBACK SÉCURISÉ) ---
   async getFinancialConfig() {
+    if (hasDb) {
+      try {
+        const dbCfg = await (prisma as any).financialConfig.findFirst({
+          orderBy: { updatedAt: 'desc' },
+        });
+        if (dbCfg) {
+          return {
+            defaultVatRate: Number(dbCfg.defaultVatRate),
+            defaultRetentionRate: Number(dbCfg.defaultRetentionRate),
+            defaultWarrantyDurationMonths: dbCfg.defaultWarrantyDurationMonths,
+            pmApprovalThresholdDA: Number(dbCfg.pmApprovalThresholdDA),
+            dgApprovalThresholdDA: Number(dbCfg.dgApprovalThresholdDA),
+            priceToleranceAbsoluteDA: Number(dbCfg.priceToleranceAbsoluteDA),
+            priceToleranceRelativePct: Number(dbCfg.priceToleranceRelativePct),
+            qtyTolerancePct: Number(dbCfg.qtyTolerancePct),
+            allowAutoApprovalOnMatch: dbCfg.allowAutoApprovalOnMatch,
+            allowedPaymentTermsDays: [30, 45, 60, 90],
+            vatRegimes: [
+              { code: 'NORMAL', label: 'Régime Normal Standard (19%)', rate: 19 },
+              { code: 'REDUIT', label: 'Taux Réduit (9%)', rate: 9 },
+              { code: 'EXONERE_ANDI', label: 'Exonération Conventionnelle ANDI / ANSEJ (0%)', rate: 0 },
+            ],
+          };
+        }
+      } catch (err) {
+        handleDbPersistenceError('getFinancialConfig', err);
+      }
+    }
     return serverStore.getFinancialConfig();
   },
 
   async updateFinancialConfig(data: any, user?: any) {
+    if (hasDb) {
+      try {
+        const existing = await (prisma as any).financialConfig.findFirst();
+        if (existing) {
+          await (prisma as any).financialConfig.update({
+            where: { id: existing.id },
+            data: {
+              ...(data.defaultVatRate !== undefined ? { defaultVatRate: data.defaultVatRate } : {}),
+              ...(data.defaultRetentionRate !== undefined ? { defaultRetentionRate: data.defaultRetentionRate } : {}),
+              ...(data.pmApprovalThresholdDA !== undefined ? { pmApprovalThresholdDA: data.pmApprovalThresholdDA } : {}),
+              ...(data.dgApprovalThresholdDA !== undefined ? { dgApprovalThresholdDA: data.dgApprovalThresholdDA } : {}),
+              ...(data.priceToleranceAbsoluteDA !== undefined ? { priceToleranceAbsoluteDA: data.priceToleranceAbsoluteDA } : {}),
+              ...(data.priceToleranceRelativePct !== undefined ? { priceToleranceRelativePct: data.priceToleranceRelativePct } : {}),
+            },
+          });
+        } else {
+          await (prisma as any).financialConfig.create({
+            data: {
+              defaultVatRate: data.defaultVatRate || 19,
+              defaultRetentionRate: data.defaultRetentionRate || 5,
+              defaultWarrantyDurationMonths: data.defaultWarrantyDurationMonths || 12,
+              pmApprovalThresholdDA: data.pmApprovalThresholdDA || 500000,
+              dgApprovalThresholdDA: data.dgApprovalThresholdDA || 2000000,
+              priceToleranceAbsoluteDA: data.priceToleranceAbsoluteDA || 100,
+              priceToleranceRelativePct: data.priceToleranceRelativePct || 0.5,
+              qtyTolerancePct: data.qtyTolerancePct || 0,
+              allowAutoApprovalOnMatch: data.allowAutoApprovalOnMatch ?? true,
+            },
+          });
+        }
+      } catch (err) {
+        handleDbPersistenceError('updateFinancialConfig', err);
+      }
+    }
     return serverStore.updateFinancialConfig(data, user);
   },
 
   async getFinancialAccounts() {
+    if (hasDb) {
+      try {
+        const dbAccounts = await (prisma as any).financialAccount.findMany({
+          orderBy: { code: 'asc' },
+        });
+        if (dbAccounts && dbAccounts.length > 0) {
+          return dbAccounts.map((a: any) => ({
+            ...a,
+            initialBalance: Number(a.initialBalance),
+            currentBalance: Number(a.currentBalance),
+          }));
+        }
+      } catch (err) {
+        handleDbPersistenceError('getFinancialAccounts', err);
+      }
+    }
     return serverStore.getFinancialAccounts();
   },
 
   async getFinancialAccount(idOrCode: string) {
+    if (hasDb) {
+      try {
+        const dbAcc = await (prisma as any).financialAccount.findFirst({
+          where: { OR: [{ id: idOrCode }, { code: idOrCode }] },
+        });
+        if (dbAcc) {
+          return {
+            ...dbAcc,
+            initialBalance: Number(dbAcc.initialBalance),
+            currentBalance: Number(dbAcc.currentBalance),
+          };
+        }
+      } catch (err) {
+        handleDbPersistenceError('getFinancialAccount', err);
+      }
+    }
     return serverStore.getFinancialAccount(idOrCode);
   },
 
   async createFinancialAccount(data: any, user?: any) {
-    return serverStore.createFinancialAccount(data, user);
+    const storeAcc = serverStore.createFinancialAccount(data, user);
+    if (hasDb) {
+      try {
+        await (prisma as any).financialAccount.create({
+          data: {
+            id: storeAcc.id,
+            code: storeAcc.code,
+            name: storeAcc.name,
+            type: storeAcc.type as any,
+            bankName: storeAcc.bankName,
+            ribNumber: storeAcc.ribNumber,
+            currency: storeAcc.currency,
+            initialBalance: storeAcc.initialBalance,
+            currentBalance: storeAcc.currentBalance,
+            isDemoAccount: storeAcc.isDemoAccount,
+            isActive: storeAcc.isActive,
+            notes: storeAcc.notes,
+          },
+        });
+      } catch (err) {
+        handleDbPersistenceError('createFinancialAccount', err);
+      }
+    }
+    return storeAcc;
   },
 
   async getCashTransactions(filter?: any) {
+    if (hasDb) {
+      try {
+        const where: any = {};
+        if (filter?.accountId) where.accountId = filter.accountId;
+        if (filter?.projectId) where.projectId = filter.projectId;
+        if (filter?.type) where.type = filter.type;
+
+        const dbTxs = await (prisma as any).cashTransaction.findMany({
+          where,
+          orderBy: { transactionDate: 'desc' },
+        });
+        if (dbTxs && dbTxs.length > 0) {
+          return dbTxs.map((t: any) => ({
+            ...t,
+            amount: Number(t.amount),
+          }));
+        }
+      } catch (err) {
+        handleDbPersistenceError('getCashTransactions', err);
+      }
+    }
     return serverStore.getCashTransactions(filter);
   },
 
   async recordCashTransaction(data: any, user?: any) {
-    return serverStore.recordCashTransaction(data, user);
+    const tx = serverStore.recordCashTransaction(data, user);
+    if (hasDb) {
+      try {
+        await (prisma as any).cashTransaction.create({
+          data: {
+            id: tx.id,
+            transactionNumber: tx.transactionNumber,
+            transactionDate: new Date(tx.transactionDate),
+            type: tx.type as any,
+            amount: tx.amount,
+            accountId: tx.accountId,
+            accountCode: tx.accountCode,
+            counterpartAccountId: tx.counterpartAccountId,
+            counterpartAccountCode: tx.counterpartAccountCode,
+            customerInvoiceId: tx.customerInvoiceId,
+            customerInvoiceNumber: tx.customerInvoiceNumber,
+            supplierInvoiceId: tx.supplierInvoiceId,
+            supplierInvoiceNumber: tx.supplierInvoiceNumber,
+            projectId: tx.projectId,
+            projectCode: tx.projectCode,
+            referenceDocument: tx.referenceDocument,
+            paymentMethod: tx.paymentMethod,
+            category: tx.category,
+            notes: tx.notes,
+            performedById: tx.performedById,
+            performedByName: tx.performedByName,
+            status: tx.status,
+            idempotencyKey: tx.idempotencyKey,
+          },
+        });
+        // Mettre à jour le solde du compte en base
+        const acc = serverStore.getFinancialAccount(tx.accountId);
+        if (acc) {
+          await (prisma as any).financialAccount.update({
+            where: { id: acc.id },
+            data: { currentBalance: acc.currentBalance },
+          });
+        }
+      } catch (err) {
+        handleDbPersistenceError('recordCashTransaction', err);
+      }
+    }
+    return tx;
   },
 
   async transferBetweenAccounts(data: any, user?: any) {
-    return serverStore.transferBetweenAccounts(data, user);
+    const res = serverStore.transferBetweenAccounts(data, user);
+    if (hasDb) {
+      try {
+        await (prisma as any).$transaction(async (txPrisma: any) => {
+          await txPrisma.financialAccount.update({
+            where: { id: res.sourceAccount.id },
+            data: { currentBalance: res.sourceAccount.currentBalance },
+          });
+          await txPrisma.financialAccount.update({
+            where: { id: res.destinationAccount.id },
+            data: { currentBalance: res.destinationAccount.currentBalance },
+          });
+        });
+      } catch (err) {
+        handleDbPersistenceError('transferBetweenAccounts', err);
+      }
+    }
+    return res;
   },
 
   async getCustomerInvoices(filter?: any) {
+    if (hasDb) {
+      try {
+        const where: any = {};
+        if (filter?.projectId) where.projectId = filter.projectId;
+        if (filter?.status) where.status = filter.status;
+
+        const dbInvoices = await (prisma as any).customerInvoice.findMany({
+          where,
+          orderBy: { issueDate: 'desc' },
+        });
+        if (dbInvoices && dbInvoices.length > 0) {
+          return dbInvoices.map((inv: any) => ({
+            ...inv,
+            amountHT: Number(inv.amountHT),
+            vatRate: Number(inv.vatRate),
+            vatAmount: Number(inv.vatAmount),
+            retentionRate: Number(inv.retentionRate),
+            retentionAmount: Number(inv.retentionAmount),
+            amountTTC: Number(inv.amountTTC),
+            netReceivableAmount: Number(inv.netReceivableAmount),
+            paidAmount: Number(inv.paidAmount),
+            remainingAmount: Number(inv.remainingAmount),
+            warrantyHeldAmount: Number(inv.warrantyHeldAmount),
+            warrantyReleasedAmount: Number(inv.warrantyReleasedAmount),
+          }));
+        }
+      } catch (err) {
+        handleDbPersistenceError('getCustomerInvoices', err);
+      }
+    }
     return serverStore.getCustomerInvoices(filter);
   },
 
   async getCustomerInvoice(idOrNum: string) {
+    if (hasDb) {
+      try {
+        const dbInv = await (prisma as any).customerInvoice.findFirst({
+          where: { OR: [{ id: idOrNum }, { invoiceNumber: idOrNum }] },
+        });
+        if (dbInv) {
+          return {
+            ...dbInv,
+            amountHT: Number(dbInv.amountHT),
+            vatRate: Number(dbInv.vatRate),
+            vatAmount: Number(dbInv.vatAmount),
+            retentionRate: Number(dbInv.retentionRate),
+            retentionAmount: Number(dbInv.retentionAmount),
+            amountTTC: Number(dbInv.amountTTC),
+            netReceivableAmount: Number(dbInv.netReceivableAmount),
+            paidAmount: Number(dbInv.paidAmount),
+            remainingAmount: Number(dbInv.remainingAmount),
+            warrantyHeldAmount: Number(dbInv.warrantyHeldAmount),
+            warrantyReleasedAmount: Number(dbInv.warrantyReleasedAmount),
+          };
+        }
+      } catch (err) {
+        handleDbPersistenceError('getCustomerInvoice', err);
+      }
+    }
     return serverStore.getCustomerInvoice(idOrNum);
   },
 
   async createCustomerInvoice(data: any, user?: any) {
-    return serverStore.createCustomerInvoice(data, user);
+    const inv = serverStore.createCustomerInvoice(data, user);
+    if (hasDb) {
+      try {
+        await (prisma as any).customerInvoice.create({
+          data: {
+            id: inv.id,
+            invoiceNumber: inv.invoiceNumber,
+            clientId: inv.clientId,
+            clientName: inv.clientName,
+            projectId: inv.projectId,
+            projectCode: inv.projectCode,
+            projectName: inv.projectName,
+            workSituationId: inv.workSituationId,
+            workSituationNumber: inv.workSituationNumber,
+            commercialQuoteId: inv.commercialQuoteId,
+            issueDate: new Date(inv.issueDate),
+            dueDate: new Date(inv.dueDate),
+            amountHT: inv.amountHT,
+            vatRate: inv.vatRate,
+            vatAmount: inv.vatAmount,
+            retentionRate: inv.retentionRate,
+            retentionAmount: inv.retentionAmount,
+            amountTTC: inv.amountTTC,
+            netReceivableAmount: inv.netReceivableAmount,
+            paidAmount: inv.paidAmount,
+            remainingAmount: inv.remainingAmount,
+            warrantyHeldAmount: inv.warrantyHeldAmount,
+            warrantyReleasedAmount: inv.warrantyReleasedAmount,
+            status: inv.status as any,
+            paymentTerms: inv.paymentTerms,
+            notes: inv.notes,
+            isDemoInvoice: inv.isDemoInvoice,
+          },
+        });
+      } catch (err) {
+        handleDbPersistenceError('createCustomerInvoice', err);
+      }
+    }
+    return inv;
   },
 
   async recordCustomerPayment(invoiceId: string, data: any, user?: any) {
-    return serverStore.recordCustomerPayment(invoiceId, data, user);
+    const res = serverStore.recordCustomerPayment(invoiceId, data, user);
+    if (hasDb) {
+      try {
+        await (prisma as any).customerInvoice.update({
+          where: { id: res.invoice.id },
+          data: {
+            paidAmount: res.invoice.paidAmount,
+            remainingAmount: res.invoice.remainingAmount,
+            status: res.invoice.status as any,
+          },
+        });
+      } catch (err) {
+        handleDbPersistenceError('recordCustomerPayment', err);
+      }
+    }
+    return res;
   },
 
   async releaseWarrantyRetention(invoiceId: string, data: any, user?: any) {
-    return serverStore.releaseWarrantyRetention(invoiceId, data, user);
+    const res = serverStore.releaseWarrantyRetention(invoiceId, data, user);
+    if (hasDb) {
+      try {
+        await (prisma as any).customerInvoice.update({
+          where: { id: res.invoice.id },
+          data: {
+            warrantyReleasedAmount: res.invoice.warrantyReleasedAmount,
+          },
+        });
+      } catch (err) {
+        handleDbPersistenceError('releaseWarrantyRetention', err);
+      }
+    }
+    return res;
   },
 
   async getSupplierInvoices(filter?: any) {
+    if (hasDb) {
+      try {
+        const where: any = {};
+        if (filter?.supplierId) where.supplierId = filter.supplierId;
+        if (filter?.projectId) where.projectId = filter.projectId;
+        if (filter?.status) where.status = filter.status;
+
+        const dbInvoices = await (prisma as any).supplierInvoice.findMany({
+          where,
+          orderBy: { invoiceDate: 'desc' },
+        });
+        if (dbInvoices && dbInvoices.length > 0) {
+          return dbInvoices.map((inv: any) => ({
+            ...inv,
+            amountHT: Number(inv.amountHT),
+            vatRate: Number(inv.vatRate),
+            vatAmount: Number(inv.vatAmount),
+            amountTTC: Number(inv.amountTTC),
+            paidAmount: Number(inv.paidAmount),
+            remainingAmount: Number(inv.remainingAmount),
+          }));
+        }
+      } catch (err) {
+        handleDbPersistenceError('getSupplierInvoices', err);
+      }
+    }
     return serverStore.getSupplierInvoices(filter);
   },
 
   async getSupplierInvoice(idOrRef: string) {
+    if (hasDb) {
+      try {
+        const dbInv = await (prisma as any).supplierInvoice.findFirst({
+          where: { OR: [{ id: idOrRef }, { internalReference: idOrRef }, { invoiceNumber: idOrRef }] },
+        });
+        if (dbInv) {
+          return {
+            ...dbInv,
+            amountHT: Number(dbInv.amountHT),
+            vatRate: Number(dbInv.vatRate),
+            vatAmount: Number(dbInv.vatAmount),
+            amountTTC: Number(dbInv.amountTTC),
+            paidAmount: Number(dbInv.paidAmount),
+            remainingAmount: Number(dbInv.remainingAmount),
+          };
+        }
+      } catch (err) {
+        handleDbPersistenceError('getSupplierInvoice', err);
+      }
+    }
     return serverStore.getSupplierInvoice(idOrRef);
   },
 
   async createSupplierInvoice(data: any, user?: any) {
-    return serverStore.createSupplierInvoice(data, user);
+    const inv = serverStore.createSupplierInvoice(data, user);
+    if (hasDb) {
+      try {
+        await (prisma as any).supplierInvoice.create({
+          data: {
+            id: inv.id,
+            internalReference: inv.internalReference,
+            invoiceNumber: inv.invoiceNumber,
+            supplierId: inv.supplierId,
+            supplierName: inv.supplierName,
+            purchaseOrderId: inv.purchaseOrderId,
+            purchaseOrderCode: inv.purchaseOrderCode,
+            goodsReceiptId: inv.goodsReceiptId,
+            goodsReceiptCode: inv.goodsReceiptCode,
+            projectId: inv.projectId,
+            projectCode: inv.projectCode,
+            invoiceDate: new Date(inv.invoiceDate),
+            dueDate: new Date(inv.dueDate),
+            amountHT: inv.amountHT,
+            vatRate: inv.vatRate,
+            vatAmount: inv.vatAmount,
+            amountTTC: inv.amountTTC,
+            paidAmount: inv.paidAmount,
+            remainingAmount: inv.remainingAmount,
+            matchingStatus: inv.matchingStatus as any,
+            approvalThresholdStatus: inv.approvalThresholdStatus,
+            status: inv.status as any,
+            paymentTerms: inv.paymentTerms,
+            notes: inv.notes,
+            isDemoInvoice: inv.isDemoInvoice,
+          },
+        });
+      } catch (err) {
+        handleDbPersistenceError('createSupplierInvoice', err);
+      }
+    }
+    return inv;
   },
 
   async recordSupplierPayment(invoiceId: string, data: any, user?: any) {
-    return serverStore.recordSupplierPayment(invoiceId, data, user);
+    const res = serverStore.recordSupplierPayment(invoiceId, data, user);
+    if (hasDb) {
+      try {
+        await (prisma as any).supplierInvoice.update({
+          where: { id: res.invoice.id },
+          data: {
+            paidAmount: res.invoice.paidAmount,
+            remainingAmount: res.invoice.remainingAmount,
+            status: res.invoice.status as any,
+          },
+        });
+      } catch (err) {
+        handleDbPersistenceError('recordSupplierPayment', err);
+      }
+    }
+    return res;
   },
 
   async getAgedTrialBalance() {

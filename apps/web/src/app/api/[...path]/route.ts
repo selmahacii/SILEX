@@ -300,43 +300,70 @@ export async function GET(
     return NextResponse.json(ncs, { headers: corsHeaders() });
   }
 
-  // 10. Finance & Trésorerie
-  if (clean.includes('/finance/distribution')) {
-    const dist = await dbBridge.getCostDistribution();
-    return NextResponse.json(dist, { headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/config')) {
-    const cfg = await dbBridge.getFinancialConfig();
-    return NextResponse.json(cfg, { headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/accounts')) {
-    const accounts = await dbBridge.getFinancialAccounts();
-    return NextResponse.json(accounts, { headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/transactions')) {
-    const txs = await dbBridge.getCashTransactions();
-    return NextResponse.json(txs, { headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/customer-invoices')) {
-    const invoices = await dbBridge.getCustomerInvoices();
-    return NextResponse.json(invoices, { headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/supplier-invoices')) {
-    const invoices = await dbBridge.getSupplierInvoices();
-    return NextResponse.json(invoices, { headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/aged-trial-balance')) {
-    const atb = await dbBridge.getAgedTrialBalance();
-    return NextResponse.json(atb, { headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/project-profitability')) {
-    const prjId = req.nextUrl.searchParams.get('projectId') || resolvedParams.path[2] || '';
-    const prof = await dbBridge.getProjectProfitability(prjId);
-    return NextResponse.json(prof || { error: 'Projet introuvable' }, { headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/overview') || clean === '/finance') {
-    const fin = await dbBridge.getFinanceOverview();
-    return NextResponse.json(fin, { headers: corsHeaders() });
+  // 10. Finance & Trésorerie (SÉCURISATION P0 & RBAC)
+  if (clean.startsWith('/finance') || clean.includes('/finance/')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const authUser = await parseUserFromToken(authHeader);
+
+    if (!authUser) {
+      return NextResponse.json(
+        { error: 'Authentification requise pour accéder aux ressources financières.' },
+        { status: 401, headers: corsHeaders() }
+      );
+    }
+
+    const allowedRoles: string[] = [
+      SystemRole.ADMINISTRATEUR,
+      SystemRole.DIRECTEUR_GENERAL,
+      SystemRole.RESPONSABLE_FINANCIER,
+      SystemRole.RESPONSABLE_PROJET,
+    ];
+
+    if (!allowedRoles.includes(authUser.role)) {
+      return NextResponse.json(
+        { error: 'Accès refusé : rôle non autorisé pour les opérations financières.' },
+        { status: 403, headers: corsHeaders() }
+      );
+    }
+
+    if (clean.includes('/finance/distribution')) {
+      const dist = await dbBridge.getCostDistribution();
+      return NextResponse.json(dist, { headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/config')) {
+      const cfg = await dbBridge.getFinancialConfig();
+      return NextResponse.json(cfg, { headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/accounts')) {
+      const accounts = await dbBridge.getFinancialAccounts();
+      return NextResponse.json(accounts, { headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/transactions')) {
+      const txs = await dbBridge.getCashTransactions();
+      return NextResponse.json(txs, { headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/customer-invoices')) {
+      const invoices = await dbBridge.getCustomerInvoices();
+      return NextResponse.json(invoices, { headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/supplier-invoices')) {
+      const invoices = await dbBridge.getSupplierInvoices();
+      return NextResponse.json(invoices, { headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/aged-trial-balance')) {
+      const atb = await dbBridge.getAgedTrialBalance();
+      return NextResponse.json(atb, { headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/project-profitability')) {
+      const prjId = req.nextUrl.searchParams.get('projectId') || resolvedParams.path[2] || '';
+      const prof = await dbBridge.getProjectProfitability(prjId);
+      return NextResponse.json(prof || { error: 'Projet introuvable' }, { headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/overview') || clean === '/finance') {
+      const includeDemo = req.nextUrl.searchParams.get('includeDemo') !== 'false';
+      const fin = await dbBridge.getFinanceOverview({ includeDemo });
+      return NextResponse.json(fin, { headers: corsHeaders() });
+    }
   }
 
   // 11. Reports
@@ -361,13 +388,6 @@ export async function POST(
     body = await req.json();
   } catch {
     // ignore
-  }
-
-  if (clean.includes('/finance/config')) {
-    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
-    const user = await parseUserFromToken(authHeader);
-    const cfg = await dbBridge.updateFinancialConfig(body, user);
-    return NextResponse.json(cfg, { headers: corsHeaders() });
   }
 
   // 1. Auth (Demo Switch & Login)
@@ -821,51 +841,74 @@ export async function POST(
     return NextResponse.json(nc, { status: 201, headers: corsHeaders() });
   }
 
-  // 10. Finance & Trésorerie
-  const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
-  const authUser = await parseUserFromToken(authHeader);
+  // 10. Finance & Trésorerie (SÉCURISATION P0 & RBAC ÉCRITURE)
+  if (clean.startsWith('/finance') || clean.includes('/finance/')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const authUser = await parseUserFromToken(authHeader);
 
-  if (clean.includes('/finance/accounts')) {
-    const acc = await dbBridge.createFinancialAccount(body, authUser);
-    return NextResponse.json(acc, { status: 201, headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/transactions/transfer')) {
-    const res = await dbBridge.transferBetweenAccounts(body, authUser);
-    return NextResponse.json(res, { status: 201, headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/transactions')) {
-    const tx = await dbBridge.recordCashTransaction(body, authUser);
-    return NextResponse.json(tx, { status: 201, headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/customer-invoices/') && clean.endsWith('/pay')) {
-    const invId = resolvedParams.path[resolvedParams.path.length - 2];
-    const res = await dbBridge.recordCustomerPayment(invId, body, authUser);
-    return NextResponse.json(res, { status: 201, headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/customer-invoices/') && clean.endsWith('/release-warranty')) {
-    const invId = resolvedParams.path[resolvedParams.path.length - 2];
-    const res = await dbBridge.releaseWarrantyRetention(invId, body, authUser);
-    return NextResponse.json(res, { status: 200, headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/customer-invoices')) {
-    const inv = await dbBridge.createCustomerInvoice(body, authUser);
-    return NextResponse.json(inv, { status: 201, headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/supplier-invoices/') && clean.endsWith('/pay')) {
-    const invId = resolvedParams.path[resolvedParams.path.length - 2];
-    const res = await dbBridge.recordSupplierPayment(invId, body, authUser);
-    return NextResponse.json(res, { status: 201, headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/supplier-invoices')) {
-    const inv = await dbBridge.createSupplierInvoice(body, authUser);
-    return NextResponse.json(inv, { status: 201, headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/payments')) {
-    const pay = await dbBridge.recordPayment(body);
-    return NextResponse.json(pay, { status: 201, headers: corsHeaders() });
-  }
-  if (clean.includes('/finance/warranty-release')) {
-    return NextResponse.json({ success: true, releasedAmount: 0 }, { headers: corsHeaders() });
+    if (!authUser) {
+      return NextResponse.json(
+        { error: 'Authentification requise pour effectuer une opération financière.' },
+        { status: 401, headers: corsHeaders() }
+      );
+    }
+
+    const authorizedPostRoles: string[] = [
+      SystemRole.ADMINISTRATEUR,
+      SystemRole.DIRECTEUR_GENERAL,
+      SystemRole.RESPONSABLE_FINANCIER,
+      SystemRole.RESPONSABLE_PROJET,
+    ];
+
+    if (!authorizedPostRoles.includes(authUser.role)) {
+      return NextResponse.json(
+        { error: 'Accès refusé : habilitation insuffisante pour modifier les comptes ou factures.' },
+        { status: 403, headers: corsHeaders() }
+      );
+    }
+
+    if (clean.includes('/finance/accounts')) {
+      const acc = await dbBridge.createFinancialAccount(body, authUser);
+      return NextResponse.json(acc, { status: 201, headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/transactions/transfer')) {
+      const res = await dbBridge.transferBetweenAccounts(body, authUser);
+      return NextResponse.json(res, { status: 201, headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/transactions')) {
+      const tx = await dbBridge.recordCashTransaction(body, authUser);
+      return NextResponse.json(tx, { status: 201, headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/customer-invoices/') && clean.endsWith('/pay')) {
+      const invId = resolvedParams.path[resolvedParams.path.length - 2];
+      const res = await dbBridge.recordCustomerPayment(invId, body, authUser);
+      return NextResponse.json(res, { status: 201, headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/customer-invoices/') && clean.endsWith('/release-warranty')) {
+      const invId = resolvedParams.path[resolvedParams.path.length - 2];
+      const res = await dbBridge.releaseWarrantyRetention(invId, body, authUser);
+      return NextResponse.json(res, { status: 200, headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/customer-invoices')) {
+      const inv = await dbBridge.createCustomerInvoice(body, authUser);
+      return NextResponse.json(inv, { status: 201, headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/supplier-invoices/') && clean.endsWith('/pay')) {
+      const invId = resolvedParams.path[resolvedParams.path.length - 2];
+      const res = await dbBridge.recordSupplierPayment(invId, body, authUser);
+      return NextResponse.json(res, { status: 201, headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/supplier-invoices')) {
+      const inv = await dbBridge.createSupplierInvoice(body, authUser);
+      return NextResponse.json(inv, { status: 201, headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/payments')) {
+      const pay = await dbBridge.recordPayment(body);
+      return NextResponse.json(pay, { status: 201, headers: corsHeaders() });
+    }
+    if (clean.includes('/finance/warranty-release')) {
+      return NextResponse.json({ success: true, releasedAmount: 0 }, { headers: corsHeaders() });
+    }
   }
 
   return NextResponse.json({ success: true, message: 'Action enregistrée' }, { headers: corsHeaders() });

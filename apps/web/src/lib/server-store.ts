@@ -1110,6 +1110,7 @@ export interface StoredSupplierInvoice {
   purchaseOrderCode: string;
   goodsReceiptId?: string;
   goodsReceiptCode?: string;
+  goodsReceiptIds?: string[]; // Multi-BR support
   projectId?: string;
   projectCode?: string;
   invoiceDate: string;
@@ -1120,6 +1121,8 @@ export interface StoredSupplierInvoice {
   amountTTC: number;
   paidAmount: number;
   remainingAmount: number;
+  invoicedQuantityTotal?: number;
+  remainingQuantityToInvoice?: number;
   matchingStatus: SupplierInvoiceMatchingStatus;
   matchingDetails?: {
     poAmountHT: number;
@@ -1145,6 +1148,10 @@ export interface StoredFinancialConfig {
   dgApprovalThresholdDA: number; // 2,000,000 DA
   allowedPaymentTermsDays: number[]; // [30, 45, 60, 90]
   vatRegimes: Array<{ code: string; label: string; rate: number }>;
+  priceToleranceAbsoluteDA: number; // Ex: 100 DA
+  priceToleranceRelativePct: number; // Ex: 1%
+  qtyTolerancePct: number; // Ex: 0%
+  allowAutoApprovalOnMatch: boolean;
 }
 
 class ServerStore {
@@ -1188,6 +1195,10 @@ class ServerStore {
       { code: 'REDUIT', label: 'Taux Réduit (9%)', rate: 9 },
       { code: 'EXONERE_ANDI', label: 'Exonération Conventionnelle ANDI / ANSEJ (0%)', rate: 0 },
     ],
+    priceToleranceAbsoluteDA: 100,
+    priceToleranceRelativePct: 0.5,
+    qtyTolerancePct: 0,
+    allowAutoApprovalOnMatch: true,
   };
 
   // Données Phase 5 : RH Industrielles, Compétences CQS, Mobilité & Paie
@@ -3758,7 +3769,18 @@ class ServerStore {
     return payment;
   }
 
-  getFinanceOverview() {
+  getFinanceOverview(options?: { includeDemo?: boolean }) {
+    const includeDemo = options?.includeDemo !== undefined ? options.includeDemo : true;
+
+    // Filtrer les comptes et transactions selon le contexte DEMO / PRODUCTION
+    const relevantAccounts = this.financialAccounts.filter(a => includeDemo || !a.isDemoAccount);
+    const relevantInvoices = this.customerInvoices.filter(i => includeDemo || !i.isDemoInvoice);
+    const relevantSupplierInvoices = this.supplierInvoices.filter(i => includeDemo || !i.isDemoInvoice);
+    const relevantTransactions = this.cashTransactions.filter(t => {
+      const acc = this.financialAccounts.find(a => a.id === t.accountId);
+      return includeDemo || !acc?.isDemoAccount;
+    });
+
     let totalContracted = 0;
     let totalBilled = 0;
     let totalWarrantyHeld = 0;
@@ -3794,10 +3816,19 @@ class ServerStore {
       };
     });
 
-    const totalCollected = this.financePayments.reduce((sum, pay) => sum + (pay.amount || 0), 0);
+    // Calcul de trésorerie réel basé sur les comptes filtrés
+    const actualCashBalance = relevantAccounts.reduce((sum, a) => sum + (a.currentBalance || 0), 0);
+
+    const totalCollected = relevantTransactions
+      .filter(t => t.type === 'ENCAISSEMENT_CLIENT' && t.status === 'VALIDE')
+      .reduce((sum, pay) => sum + (pay.amount || 0), 0);
+
+    const clientReceivables = relevantInvoices.reduce((sum, inv) => sum + (inv.remainingAmount || 0), 0);
+    const supplierPayables = relevantSupplierInvoices.reduce((sum, inv) => sum + (inv.remainingAmount || 0), 0);
+
     const pendingCollection = Math.max(0, totalBilled - totalCollected);
     const totalPOExpenditure = this.purchaseOrders.reduce((sum, po) => sum + (po.totalHT || 0), 0);
-    const treasuryBalance = totalCollected - totalPOExpenditure;
+    const treasuryBalance = actualCashBalance > 0 ? actualCashBalance : (totalCollected - totalPOExpenditure);
 
     return {
       kpis: {
@@ -3807,6 +3838,10 @@ class ServerStore {
         pendingCollection,
         warrantyHeld: totalWarrantyHeld,
         treasuryBalance,
+        actualCashBalance,
+        clientReceivables,
+        supplierPayables,
+        workingCapitalNeed: clientReceivables - supplierPayables,
       },
       summary: {
         totalBilled,
@@ -3814,9 +3849,13 @@ class ServerStore {
         pendingCollection,
         warrantyHeld: totalWarrantyHeld,
         treasuryBalance,
+        actualCashBalance,
+        clientReceivables,
+        supplierPayables,
       },
       projects: projectOverviews,
       distribution: this.getCostDistribution(),
+      isDemoIncluded: includeDemo,
     };
   }
 
@@ -4517,17 +4556,35 @@ class ServerStore {
     const poAmountHT = po ? (po.totalHT || po.amount || 0) : 0;
     const grTotalHT = gr ? gr.lines.reduce((acc, l) => acc + ((l.acceptedQuantity || l.deliveredQuantity || 0) * (l.unitPriceHT || 0)), 0) : 0;
 
-    if (!gr) {
+    // Tolérance configurable (au lieu de 100 DA en dur)
+    const absTolerance = this.financialConfig.priceToleranceAbsoluteDA !== undefined ? this.financialConfig.priceToleranceAbsoluteDA : 100;
+    const relTolerance = this.financialConfig.priceToleranceRelativePct !== undefined ? this.financialConfig.priceToleranceRelativePct : 0.5;
+
+    // Détection si le BR a déjà été rattaché à une facture validée/approuvée ou payée
+    const existingMatching = this.supplierInvoices.find(
+      i => (i.goodsReceiptId === gr?.id || (i.goodsReceiptIds && gr?.id && i.goodsReceiptIds.includes(gr.id))) &&
+           (i.status === 'APPROUVEE' || i.status === 'PAYEE' || i.status === 'EN_COURS_DE_PAIEMENT' || i.status === 'PARTIELLEMENT_PAYEE') &&
+           (data.invoiceNumber ? i.invoiceNumber !== data.invoiceNumber : true)
+    );
+
+    if (existingMatching) {
+      matchingStatus = 'ECART_QUANTITE';
+      matchingNotes = `Attention : Le Bon de Réception ${gr?.receiptNumber} est déjà rattaché à la facture ${existingMatching.internalReference} (${existingMatching.invoiceNumber})`;
+    } else if (!gr && (!data.goodsReceiptIds || data.goodsReceiptIds.length === 0)) {
       matchingStatus = 'SANS_RECEPTION';
       matchingNotes = 'Aucun Bon de Réception physique (BR) associé à cette facture';
     } else {
       priceVarianceDA = amountHT - poAmountHT;
-      if (Math.abs(priceVarianceDA) > 100) {
+      const variancePct = poAmountHT > 0 ? (Math.abs(priceVarianceDA) / poAmountHT) * 100 : 0;
+      
+      const isPriceWithinTolerance = Math.abs(priceVarianceDA) <= absTolerance || variancePct <= relTolerance;
+
+      if (!isPriceWithinTolerance) {
         matchingStatus = 'ECART_PRIX';
-        matchingNotes = `Écart de prix constaté par rapport au BC (${priceVarianceDA > 0 ? '+' : ''}${priceVarianceDA.toLocaleString()} DA)`;
+        matchingNotes = `Écart de prix constaté par rapport au BC (${priceVarianceDA > 0 ? '+' : ''}${priceVarianceDA.toLocaleString()} DA, ${variancePct.toFixed(2)}% > tolérance ${absTolerance} DA / ${relTolerance}%)`;
       } else {
         matchingStatus = 'CONFORME_3_WAY';
-        matchingNotes = '3-way matching validé : Bon de commande, Réception physique et Facture concordent';
+        matchingNotes = `3-way matching validé : Bon de commande, Réception physique et Facture concordent (écart ${priceVarianceDA.toLocaleString()} DA dans la tolérance de ${absTolerance} DA)`;
       }
     }
 
