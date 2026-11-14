@@ -1,3 +1,6 @@
+if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('neon.tech')) {
+  process.env.DATABASE_URL = 'postgresql://silex_admin:silex_secure_pass_2026@127.0.0.1:5433/silex_erp?schema=public';
+}
 const assert = require('assert');
 const path = require('path');
 
@@ -280,17 +283,18 @@ async function run() {
   // 13. Idempotence : Répétition de la transaction avec même clé
   console.log('\n--- 13. Test d’idempotence sur flux de trésorerie ---');
   const initialCount = (await dbBridge.getCashTransactions()).length;
+  const testIdempKey = `key-idemp-strict-${Date.now()}`;
   const firstTx = await dbBridge.recordCashTransaction({
     accountId: newAccount.id,
     type: 'ENCAISSEMENT_CLIENT',
     amount: 150000,
-    idempotencyKey: 'key-idemp-strict-8899',
+    idempotencyKey: testIdempKey,
   }, userFin);
   const secondTx = await dbBridge.recordCashTransaction({
     accountId: newAccount.id,
     type: 'ENCAISSEMENT_CLIENT',
     amount: 150000,
-    idempotencyKey: 'key-idemp-strict-8899',
+    idempotencyKey: testIdempKey,
   }, userFin);
   assert.strictEqual(firstTx.id, secondTx.id, 'La répétition doit retourner la même transaction');
   assert.strictEqual((await dbBridge.getCashTransactions()).length, initialCount + 1, 'Aucun doublon ne doit être créé');

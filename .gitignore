@@ -58,6 +58,7 @@ infrastructure/backups/
 *.sql
 *.sql.gz
 !apps/api/prisma/migrations/**/migration.sql
+!apps/web/prisma/migrations/**/migration.sql
 
 # IDEs
 .idea/

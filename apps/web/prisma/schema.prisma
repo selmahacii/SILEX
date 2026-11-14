@@ -494,6 +494,7 @@ model PurchaseOrderLine {
   subtotal         Decimal            @db.Decimal(15, 2)
   quantityReceived Decimal            @default(0) @db.Decimal(12, 2)
   receiptLines     GoodsReceiptLine[]
+  invoiceMatchings InvoiceLineMatching[]
 
   @@index([purchaseOrderId])
   @@index([itemId])
@@ -528,6 +529,7 @@ model GoodsReceiptLine {
   item                Item              @relation(fields: [itemId], references: [id])
   quantityReceived    Decimal           @db.Decimal(12, 2)
   notes               String?
+  invoiceMatchings    InvoiceLineMatching[]
 
   @@index([goodsReceiptId])
 }
@@ -1024,6 +1026,9 @@ model SupplierInvoice {
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
 
+  lines                   SupplierInvoiceLine[]
+  matchings               InvoiceLineMatching[]
+
   @@index([internalReference])
   @@index([purchaseOrderId])
   @@index([matchingStatus])
@@ -1044,4 +1049,53 @@ model FinancialConfig {
   allowAutoApprovalOnMatch      Boolean  @default(true)
   updatedAt                     DateTime @updatedAt
   createdAt                     DateTime @default(now())
+}
+
+model SupplierInvoiceLine {
+  id                String              @id @default(cuid())
+  supplierInvoiceId String
+  supplierInvoice   SupplierInvoice     @relation(fields: [supplierInvoiceId], references: [id], onDelete: Cascade)
+  lineNumber        Int                 @default(1)
+  description       String
+  quantity          Decimal             @db.Decimal(12, 2)
+  unitPrice         Decimal             @db.Decimal(15, 2)
+  subtotalHT        Decimal             @db.Decimal(18, 2)
+  createdAt         DateTime            @default(now())
+
+  matchings         InvoiceLineMatching[]
+
+  @@index([supplierInvoiceId])
+}
+
+model InvoiceLineMatching {
+  id                       String               @id @default(cuid())
+  supplierInvoiceId        String
+  supplierInvoice          SupplierInvoice      @relation(fields: [supplierInvoiceId], references: [id], onDelete: Cascade)
+  supplierInvoiceLineId    String?
+  supplierInvoiceLine      SupplierInvoiceLine? @relation(fields: [supplierInvoiceLineId], references: [id], onDelete: SetNull)
+  purchaseOrderId          String
+  purchaseOrderLineId      String
+  purchaseOrderLine        PurchaseOrderLine    @relation(fields: [purchaseOrderLineId], references: [id])
+  goodsReceiptId           String
+  goodsReceiptLineId       String
+  goodsReceiptLine         GoodsReceiptLine     @relation(fields: [goodsReceiptLineId], references: [id])
+  quantityMatched          Decimal              @db.Decimal(12, 2)
+  unitPriceMatched         Decimal              @db.Decimal(15, 2)
+  amountMatchedHT          Decimal              @db.Decimal(18, 2)
+  priceVarianceDA          Decimal              @default(0) @db.Decimal(18, 2)
+  status                   String               @default("CONFORME") // CONFORME, DEROGATION, EN_ATTENTE, ANNULE
+  derogationReason         String?              @db.Text
+  derogationApprovedById   String?
+  derogationApprovedByName String?
+  matchedAt                DateTime             @default(now())
+  matchedById              String
+  matchedByName            String
+  notes                    String?              @db.Text
+  createdAt                DateTime             @default(now())
+  updatedAt                DateTime             @updatedAt
+
+  @@index([supplierInvoiceId])
+  @@index([purchaseOrderLineId])
+  @@index([goodsReceiptLineId])
+  @@index([status])
 }

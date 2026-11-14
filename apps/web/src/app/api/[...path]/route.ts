@@ -867,47 +867,69 @@ export async function POST(
       );
     }
 
-    if (clean.includes('/finance/accounts')) {
-      const acc = await dbBridge.createFinancialAccount(body, authUser);
-      return NextResponse.json(acc, { status: 201, headers: corsHeaders() });
-    }
-    if (clean.includes('/finance/transactions/transfer')) {
-      const res = await dbBridge.transferBetweenAccounts(body, authUser);
-      return NextResponse.json(res, { status: 201, headers: corsHeaders() });
-    }
-    if (clean.includes('/finance/transactions')) {
-      const tx = await dbBridge.recordCashTransaction(body, authUser);
-      return NextResponse.json(tx, { status: 201, headers: corsHeaders() });
-    }
-    if (clean.includes('/finance/customer-invoices/') && clean.endsWith('/pay')) {
-      const invId = resolvedParams.path[resolvedParams.path.length - 2];
-      const res = await dbBridge.recordCustomerPayment(invId, body, authUser);
-      return NextResponse.json(res, { status: 201, headers: corsHeaders() });
-    }
-    if (clean.includes('/finance/customer-invoices/') && clean.endsWith('/release-warranty')) {
-      const invId = resolvedParams.path[resolvedParams.path.length - 2];
-      const res = await dbBridge.releaseWarrantyRetention(invId, body, authUser);
-      return NextResponse.json(res, { status: 200, headers: corsHeaders() });
-    }
-    if (clean.includes('/finance/customer-invoices')) {
-      const inv = await dbBridge.createCustomerInvoice(body, authUser);
-      return NextResponse.json(inv, { status: 201, headers: corsHeaders() });
-    }
-    if (clean.includes('/finance/supplier-invoices/') && clean.endsWith('/pay')) {
-      const invId = resolvedParams.path[resolvedParams.path.length - 2];
-      const res = await dbBridge.recordSupplierPayment(invId, body, authUser);
-      return NextResponse.json(res, { status: 201, headers: corsHeaders() });
-    }
-    if (clean.includes('/finance/supplier-invoices')) {
-      const inv = await dbBridge.createSupplierInvoice(body, authUser);
-      return NextResponse.json(inv, { status: 201, headers: corsHeaders() });
-    }
-    if (clean.includes('/finance/payments')) {
-      const pay = await dbBridge.recordPayment(body);
-      return NextResponse.json(pay, { status: 201, headers: corsHeaders() });
-    }
-    if (clean.includes('/finance/warranty-release')) {
-      return NextResponse.json({ success: true, releasedAmount: 0 }, { headers: corsHeaders() });
+    try {
+      if (clean.includes('/finance/accounts')) {
+        const acc = await dbBridge.createFinancialAccount(body, authUser);
+        return NextResponse.json(acc, { status: 201, headers: corsHeaders() });
+      }
+      if (clean.includes('/finance/transactions/transfer')) {
+        const res = await dbBridge.transferBetweenAccounts(body, authUser);
+        return NextResponse.json(res, { status: 201, headers: corsHeaders() });
+      }
+      if (clean.includes('/finance/transactions')) {
+        const tx = await dbBridge.recordCashTransaction(body, authUser);
+        return NextResponse.json(tx, { status: 201, headers: corsHeaders() });
+      }
+      if (clean.includes('/finance/customer-invoices/') && clean.endsWith('/pay')) {
+        const invId = resolvedParams.path[resolvedParams.path.length - 2];
+        const res = await dbBridge.recordCustomerPayment(invId, body, authUser);
+        return NextResponse.json(res, { status: 201, headers: corsHeaders() });
+      }
+      if (clean.includes('/finance/customer-invoices/') && clean.endsWith('/release-warranty')) {
+        const invId = resolvedParams.path[resolvedParams.path.length - 2];
+        const res = await dbBridge.releaseWarrantyRetention(invId, body, authUser);
+        return NextResponse.json(res, { status: 200, headers: corsHeaders() });
+      }
+      if (clean.includes('/finance/customer-invoices')) {
+        const inv = await dbBridge.createCustomerInvoice(body, authUser);
+        return NextResponse.json(inv, { status: 201, headers: corsHeaders() });
+      }
+      if (clean.includes('/finance/supplier-invoices/') && clean.endsWith('/pay')) {
+        const invId = resolvedParams.path[resolvedParams.path.length - 2];
+        const res = await dbBridge.recordSupplierPayment(invId, body, authUser);
+        return NextResponse.json(res, { status: 201, headers: corsHeaders() });
+      }
+      if (clean.includes('/finance/supplier-invoices/') && clean.endsWith('/cancel')) {
+        const invId = resolvedParams.path[resolvedParams.path.length - 2];
+        const res = await dbBridge.cancelSupplierInvoice(invId, body.reason || 'Annulation manuelle', authUser);
+        return NextResponse.json(res, { status: 200, headers: corsHeaders() });
+      }
+      if (clean.includes('/finance/supplier-invoices/') && clean.endsWith('/derogation')) {
+        const invId = resolvedParams.path[resolvedParams.path.length - 2];
+        const res = await dbBridge.approveSupplierInvoiceWithDerogation(invId, body.reason || 'Dérogation accordée', authUser);
+        return NextResponse.json(res, { status: 200, headers: corsHeaders() });
+      }
+      if (clean.includes('/finance/supplier-invoices')) {
+        const inv = await dbBridge.createSupplierInvoice(body, authUser);
+        return NextResponse.json(inv, { status: 201, headers: corsHeaders() });
+      }
+      if (clean.includes('/finance/payments')) {
+        const pay = await dbBridge.recordPayment(body);
+        return NextResponse.json(pay, { status: 201, headers: corsHeaders() });
+      }
+      if (clean.includes('/finance/warranty-release')) {
+        return NextResponse.json({ success: true, releasedAmount: 0 }, { headers: corsHeaders() });
+      }
+    } catch (err: any) {
+      console.error('[API Gateway Finance Failure]', err);
+      const isPersistence = err?.code === 'DB_PERSISTENCE_FAILED' || err?.message?.includes('DB_PERSISTENCE_FAILED');
+      return NextResponse.json(
+        {
+          error: isPersistence ? 'PERSISTENCE_FAILED' : 'FINANCE_ERROR',
+          message: err?.message || 'Erreur lors du traitement de l\'opération financière',
+        },
+        { status: 500, headers: corsHeaders() }
+      );
     }
   }
 

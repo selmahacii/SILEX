@@ -1,3 +1,6 @@
+if (!process.env.DATABASE_URL || process.env.DATABASE_URL.includes('neon.tech')) {
+  process.env.DATABASE_URL = 'postgresql://silex_admin:silex_secure_pass_2026@127.0.0.1:5433/silex_erp?schema=public';
+}
 const assert = require('assert');
 const path = require('path');
 

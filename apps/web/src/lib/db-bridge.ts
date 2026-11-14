@@ -12,6 +12,21 @@ function handleDbPersistenceError(context: string, err: any): never | void {
   }
 }
 
+function handleFinancePersistenceError(context: string, err: any, rollbackFn?: () => void): never {
+  console.error(`[DB Bridge Critical Financial Persistence Failure] ${context}:`, err);
+  if (rollbackFn) {
+    try {
+      rollbackFn();
+    } catch (rbErr) {
+      console.error(`[DB Bridge Rollback Failure] ${context}:`, rbErr);
+    }
+  }
+  const error = new Error(`[DB_PERSISTENCE_FAILED] Échec de persistance PostgreSQL pour "${context}": ${err?.message || err}`);
+  (error as any).code = 'DB_PERSISTENCE_FAILED';
+  (error as any).originalError = err;
+  throw error;
+}
+
 function mapToSector(sector?: string): any {
   if (!sector) return 'OIL_AND_GAS';
   const clean = sector.toUpperCase();
@@ -1913,14 +1928,18 @@ export const dbBridge = {
     return serverStore.updateFinancialConfig(data, user);
   },
 
-  async getFinancialAccounts() {
+  async getFinancialAccounts(filter?: any) {
+    let list: any[] = [];
     if (hasDb) {
       try {
+        const where: any = {};
+        if (filter?.isDemoAccount !== undefined) where.isDemoAccount = Boolean(filter.isDemoAccount);
         const dbAccounts = await (prisma as any).financialAccount.findMany({
+          where,
           orderBy: { code: 'asc' },
         });
         if (dbAccounts && dbAccounts.length > 0) {
-          return dbAccounts.map((a: any) => ({
+          list = dbAccounts.map((a: any) => ({
             ...a,
             initialBalance: Number(a.initialBalance),
             currentBalance: Number(a.currentBalance),
@@ -1930,7 +1949,15 @@ export const dbBridge = {
         handleDbPersistenceError('getFinancialAccounts', err);
       }
     }
-    return serverStore.getFinancialAccounts();
+    // Inclure les comptes démo isolés en mémoire si non présents en base
+    const demoAccounts = serverStore.getFinancialAccounts().filter(a => a.isDemoAccount);
+    const combined = [...list];
+    for (const demoAcc of demoAccounts) {
+      if (!combined.some(a => a.code === demoAcc.code)) {
+        combined.push(demoAcc);
+      }
+    }
+    return combined.length > 0 ? combined : serverStore.getFinancialAccounts();
   },
 
   async getFinancialAccount(idOrCode: string) {
@@ -1954,33 +1981,34 @@ export const dbBridge = {
   },
 
   async createFinancialAccount(data: any, user?: any) {
-    const storeAcc = serverStore.createFinancialAccount(data, user);
-    if (hasDb) {
+    if (hasDb && !data.isDemoAccount) {
       try {
-        await (prisma as any).financialAccount.create({
+        const created = await (prisma as any).financialAccount.create({
           data: {
-            id: storeAcc.id,
-            code: storeAcc.code,
-            name: storeAcc.name,
-            type: storeAcc.type as any,
-            bankName: storeAcc.bankName,
-            ribNumber: storeAcc.ribNumber,
-            currency: storeAcc.currency,
-            initialBalance: storeAcc.initialBalance,
-            currentBalance: storeAcc.currentBalance,
-            isDemoAccount: storeAcc.isDemoAccount,
-            isActive: storeAcc.isActive,
-            notes: storeAcc.notes,
+            code: data.code,
+            name: data.name,
+            type: data.type || 'BANQUE_COURANT',
+            bankName: data.bankName,
+            ribNumber: data.ribNumber,
+            currency: data.currency || 'DZD',
+            initialBalance: data.initialBalance || 0,
+            currentBalance: data.initialBalance || 0,
+            isDemoAccount: false,
+            isActive: data.isActive !== undefined ? data.isActive : true,
+            notes: data.notes,
           },
         });
-      } catch (err) {
-        handleDbPersistenceError('createFinancialAccount', err);
+        const storeAcc = serverStore.createFinancialAccount({ ...data, id: created.id }, user);
+        return storeAcc;
+      } catch (err: any) {
+        handleFinancePersistenceError('createFinancialAccount', err);
       }
     }
-    return storeAcc;
+    return serverStore.createFinancialAccount(data, user);
   },
 
   async getCashTransactions(filter?: any) {
+    let list: any[] = [];
     if (hasDb) {
       try {
         const where: any = {};
@@ -1993,7 +2021,7 @@ export const dbBridge = {
           orderBy: { transactionDate: 'desc' },
         });
         if (dbTxs && dbTxs.length > 0) {
-          return dbTxs.map((t: any) => ({
+          list = dbTxs.map((t: any) => ({
             ...t,
             amount: Number(t.amount),
           }));
@@ -2002,74 +2030,185 @@ export const dbBridge = {
         handleDbPersistenceError('getCashTransactions', err);
       }
     }
-    return serverStore.getCashTransactions(filter);
+    const storeTxs = serverStore.getCashTransactions(filter);
+    const combined = [...list];
+    for (const st of storeTxs) {
+      if (!combined.some(t => t.id === st.id || t.transactionNumber === st.transactionNumber)) {
+        combined.push(st);
+      }
+    }
+    return combined.length > 0 ? combined : storeTxs;
   },
 
   async recordCashTransaction(data: any, user?: any) {
-    const tx = serverStore.recordCashTransaction(data, user);
-    if (hasDb) {
-      try {
-        await (prisma as any).cashTransaction.create({
-          data: {
-            id: tx.id,
-            transactionNumber: tx.transactionNumber,
-            transactionDate: new Date(tx.transactionDate),
-            type: tx.type as any,
-            amount: tx.amount,
-            accountId: tx.accountId,
-            accountCode: tx.accountCode,
-            counterpartAccountId: tx.counterpartAccountId,
-            counterpartAccountCode: tx.counterpartAccountCode,
-            customerInvoiceId: tx.customerInvoiceId,
-            customerInvoiceNumber: tx.customerInvoiceNumber,
-            supplierInvoiceId: tx.supplierInvoiceId,
-            supplierInvoiceNumber: tx.supplierInvoiceNumber,
-            projectId: tx.projectId,
-            projectCode: tx.projectCode,
-            referenceDocument: tx.referenceDocument,
-            paymentMethod: tx.paymentMethod,
-            category: tx.category,
-            notes: tx.notes,
-            performedById: tx.performedById,
-            performedByName: tx.performedByName,
-            status: tx.status,
-            idempotencyKey: tx.idempotencyKey,
-          },
-        });
-        // Mettre à jour le solde du compte en base
-        const acc = serverStore.getFinancialAccount(tx.accountId);
-        if (acc) {
-          await (prisma as any).financialAccount.update({
-            where: { id: acc.id },
-            data: { currentBalance: acc.currentBalance },
+    if (hasDb && !data.isDemoTransaction) {
+      // 1. Contrôle d'idempotence en base PostgreSQL
+      if (data.idempotencyKey) {
+        try {
+          const existingTx = await (prisma as any).cashTransaction.findUnique({
+            where: { idempotencyKey: data.idempotencyKey },
           });
-        }
-      } catch (err) {
-        handleDbPersistenceError('recordCashTransaction', err);
+          if (existingTx) {
+            return {
+              ...existingTx,
+              amount: Number(existingTx.amount),
+              persisted: true,
+              idempotentReplay: true,
+            };
+          }
+        } catch {}
+      }
+
+      let dbAcc = null;
+      try {
+        dbAcc = await (prisma as any).financialAccount.findUnique({
+          where: { id: data.accountId },
+        });
+      } catch {
+        dbAcc = null;
+      }
+
+      if (!dbAcc) {
+        return serverStore.recordCashTransaction(data, user);
+      }
+
+      try {
+        const result = await (prisma as any).$transaction(async (txPrisma: any) => {
+          const txAmount = Number(data.amount || 0);
+          if (txAmount <= 0) throw new Error('Le montant de la transaction doit être supérieur à zéro');
+
+          let newBalance = Number(dbAcc.currentBalance);
+          if (data.type.includes('ENCAISSEMENT') || data.type === 'VIREMENT_INTERNE_RECU' || data.type === 'LIBERATION_RETENUE_GARANTIE') {
+            newBalance += txAmount;
+          } else if (data.type.includes('DECAISSEMENT') || data.type === 'VIREMENT_INTERNE_EMIS' || data.type === 'FRAIS_BANCAIRES' || data.type.includes('PAIEMENT')) {
+            if (newBalance < txAmount) {
+              throw new Error(`Solde bancaire insuffisant : solde actuel ${newBalance.toLocaleString()} DA, montant requis ${txAmount.toLocaleString()} DA`);
+            }
+            newBalance -= txAmount;
+          }
+
+          const txNumber = data.transactionNumber || `TX-${Date.now().toString().slice(-6)}`;
+          const createdTx = await txPrisma.cashTransaction.create({
+            data: {
+              transactionNumber: txNumber,
+              transactionDate: data.transactionDate ? new Date(data.transactionDate) : new Date(),
+              type: data.type,
+              amount: txAmount,
+              accountId: dbAcc.id,
+              accountCode: dbAcc.code,
+              counterpartAccountId: data.counterpartAccountId,
+              counterpartAccountCode: data.counterpartAccountCode,
+              customerInvoiceId: data.customerInvoiceId,
+              customerInvoiceNumber: data.customerInvoiceNumber,
+              supplierInvoiceId: data.supplierInvoiceId,
+              supplierInvoiceNumber: data.supplierInvoiceNumber,
+              projectId: data.projectId,
+              projectCode: data.projectCode,
+              referenceDocument: data.referenceDocument,
+              paymentMethod: data.paymentMethod || 'VIREMENT',
+              category: data.category || 'Opération de trésorerie',
+              notes: data.notes,
+              performedById: user?.id || 'usr-fin-001',
+              performedByName: user?.name || 'Responsable Financier SILEX',
+              status: 'VALIDE',
+              idempotencyKey: data.idempotencyKey,
+            },
+          });
+
+          await txPrisma.financialAccount.update({
+            where: { id: dbAcc.id },
+            data: { currentBalance: newBalance },
+          });
+
+          return {
+            ...createdTx,
+            amount: Number(createdTx.amount),
+            currentBalance: newBalance,
+            persisted: true,
+          };
+        });
+
+        // Synchroniser le store mémoire local
+        serverStore.recordCashTransaction({ ...data, id: result.id, transactionNumber: result.transactionNumber }, user);
+        return result;
+      } catch (err: any) {
+        handleFinancePersistenceError('recordCashTransaction', err);
       }
     }
-    return tx;
+    return serverStore.recordCashTransaction(data, user);
   },
 
   async transferBetweenAccounts(data: any, user?: any) {
-    const res = serverStore.transferBetweenAccounts(data, user);
-    if (hasDb) {
+    if (hasDb && !data.isDemoTransfer) {
+      let srcAccInDb = null;
+      let dstAccInDb = null;
       try {
-        await (prisma as any).$transaction(async (txPrisma: any) => {
-          await txPrisma.financialAccount.update({
-            where: { id: res.sourceAccount.id },
-            data: { currentBalance: res.sourceAccount.currentBalance },
+        srcAccInDb = await (prisma as any).financialAccount.findUnique({ where: { id: data.sourceAccountId } });
+        dstAccInDb = await (prisma as any).financialAccount.findUnique({ where: { id: data.destinationAccountId } });
+      } catch {
+        srcAccInDb = null;
+        dstAccInDb = null;
+      }
+
+      if (srcAccInDb && dstAccInDb) {
+        try {
+          const result = await (prisma as any).$transaction(async (txPrisma: any) => {
+            const transferAmount = Number(data.amount || 0);
+            if (transferAmount <= 0) throw new Error('Le montant du virement doit être strictement positif');
+            if (Number(srcAccInDb.currentBalance) < transferAmount) {
+              throw new Error(`Solde émetteur insuffisant : ${Number(srcAccInDb.currentBalance).toLocaleString()} DA`);
+            }
+
+            const newSrcBalance = Number(srcAccInDb.currentBalance) - transferAmount;
+            const newDstBalance = Number(dstAccInDb.currentBalance) + transferAmount;
+
+            await txPrisma.financialAccount.update({
+              where: { id: srcAccInDb.id },
+              data: { currentBalance: newSrcBalance },
+            });
+
+            await txPrisma.financialAccount.update({
+              where: { id: dstAccInDb.id },
+              data: { currentBalance: newDstBalance },
+            });
+
+            const txNumber = `VIR-${Date.now().toString().slice(-6)}`;
+            await txPrisma.cashTransaction.create({
+              data: {
+                transactionNumber: txNumber,
+                type: 'VIREMENT_INTERNE_EMIS',
+                amount: transferAmount,
+                accountId: srcAccInDb.id,
+                accountCode: srcAccInDb.code,
+                counterpartAccountId: dstAccInDb.id,
+                counterpartAccountCode: dstAccInDb.code,
+                category: 'Virement de trésorerie interne',
+                referenceDocument: data.referenceDocument || `VIR-${srcAccInDb.code}->${dstAccInDb.code}`,
+                paymentMethod: 'VIREMENT',
+                notes: data.notes,
+                performedById: user?.id || 'usr-fin-001',
+                performedByName: user?.name || 'Responsable Financier SILEX',
+                status: 'VALIDE',
+              },
+            });
+
+            return {
+              success: true,
+              amount: transferAmount,
+              sourceAccount: { ...srcAccInDb, currentBalance: newSrcBalance },
+              destinationAccount: { ...dstAccInDb, currentBalance: newDstBalance },
+              persisted: true,
+            };
           });
-          await txPrisma.financialAccount.update({
-            where: { id: res.destinationAccount.id },
-            data: { currentBalance: res.destinationAccount.currentBalance },
-          });
-        });
-      } catch (err) {
-        handleDbPersistenceError('transferBetweenAccounts', err);
+
+          serverStore.transferBetweenAccounts(data, user);
+          return result;
+        } catch (err: any) {
+          handleFinancePersistenceError('transferBetweenAccounts', err);
+        }
       }
     }
-    return res;
+    return serverStore.transferBetweenAccounts(data, user);
   },
 
   async getCustomerInvoices(filter?: any) {
@@ -2136,61 +2275,77 @@ export const dbBridge = {
   },
 
   async createCustomerInvoice(data: any, user?: any) {
-    const inv = serverStore.createCustomerInvoice(data, user);
-    if (hasDb) {
+    if (hasDb && !data.isDemoInvoice) {
+      const storeInv = serverStore.createCustomerInvoice(data, user);
       try {
-        await (prisma as any).customerInvoice.create({
+        const created = await (prisma as any).customerInvoice.create({
           data: {
-            id: inv.id,
-            invoiceNumber: inv.invoiceNumber,
-            clientId: inv.clientId,
-            clientName: inv.clientName,
-            projectId: inv.projectId,
-            projectCode: inv.projectCode,
-            projectName: inv.projectName,
-            workSituationId: inv.workSituationId,
-            workSituationNumber: inv.workSituationNumber,
-            commercialQuoteId: inv.commercialQuoteId,
-            issueDate: new Date(inv.issueDate),
-            dueDate: new Date(inv.dueDate),
-            amountHT: inv.amountHT,
-            vatRate: inv.vatRate,
-            vatAmount: inv.vatAmount,
-            retentionRate: inv.retentionRate,
-            retentionAmount: inv.retentionAmount,
-            amountTTC: inv.amountTTC,
-            netReceivableAmount: inv.netReceivableAmount,
-            paidAmount: inv.paidAmount,
-            remainingAmount: inv.remainingAmount,
-            warrantyHeldAmount: inv.warrantyHeldAmount,
-            warrantyReleasedAmount: inv.warrantyReleasedAmount,
-            status: inv.status as any,
-            paymentTerms: inv.paymentTerms,
-            notes: inv.notes,
-            isDemoInvoice: inv.isDemoInvoice,
+            id: storeInv.id,
+            invoiceNumber: storeInv.invoiceNumber,
+            clientId: storeInv.clientId,
+            clientName: storeInv.clientName,
+            projectId: storeInv.projectId,
+            projectCode: storeInv.projectCode,
+            projectName: storeInv.projectName,
+            workSituationId: storeInv.workSituationId,
+            workSituationNumber: storeInv.workSituationNumber,
+            commercialQuoteId: storeInv.commercialQuoteId,
+            issueDate: new Date(storeInv.issueDate),
+            dueDate: new Date(storeInv.dueDate),
+            amountHT: storeInv.amountHT,
+            vatRate: storeInv.vatRate,
+            vatAmount: storeInv.vatAmount,
+            retentionRate: storeInv.retentionRate,
+            retentionAmount: storeInv.retentionAmount,
+            amountTTC: storeInv.amountTTC,
+            netReceivableAmount: storeInv.netReceivableAmount,
+            paidAmount: storeInv.paidAmount,
+            remainingAmount: storeInv.remainingAmount,
+            warrantyHeldAmount: storeInv.warrantyHeldAmount,
+            warrantyReleasedAmount: storeInv.warrantyReleasedAmount,
+            status: storeInv.status as any,
+            paymentTerms: storeInv.paymentTerms,
+            notes: storeInv.notes,
+            isDemoInvoice: false,
           },
         });
-      } catch (err) {
-        handleDbPersistenceError('createCustomerInvoice', err);
+        return {
+          ...storeInv,
+          id: created.id,
+          persisted: true,
+        };
+      } catch (err: any) {
+        handleFinancePersistenceError('createCustomerInvoice', err, () => {
+          serverStore.rollbackCustomerInvoice(storeInv.id);
+        });
       }
     }
-    return inv;
+    return serverStore.createCustomerInvoice(data, user);
   },
 
   async recordCustomerPayment(invoiceId: string, data: any, user?: any) {
     const res = serverStore.recordCustomerPayment(invoiceId, data, user);
-    if (hasDb) {
+    if (hasDb && !data.isDemoPayment && !res.invoice?.isDemoInvoice) {
+      let invInDb = null;
       try {
-        await (prisma as any).customerInvoice.update({
-          where: { id: res.invoice.id },
-          data: {
-            paidAmount: res.invoice.paidAmount,
-            remainingAmount: res.invoice.remainingAmount,
-            status: res.invoice.status as any,
-          },
-        });
-      } catch (err) {
-        handleDbPersistenceError('recordCustomerPayment', err);
+        invInDb = await (prisma as any).customerInvoice.findUnique({ where: { id: res.invoice.id } });
+      } catch {
+        invInDb = null;
+      }
+      if (invInDb) {
+        try {
+          await (prisma as any).customerInvoice.update({
+            where: { id: res.invoice.id },
+            data: {
+              paidAmount: res.invoice.paidAmount,
+              remainingAmount: res.invoice.remainingAmount,
+              status: res.invoice.status as any,
+            },
+          });
+          return { ...res, persisted: true };
+        } catch (err: any) {
+          handleFinancePersistenceError('recordCustomerPayment', err);
+        }
       }
     }
     return res;
@@ -2198,16 +2353,25 @@ export const dbBridge = {
 
   async releaseWarrantyRetention(invoiceId: string, data: any, user?: any) {
     const res = serverStore.releaseWarrantyRetention(invoiceId, data, user);
-    if (hasDb) {
+    if (hasDb && !data.isDemoRelease && !res.invoice?.isDemoInvoice) {
+      let invInDb = null;
       try {
-        await (prisma as any).customerInvoice.update({
-          where: { id: res.invoice.id },
-          data: {
-            warrantyReleasedAmount: res.invoice.warrantyReleasedAmount,
-          },
-        });
-      } catch (err) {
-        handleDbPersistenceError('releaseWarrantyRetention', err);
+        invInDb = await (prisma as any).customerInvoice.findUnique({ where: { id: res.invoice.id } });
+      } catch {
+        invInDb = null;
+      }
+      if (invInDb) {
+        try {
+          await (prisma as any).customerInvoice.update({
+            where: { id: res.invoice.id },
+            data: {
+              warrantyReleasedAmount: res.invoice.warrantyReleasedAmount,
+            },
+          });
+          return { ...res, persisted: true };
+        } catch (err: any) {
+          handleFinancePersistenceError('releaseWarrantyRetention', err);
+        }
       }
     }
     return res;
@@ -2268,62 +2432,180 @@ export const dbBridge = {
   },
 
   async createSupplierInvoice(data: any, user?: any) {
-    const inv = serverStore.createSupplierInvoice(data, user);
-    if (hasDb) {
+    if (hasDb && !data.isDemoInvoice) {
+      // Vérifier si la commande existe en base relationnelle PostgreSQL
+      let poInDb = null;
+      if (data.purchaseOrderId || data.purchaseOrderCode) {
+        try {
+          poInDb = await (prisma as any).purchaseOrder.findFirst({
+            where: {
+              OR: [
+                { id: data.purchaseOrderId || '' },
+                { orderNumber: data.purchaseOrderCode || '' },
+              ],
+            },
+          });
+        } catch {
+          poInDb = null;
+        }
+      }
+
+      // Si la commande n'existe pas dans PostgreSQL (ex: données démo en mémoire), garder l'isolation mémoire
+      if (!poInDb && (data.purchaseOrderId || data.purchaseOrderCode)) {
+        return serverStore.createSupplierInvoice(data, user);
+      }
+
+      const storeInv = serverStore.createSupplierInvoice(data, user);
       try {
-        await (prisma as any).supplierInvoice.create({
-          data: {
-            id: inv.id,
-            internalReference: inv.internalReference,
-            invoiceNumber: inv.invoiceNumber,
-            supplierId: inv.supplierId,
-            supplierName: inv.supplierName,
-            purchaseOrderId: inv.purchaseOrderId,
-            purchaseOrderCode: inv.purchaseOrderCode,
-            goodsReceiptId: inv.goodsReceiptId,
-            goodsReceiptCode: inv.goodsReceiptCode,
-            projectId: inv.projectId,
-            projectCode: inv.projectCode,
-            invoiceDate: new Date(inv.invoiceDate),
-            dueDate: new Date(inv.dueDate),
-            amountHT: inv.amountHT,
-            vatRate: inv.vatRate,
-            vatAmount: inv.vatAmount,
-            amountTTC: inv.amountTTC,
-            paidAmount: inv.paidAmount,
-            remainingAmount: inv.remainingAmount,
-            matchingStatus: inv.matchingStatus as any,
-            approvalThresholdStatus: inv.approvalThresholdStatus,
-            status: inv.status as any,
-            paymentTerms: inv.paymentTerms,
-            notes: inv.notes,
-            isDemoInvoice: inv.isDemoInvoice,
-          },
+        const result = await (prisma as any).$transaction(async (txPrisma: any) => {
+          const created = await txPrisma.supplierInvoice.create({
+            data: {
+              id: storeInv.id,
+              internalReference: storeInv.internalReference,
+              invoiceNumber: storeInv.invoiceNumber,
+              supplierId: storeInv.supplierId,
+              supplierName: storeInv.supplierName,
+              purchaseOrderId: storeInv.purchaseOrderId,
+              purchaseOrderCode: storeInv.purchaseOrderCode,
+              goodsReceiptId: storeInv.goodsReceiptId,
+              goodsReceiptCode: storeInv.goodsReceiptCode,
+              projectId: storeInv.projectId,
+              projectCode: storeInv.projectCode,
+              invoiceDate: new Date(storeInv.invoiceDate),
+              dueDate: new Date(storeInv.dueDate),
+              amountHT: storeInv.amountHT,
+              vatRate: storeInv.vatRate,
+              vatAmount: storeInv.vatAmount,
+              amountTTC: storeInv.amountTTC,
+              paidAmount: storeInv.paidAmount,
+              remainingAmount: storeInv.remainingAmount,
+              matchingStatus: storeInv.matchingStatus as any,
+              approvalThresholdStatus: storeInv.approvalThresholdStatus || 'AUTO_APPROVED',
+              status: storeInv.status as any,
+              paymentTerms: storeInv.paymentTerms,
+              notes: storeInv.notes,
+              isDemoInvoice: false,
+            },
+          });
+
+          // Persister les lignes de matching
+          if (storeInv.lineMatchings && storeInv.lineMatchings.length > 0) {
+            for (const m of storeInv.lineMatchings) {
+              await txPrisma.invoiceLineMatching.create({
+                data: {
+                  id: m.id,
+                  supplierInvoiceId: created.id,
+                  purchaseOrderId: m.purchaseOrderId,
+                  purchaseOrderLineId: m.purchaseOrderLineId,
+                  goodsReceiptId: m.goodsReceiptId,
+                  goodsReceiptLineId: m.goodsReceiptLineId,
+                  quantityMatched: m.quantityMatched,
+                  unitPriceMatched: m.unitPriceMatched,
+                  amountMatchedHT: m.amountMatchedHT,
+                  priceVarianceDA: m.priceVarianceDA,
+                  status: m.status,
+                  derogationReason: m.derogationReason,
+                  matchedAt: new Date(m.matchedAt),
+                  matchedById: m.matchedById,
+                  matchedByName: m.matchedByName,
+                  notes: m.notes,
+                },
+              });
+            }
+          }
+
+          return created;
         });
-      } catch (err) {
-        handleDbPersistenceError('createSupplierInvoice', err);
+
+        return {
+          ...storeInv,
+          id: result.id,
+          persisted: true,
+        };
+      } catch (err: any) {
+        handleFinancePersistenceError('createSupplierInvoice', err, () => {
+          serverStore.rollbackSupplierInvoice(storeInv.id);
+        });
       }
     }
-    return inv;
+    return serverStore.createSupplierInvoice(data, user);
   },
 
   async recordSupplierPayment(invoiceId: string, data: any, user?: any) {
     const res = serverStore.recordSupplierPayment(invoiceId, data, user);
-    if (hasDb) {
+    if (hasDb && !data.isDemoPayment && !res.invoice?.isDemoInvoice) {
+      let invInDb = null;
       try {
-        await (prisma as any).supplierInvoice.update({
-          where: { id: res.invoice.id },
-          data: {
-            paidAmount: res.invoice.paidAmount,
-            remainingAmount: res.invoice.remainingAmount,
-            status: res.invoice.status as any,
-          },
-        });
-      } catch (err) {
-        handleDbPersistenceError('recordSupplierPayment', err);
+        invInDb = await (prisma as any).supplierInvoice.findUnique({ where: { id: res.invoice.id } });
+      } catch {
+        invInDb = null;
+      }
+      if (invInDb) {
+        try {
+          await (prisma as any).supplierInvoice.update({
+            where: { id: res.invoice.id },
+            data: {
+              paidAmount: res.invoice.paidAmount,
+              remainingAmount: res.invoice.remainingAmount,
+              status: res.invoice.status as any,
+            },
+          });
+          return { ...res, persisted: true };
+        } catch (err: any) {
+          handleFinancePersistenceError('recordSupplierPayment', err);
+        }
       }
     }
     return res;
+  },
+
+  async cancelSupplierInvoice(invoiceId: string, reason: string, user?: any) {
+    if (hasDb) {
+      try {
+        const res = serverStore.cancelSupplierInvoice(invoiceId, reason, user);
+        await (prisma as any).$transaction(async (txPrisma: any) => {
+          await txPrisma.supplierInvoice.update({
+            where: { id: res.id },
+            data: { status: 'REJETEE', notes: res.notes },
+          });
+          await txPrisma.invoiceLineMatching.updateMany({
+            where: { supplierInvoiceId: res.id },
+            data: { status: 'ANNULE', notes: `Annulé: ${reason}` },
+          });
+        });
+        return { ...res, persisted: true };
+      } catch (err: any) {
+        handleFinancePersistenceError('cancelSupplierInvoice', err);
+      }
+    }
+    return serverStore.cancelSupplierInvoice(invoiceId, reason, user);
+  },
+
+  async approveSupplierInvoiceWithDerogation(invoiceId: string, reason: string, user: any) {
+    if (hasDb) {
+      try {
+        const res = serverStore.approveSupplierInvoiceWithDerogation(invoiceId, reason, user);
+        await (prisma as any).$transaction(async (txPrisma: any) => {
+          await txPrisma.supplierInvoice.update({
+            where: { id: res.id },
+            data: { status: 'APPROUVEE', approvalThresholdStatus: 'APPROVED', notes: res.notes },
+          });
+          await txPrisma.invoiceLineMatching.updateMany({
+            where: { supplierInvoiceId: res.id },
+            data: {
+              status: 'DEROGATION',
+              derogationReason: reason,
+              derogationApprovedById: user?.id || 'usr-dg-001',
+              derogationApprovedByName: user?.name || 'Direction Générale',
+            },
+          });
+        });
+        return { ...res, persisted: true };
+      } catch (err: any) {
+        handleFinancePersistenceError('approveSupplierInvoiceWithDerogation', err);
+      }
+    }
+    return serverStore.approveSupplierInvoiceWithDerogation(invoiceId, reason, user);
   },
 
   async getAgedTrialBalance() {

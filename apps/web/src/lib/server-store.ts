@@ -1136,8 +1136,31 @@ export interface StoredSupplierInvoice {
   paymentTerms: string;
   notes?: string;
   isDemoInvoice?: boolean;
+  lineMatchings?: StoredInvoiceLineMatching[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface StoredInvoiceLineMatching {
+  id: string;
+  supplierInvoiceId: string;
+  supplierInvoiceLineId?: string;
+  purchaseOrderId: string;
+  purchaseOrderLineId: string;
+  goodsReceiptId: string;
+  goodsReceiptLineId: string;
+  quantityMatched: number;
+  unitPriceMatched: number;
+  amountMatchedHT: number;
+  priceVarianceDA: number;
+  status: 'CONFORME' | 'DEROGATION' | 'EN_ATTENTE' | 'ANNULE';
+  derogationReason?: string;
+  derogationApprovedById?: string;
+  derogationApprovedByName?: string;
+  matchedAt: string;
+  matchedById: string;
+  matchedByName: string;
+  notes?: string;
 }
 
 export interface StoredFinancialConfig {
@@ -1183,6 +1206,7 @@ class ServerStore {
   private cashTransactions: StoredCashTransaction[] = [];
   private customerInvoices: StoredCustomerInvoice[] = [];
   private supplierInvoices: StoredSupplierInvoice[] = [];
+  private invoiceLineMatchings: StoredInvoiceLineMatching[] = [];
   private financialConfig: StoredFinancialConfig = {
     defaultVatRate: 19,
     defaultRetentionRate: 5,
@@ -4190,7 +4214,7 @@ class ServerStore {
 
     const code = data.code || `CPT-${Date.now().toString().slice(-4)}`;
     const newAccount: StoredFinancialAccount = {
-      id: `cpt-${Date.now()}`,
+      id: data.id || `cpt-${Date.now()}`,
       code,
       name: data.name || 'Nouveau Compte Bancaire / Caisse',
       type: data.type || 'BANQUE_COURANT',
@@ -4236,7 +4260,7 @@ class ServerStore {
     if (amount <= 0) throw new Error('Le montant de la transaction doit être strictement positif');
 
     const type: CashTransactionType = data.type;
-    const txNum = `FLX-${new Date().getFullYear()}-${String(this.cashTransactions.length + 1).padStart(4, '0')}`;
+    const txNum = data.transactionNumber || `FLX-${new Date().getFullYear()}-${String(this.cashTransactions.length + 1).padStart(4, '0')}`;
 
     // Impact sur le solde
     if (type === 'ENCAISSEMENT_CLIENT' || type === 'VIREMENT_INTERNE_RECU' || type === 'LIBERATION_RETENUE_GARANTIE') {
@@ -4251,7 +4275,7 @@ class ServerStore {
     account.updatedAt = new Date().toISOString();
 
     const tx: StoredCashTransaction = {
-      id: `flx-${Date.now()}`,
+      id: data.id || `flx-${Date.now()}`,
       transactionNumber: txNum,
       transactionDate: data.transactionDate || new Date().toISOString().split('T')[0],
       type,
@@ -4367,7 +4391,7 @@ class ServerStore {
   }
 
   createCustomerInvoice(data: any, user?: any): StoredCustomerInvoice {
-    const invNum = data.invoiceNumber || `FAC-${new Date().getFullYear()}-${String(this.customerInvoices.length + 1).padStart(4, '0')}`;
+    const invNum = data.invoiceNumber || `FAC-${new Date().getFullYear()}-${String(this.customerInvoices.length + 1).padStart(4, '0')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
     const amountHT = Number(data.amountHT || 0);
     const vatRate = data.vatRate !== undefined ? Number(data.vatRate) : this.financialConfig.defaultVatRate;
@@ -4523,7 +4547,7 @@ class ServerStore {
     return { invoice, transaction: tx, releasedAmount: releaseAmount };
   }
 
-  // --- FACTURATION FOURNISSEUR & 3-WAY MATCHING (BC vs BR vs Facture) ---
+  // --- FACTURATION FOURNISSEUR & 3-WAY MATCHING (BC vs BR vs Facture LIGNE PAR LIGNE) ---
   getSupplierInvoices(filter?: { supplierId?: string; projectId?: string; status?: string }): StoredSupplierInvoice[] {
     let list = this.supplierInvoices;
     if (filter?.supplierId) list = list.filter(i => i.supplierId === filter.supplierId);
@@ -4536,57 +4560,175 @@ class ServerStore {
     return this.supplierInvoices.find(i => i.id === idOrRef || i.internalReference === idOrRef || i.invoiceNumber === idOrRef);
   }
 
+  getInvoiceLineMatchings(filter?: { supplierInvoiceId?: string; purchaseOrderId?: string; goodsReceiptId?: string; status?: string }): StoredInvoiceLineMatching[] {
+    let list = this.invoiceLineMatchings;
+    if (filter?.supplierInvoiceId) list = list.filter(m => m.supplierInvoiceId === filter.supplierInvoiceId);
+    if (filter?.purchaseOrderId) list = list.filter(m => m.purchaseOrderId === filter.purchaseOrderId);
+    if (filter?.goodsReceiptId) list = list.filter(m => m.goodsReceiptId === filter.goodsReceiptId);
+    if (filter?.status) list = list.filter(m => m.status === filter.status);
+    return list;
+  }
+
   createSupplierInvoice(data: any, user?: any): StoredSupplierInvoice {
-    const internalRef = `FAC-FOU-${new Date().getFullYear()}-${String(this.supplierInvoices.length + 1).padStart(4, '0')}`;
+    const internalRef = `FAC-FOU-${new Date().getFullYear()}-${String(this.supplierInvoices.length + 1).padStart(4, '0')}-${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+    const invoiceId = data.id || `fac-fou-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
-    const po = this.purchaseOrders.find((p: any) => p.id === data.purchaseOrderId || p.orderNumber === data.purchaseOrderCode);
-    const gr = this.goodsReceipts.find(g => g.id === data.goodsReceiptId || g.receiptNumber === data.goodsReceiptCode);
-
+    const po = this.purchaseOrders.find((p: any) => p.id === data.purchaseOrderId || p.orderNumber === data.purchaseOrderCode || p.code === data.purchaseOrderCode);
     const amountHT = Number(data.amountHT || 0);
     const vatRate = data.vatRate !== undefined ? Number(data.vatRate) : this.financialConfig.defaultVatRate;
     const vatAmount = Math.round((amountHT * vatRate) / 100);
     const amountTTC = amountHT + vatAmount;
 
-    // ALGORITHME 3-WAY MATCHING
+    // 1. Identification des réceptions cibles (BRs)
+    let candidateGrs: any[] = [];
+    if (data.goodsReceiptIds && Array.isArray(data.goodsReceiptIds) && data.goodsReceiptIds.length > 0) {
+      candidateGrs = this.goodsReceipts.filter(g => data.goodsReceiptIds.includes(g.id) || data.goodsReceiptIds.includes(g.receiptNumber));
+    } else if (data.goodsReceiptId || data.goodsReceiptCode) {
+      candidateGrs = this.goodsReceipts.filter(g => (data.goodsReceiptId && g.id === data.goodsReceiptId) || (data.goodsReceiptCode && g.receiptNumber === data.goodsReceiptCode));
+    } else if (po) {
+      candidateGrs = this.goodsReceipts.filter(g => g.purchaseOrderId === po.id);
+    }
+
+    const absTolerance = this.financialConfig.priceToleranceAbsoluteDA !== undefined ? this.financialConfig.priceToleranceAbsoluteDA : 100;
+    const relTolerance = this.financialConfig.priceToleranceRelativePct !== undefined ? this.financialConfig.priceToleranceRelativePct : 0.5;
+
     let matchingStatus: SupplierInvoiceMatchingStatus = 'NON_VERIFIE';
     let priceVarianceDA = 0;
     let qtyVariancePct = 0;
     let matchingNotes = '';
+    const generatedMatchings: StoredInvoiceLineMatching[] = [];
 
-    const poAmountHT = po ? (po.totalHT || po.amount || 0) : 0;
-    const grTotalHT = gr ? gr.lines.reduce((acc, l) => acc + ((l.acceptedQuantity || l.deliveredQuantity || 0) * (l.unitPriceHT || 0)), 0) : 0;
-
-    // Tolérance configurable (au lieu de 100 DA en dur)
-    const absTolerance = this.financialConfig.priceToleranceAbsoluteDA !== undefined ? this.financialConfig.priceToleranceAbsoluteDA : 100;
-    const relTolerance = this.financialConfig.priceToleranceRelativePct !== undefined ? this.financialConfig.priceToleranceRelativePct : 0.5;
-
-    // Détection si le BR a déjà été rattaché à une facture validée/approuvée ou payée
-    const existingMatching = this.supplierInvoices.find(
-      i => (i.goodsReceiptId === gr?.id || (i.goodsReceiptIds && gr?.id && i.goodsReceiptIds.includes(gr.id))) &&
-           (i.status === 'APPROUVEE' || i.status === 'PAYEE' || i.status === 'EN_COURS_DE_PAIEMENT' || i.status === 'PARTIELLEMENT_PAYEE') &&
-           (data.invoiceNumber ? i.invoiceNumber !== data.invoiceNumber : true)
-    );
-
-    if (existingMatching) {
-      matchingStatus = 'ECART_QUANTITE';
-      matchingNotes = `Attention : Le Bon de Réception ${gr?.receiptNumber} est déjà rattaché à la facture ${existingMatching.internalReference} (${existingMatching.invoiceNumber})`;
-    } else if (!gr && (!data.goodsReceiptIds || data.goodsReceiptIds.length === 0)) {
+    // 2. Vérification présence de réceptions physiques
+    if (candidateGrs.length === 0) {
       matchingStatus = 'SANS_RECEPTION';
-      matchingNotes = 'Aucun Bon de Réception physique (BR) associé à cette facture';
+      matchingNotes = 'Aucun Bon de Réception physique (BR) associé à cette commande ou référence';
     } else {
-      priceVarianceDA = amountHT - poAmountHT;
-      const variancePct = poAmountHT > 0 ? (Math.abs(priceVarianceDA) / poAmountHT) * 100 : 0;
-      
-      const isPriceWithinTolerance = Math.abs(priceVarianceDA) <= absTolerance || variancePct <= relTolerance;
+      // Analyse ligne par ligne des réceptions disponibles
+      const brLinesWithAvailability: Array<{
+        brId: string;
+        brNumber: string;
+        brLineId: string;
+        poLineId: string;
+        itemId: string;
+        unitPriceExpected: number;
+        receivedQty: number;
+        alreadyMatchedQty: number;
+        availableQty: number;
+      }> = [];
 
-      if (!isPriceWithinTolerance) {
-        matchingStatus = 'ECART_PRIX';
-        matchingNotes = `Écart de prix constaté par rapport au BC (${priceVarianceDA > 0 ? '+' : ''}${priceVarianceDA.toLocaleString()} DA, ${variancePct.toFixed(2)}% > tolérance ${absTolerance} DA / ${relTolerance}%)`;
+      for (const grItem of candidateGrs) {
+        for (const line of grItem.lines || []) {
+          const brLineId = line.id || `${grItem.id}-line-0`;
+          const poLineId = (line as any).purchaseOrderLineId || (po?.lines?.[0]?.id) || 'pol-default';
+          const recQty = Number(line.acceptedQuantity || line.deliveredQuantity || (line as any).quantityReceived || 0);
+
+          // Cumul des quantités déjà rapprochées sur cette ligne de ce BR spécifique par des factures valides
+          const alreadyMatched = this.invoiceLineMatchings
+            .filter(m => m.goodsReceiptId === grItem.id && m.goodsReceiptLineId === brLineId && m.status !== 'ANNULE')
+            .reduce((sum, m) => sum + Number(m.quantityMatched), 0);
+
+          const available = Math.max(0, recQty - alreadyMatched);
+
+          const poLine = (po?.lines || po?.items || []).find((pl: any) => pl.id === poLineId || (line.itemId && pl.itemId === line.itemId));
+          const expectedUnitPrice = poLine ? Number(poLine.unitPrice || 0) : Number(line.unitPriceHT || 0);
+
+          brLinesWithAvailability.push({
+            brId: grItem.id,
+            brNumber: grItem.receiptNumber,
+            brLineId,
+            poLineId,
+            itemId: line.itemId || 'itm-default',
+            unitPriceExpected: expectedUnitPrice,
+            receivedQty: recQty,
+            alreadyMatchedQty: alreadyMatched,
+            availableQty: available,
+          });
+        }
+      }
+
+      const totalAvailableOnGrs = brLinesWithAvailability.reduce((sum, b) => sum + b.availableQty, 0);
+
+      // Quantité demandée sur la facture
+      let invoiceQuantityRequested = Number(data.quantity || 0);
+      if (!invoiceQuantityRequested && data.lines && Array.isArray(data.lines) && data.lines.length > 0) {
+        invoiceQuantityRequested = data.lines.reduce((s: number, l: any) => s + Number(l.quantity || 0), 0);
+      }
+      if (!invoiceQuantityRequested && brLinesWithAvailability.length > 0) {
+        // Si la quantité n'est pas spécifiée, la facture est imputée sur la totalité des réceptions disponibles
+        invoiceQuantityRequested = totalAvailableOnGrs;
+      }
+
+      if (totalAvailableOnGrs <= 0) {
+        matchingStatus = 'ECART_QUANTITE';
+        matchingNotes = `Attention : Les réceptions associées ont déjà été intégralement imputées (Reliquat disponible : 0). Risque de double facturation.`;
+      } else if (invoiceQuantityRequested > totalAvailableOnGrs) {
+        matchingStatus = 'ECART_QUANTITE';
+        qtyVariancePct = totalAvailableOnGrs > 0 ? ((invoiceQuantityRequested - totalAvailableOnGrs) / totalAvailableOnGrs) * 100 : 100;
+        matchingNotes = `Dépassement quantitatif : Quantité facturée (${invoiceQuantityRequested}) supérieure à la quantité réceptionnée disponible (${totalAvailableOnGrs}).`;
       } else {
-        matchingStatus = 'CONFORME_3_WAY';
-        matchingNotes = `3-way matching validé : Bon de commande, Réception physique et Facture concordent (écart ${priceVarianceDA.toLocaleString()} DA dans la tolérance de ${absTolerance} DA)`;
+        // Allocation quantitative ligne par ligne (FIFO sur les disponibilités des réceptions)
+        let remainingToAllocate = invoiceQuantityRequested;
+        let hasPriceError = false;
+        let maxPriceVariance = 0;
+
+        for (const candidate of brLinesWithAvailability) {
+          if (remainingToAllocate <= 0) break;
+          if (candidate.availableQty <= 0) continue;
+
+          const allocQty = Math.min(candidate.availableQty, remainingToAllocate);
+          remainingToAllocate -= allocQty;
+
+          const invoicedUnitPrice = data.unitPrice !== undefined 
+            ? Number(data.unitPrice) 
+            : (invoiceQuantityRequested > 0 ? (amountHT / invoiceQuantityRequested) : candidate.unitPriceExpected);
+
+          const unitPriceDiff = invoicedUnitPrice - candidate.unitPriceExpected;
+          const lineVarianceDA = Math.abs(unitPriceDiff) * allocQty;
+          const variancePct = candidate.unitPriceExpected > 0 ? (Math.abs(unitPriceDiff) / candidate.unitPriceExpected) * 100 : 0;
+
+          if (Math.abs(unitPriceDiff) > absTolerance && variancePct > relTolerance) {
+            hasPriceError = true;
+            maxPriceVariance = Math.max(maxPriceVariance, lineVarianceDA);
+          }
+
+          generatedMatchings.push({
+            id: `mat-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            supplierInvoiceId: invoiceId,
+            purchaseOrderId: po?.id || '',
+            purchaseOrderLineId: candidate.poLineId,
+            goodsReceiptId: candidate.brId,
+            goodsReceiptLineId: candidate.brLineId,
+            quantityMatched: allocQty,
+            unitPriceMatched: invoicedUnitPrice,
+            amountMatchedHT: allocQty * invoicedUnitPrice,
+            priceVarianceDA: lineVarianceDA,
+            status: 'CONFORME',
+            matchedAt: new Date().toISOString(),
+            matchedById: user?.id || 'usr-fin-001',
+            matchedByName: user?.name || 'Responsable Financier SILEX',
+          });
+        }
+
+        if (hasPriceError) {
+          matchingStatus = 'ECART_PRIX';
+          priceVarianceDA = maxPriceVariance;
+          matchingNotes = `Écart de prix unitaire constaté par rapport au bon de commande (${priceVarianceDA.toLocaleString()} DA > tolérance ${absTolerance} DA / ${relTolerance}%)`;
+          generatedMatchings.forEach(m => m.status = 'EN_ATTENTE');
+        } else {
+          matchingStatus = 'CONFORME_3_WAY';
+          matchingNotes = `3-way matching validé ligne par ligne : ${invoiceQuantityRequested} unités rapprochées sans écart significatif.`;
+        }
       }
     }
+
+    // Calcul du cumul facturé et du reliquat restant sur le bon de commande
+    const allPoMatchings = this.invoiceLineMatchings.filter(m => m.purchaseOrderId === po?.id && m.status !== 'ANNULE');
+    const existingInvoicedQty = allPoMatchings.reduce((sum, m) => sum + m.quantityMatched, 0);
+    const newMatchedQty = matchingStatus === 'CONFORME_3_WAY' ? generatedMatchings.reduce((sum, m) => sum + m.quantityMatched, 0) : 0;
+    const invoicedQuantityTotal = existingInvoicedQty + newMatchedQty;
+
+    const poTotalOrderedQty = po ? (po.lines || po.items || []).reduce((sum: number, l: any) => sum + Number(l.quantity || 0), 0) : 0;
+    const remainingQuantityToInvoice = Math.max(0, poTotalOrderedQty - invoicedQuantityTotal);
 
     // Seuil d'approbation SoD
     let approvalThresholdStatus: 'AUTO_APPROVED' | 'PENDING_PM' | 'PENDING_DG' | 'APPROVED' = 'AUTO_APPROVED';
@@ -4597,15 +4739,16 @@ class ServerStore {
     }
 
     const newInvoice: StoredSupplierInvoice = {
-      id: `fac-fou-${Date.now()}`,
+      id: invoiceId,
       internalReference: internalRef,
       invoiceNumber: data.invoiceNumber || `FOU-${Date.now().toString().slice(-4)}`,
       supplierId: data.supplierId || po?.supplierId || 'sup-001',
       supplierName: data.supplierName || po?.supplierName || 'Fournisseur',
       purchaseOrderId: po?.id || data.purchaseOrderId || '',
-      purchaseOrderCode: po?.orderNumber || data.purchaseOrderCode || '',
-      goodsReceiptId: gr?.id || data.goodsReceiptId,
-      goodsReceiptCode: gr?.receiptNumber || data.goodsReceiptCode,
+      purchaseOrderCode: po?.orderNumber || po?.code || data.purchaseOrderCode || '',
+      goodsReceiptId: candidateGrs[0]?.id || data.goodsReceiptId,
+      goodsReceiptCode: candidateGrs[0]?.receiptNumber || data.goodsReceiptCode,
+      goodsReceiptIds: candidateGrs.map(g => g.id),
       projectId: po?.projectId || data.projectId,
       projectCode: po?.projectCode || data.projectCode,
       invoiceDate: data.invoiceDate || new Date().toISOString().split('T')[0],
@@ -4616,10 +4759,12 @@ class ServerStore {
       amountTTC,
       paidAmount: 0,
       remainingAmount: amountTTC,
+      invoicedQuantityTotal,
+      remainingQuantityToInvoice,
       matchingStatus,
       matchingDetails: {
-        poAmountHT,
-        grTotalHT,
+        poAmountHT: po ? (po.totalHT || po.amount || 0) : 0,
+        grTotalHT: candidateGrs.reduce((acc, g) => acc + (g.lines || []).reduce((sa: number, l: any) => sa + ((l.acceptedQuantity || l.deliveredQuantity || l.quantityReceived || 0) * (l.unitPriceHT || 0)), 0), 0),
         priceVarianceDA,
         qtyVariancePct,
         notes: matchingNotes,
@@ -4629,19 +4774,95 @@ class ServerStore {
       paymentTerms: data.paymentTerms || '30 jours date de facture',
       notes: data.notes || '',
       isDemoInvoice: data.isDemoInvoice !== undefined ? Boolean(data.isDemoInvoice) : false,
+      lineMatchings: generatedMatchings,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
     this.supplierInvoices.unshift(newInvoice);
 
-    // Mettre à jour le statut du BC si nécessaire
-    if (po && newInvoice.status === 'APPROUVEE') {
+    // Enregistrer les matchings si conformes
+    if (matchingStatus === 'CONFORME_3_WAY') {
+      this.invoiceLineMatchings.push(...generatedMatchings);
+    }
+
+    if (po && newInvoice.status === 'APPROUVEE' && remainingQuantityToInvoice === 0) {
       po.invoiceStatus = 'FACTURE';
     }
 
     this.addAuditLog('CREATE_SUPPLIER_INVOICE', 'FINANCE', newInvoice.internalReference, `Enregistrement facture fournisseur ${newInvoice.internalReference} (${matchingStatus})`, user);
     return newInvoice;
+  }
+
+  cancelSupplierInvoice(idOrRef: string, reason: string, user?: any): StoredSupplierInvoice {
+    const inv = this.getSupplierInvoice(idOrRef);
+    if (!inv) throw new Error('Facture fournisseur introuvable');
+    inv.status = 'REJETEE';
+    inv.notes = (inv.notes ? inv.notes + ' | ' : '') + `Annulée/Rejetée: ${reason}`;
+
+    // Libérer les lignes de réception rapprochées en annulant leurs matchings
+    this.invoiceLineMatchings
+      .filter(m => m.supplierInvoiceId === inv.id)
+      .forEach(m => {
+        m.status = 'ANNULE';
+        m.notes = `Rapprochement annulé: ${reason}`;
+      });
+
+    this.addAuditLog('CANCEL_SUPPLIER_INVOICE', 'FINANCE', inv.internalReference, `Annulation facture fournisseur: ${reason}`, user);
+    return inv;
+  }
+
+  approveSupplierInvoiceWithDerogation(idOrRef: string, derogationReason: string, user: any): StoredSupplierInvoice {
+    const inv = this.getSupplierInvoice(idOrRef);
+    if (!inv) throw new Error('Facture fournisseur introuvable');
+    inv.status = 'APPROUVEE';
+    inv.approvalThresholdStatus = 'APPROVED';
+    inv.notes = (inv.notes ? inv.notes + ' | ' : '') + `Approuvée sous dérogation: ${derogationReason}`;
+
+    // Mettre à jour les matchings en statut DEROGATION
+    if (inv.lineMatchings && inv.lineMatchings.length > 0) {
+      for (const m of inv.lineMatchings) {
+        m.status = 'DEROGATION';
+        m.derogationReason = derogationReason;
+        m.derogationApprovedById = user?.id || 'usr-dg-001';
+        m.derogationApprovedByName = user?.name || 'Direction Générale';
+        
+        // Si le matching n'était pas encore enregistré dans la liste principale, on l'ajoute
+        if (!this.invoiceLineMatchings.some(ex => ex.id === m.id)) {
+          this.invoiceLineMatchings.push(m);
+        }
+      }
+    }
+
+    this.addAuditLog('APPROVE_DEROGATION', 'FINANCE', inv.internalReference, `Approbation sous dérogation: ${derogationReason}`, user);
+    return inv;
+  }
+
+  // --- MÉTHODES DE ROLLBACK DE SÉCURITÉ EN CAS D'ÉCHEC POSTGRESQL ---
+  rollbackFinancialAccount(id: string) {
+    this.financialAccounts = this.financialAccounts.filter(a => a.id !== id);
+  }
+
+  rollbackCashTransaction(id: string) {
+    const tx = this.cashTransactions.find(t => t.id === id);
+    if (tx) {
+      // Annuler l'impact sur le solde
+      const acc = this.getFinancialAccount(tx.accountId);
+      if (acc) {
+        if (tx.type.includes('ENCAISSEMENT')) acc.currentBalance -= tx.amount;
+        if (tx.type.includes('DECAISSEMENT')) acc.currentBalance += tx.amount;
+      }
+      this.cashTransactions = this.cashTransactions.filter(t => t.id !== id);
+    }
+  }
+
+  rollbackCustomerInvoice(id: string) {
+    this.customerInvoices = this.customerInvoices.filter(i => i.id !== id);
+  }
+
+  rollbackSupplierInvoice(id: string) {
+    this.supplierInvoices = this.supplierInvoices.filter(i => i.id !== id);
+    this.invoiceLineMatchings = this.invoiceLineMatchings.filter(m => m.supplierInvoiceId !== id);
   }
 
   recordSupplierPayment(invoiceId: string, data: { amount: number; accountId: string; referenceDocument?: string; paymentDate?: string; notes?: string; idempotencyKey?: string }, user?: any) {
