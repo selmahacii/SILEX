@@ -1,86 +1,254 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import Link from 'next/link';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
-import { formatCurrencyDA, COMPANY_NAME, SystemRole } from '@silex/shared';
+import { formatCurrencyDA, SystemRole } from '@silex/shared';
 import {
   Coins,
-  TrendingUp,
-  AlertCircle,
-  PieChart,
-  FileSpreadsheet,
-  Search,
-  Filter,
-  ChevronRight,
-  Building,
-  DollarSign,
-  ArrowUpRight,
-  Download,
-  X,
-  FileText,
-  Calculator,
   ShieldCheck,
   CheckCircle2,
   Clock,
   ShieldAlert,
+  X,
   Plus,
+  Download,
   ExternalLink,
+  ChevronRight,
+  Calculator,
+  TrendingUp,
+  Info,
 } from 'lucide-react';
 
-export default function FinancePage() {
-  const { activeRole, currentProfile } = useAuth();
+import { FinanceHeader, FinanceTab } from '@/components/finance/finance-header';
+import { ExecutiveKpis } from '@/components/finance/executive-kpis';
+import { AccountsSummaryWidget, FinancialAccountSummary } from '@/components/finance/accounts-summary-widget';
+import { FinancialAlertsWidget, FinancialAlertItem } from '@/components/finance/financial-alerts-widget';
+import { RecentTransactionsWidget, CashTransactionItem } from '@/components/finance/recent-transactions-widget';
+import { ProjectsMarginSummary, ProjectProfitabilitySummary } from '@/components/finance/projects-margin-summary';
+
+export default function FinanceDashboardPage() {
+  const { activeRole } = useAuth();
+
   const canManageFinances =
     activeRole === SystemRole.RESPONSABLE_FINANCIER ||
     activeRole === SystemRole.DIRECTEUR_GENERAL ||
     activeRole === SystemRole.ADMINISTRATEUR;
 
-  const [financeData, setFinanceData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  // Navigation tab state
+  const [activeTab, setActiveTab] = useState<FinanceTab>('dashboard');
+  const [includeDemo, setIncludeDemo] = useState<boolean>(true);
+
+  // Data states
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchProject, setSearchProject] = useState('');
-  const [marginFilter, setMarginFilter] = useState<'ALL' | 'HIGH' | 'LOW'>('ALL');
-  const [selectedProjectForDecompte, setSelectedProjectForDecompte] = useState<any | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
 
-  // Modale Encaissement Client (Virement BEA / Acompte)
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [payProjectId, setPayProjectId] = useState('');
-  const [payAmount, setPayAmount] = useState<number>(0);
-  const [payReference, setPayReference] = useState('');
-  const [payBank, setPayBank] = useState('');
-  const [payDate, setPayDate] = useState(new Date().toISOString().split('T')[0]);
-  const [payNotes, setPayNotes] = useState('');
+  const [financeOverview, setFinanceOverview] = useState<any>(null);
+  const [accounts, setAccounts] = useState<FinancialAccountSummary[]>([]);
+  const [transactions, setTransactions] = useState<CashTransactionItem[]>([]);
+  const [customerInvoices, setCustomerInvoices] = useState<any[]>([]);
+  const [supplierInvoices, setSupplierInvoices] = useState<any[]>([]);
+  const [agedTrialBalance, setAgedTrialBalance] = useState<any>(null);
 
-  // Modale Restitution Retenue de Garantie (5%)
-  const [showWarrantyModal, setShowWarrantyModal] = useState(false);
-  const [warrantyProjectId, setWarrantyProjectId] = useState('');
-  const [warrantyReference, setWarrantyReference] = useState('');
-  const [warrantyDate, setWarrantyDate] = useState(new Date().toISOString().split('T')[0]);
-  const [warrantyNotes, setWarrantyNotes] = useState('');
+  // Modals state
+  const [selectedProjectForDecompte, setSelectedProjectForDecompte] = useState<any | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
+  const [payProjectId, setPayProjectId] = useState<string>('');
+  const [payAmount, setPayAmount] = useState<number>(0);
+  const [payReference, setPayReference] = useState<string>('');
+  const [payBank, setPayBank] = useState<string>('');
+  const [payDate, setPayDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [payNotes, setPayNotes] = useState<string>('');
+
+  const [showWarrantyModal, setShowWarrantyModal] = useState<boolean>(false);
+  const [warrantyProjectId, setWarrantyProjectId] = useState<string>('');
+  const [warrantyReference, setWarrantyReference] = useState<string>('');
+  const [warrantyDate, setWarrantyDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [warrantyNotes, setWarrantyNotes] = useState<string>('');
+
+  // Primary data loader
+  const loadDashboardData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const [overviewRes, accountsRes, txsRes, custInvRes, suppInvRes, atbRes] = await Promise.all([
+        api.get<any>(`/finance/overview?includeDemo=${includeDemo}`).catch(e => {
+          console.warn('[Finance Dashboard] overview fallback:', e.message);
+          return null;
+        }),
+        api.get<any[]>(`/finance/accounts?includeDemo=${includeDemo}`).catch(e => {
+          console.warn('[Finance Dashboard] accounts fallback:', e.message);
+          return [];
+        }),
+        api.get<any[]>('/finance/transactions').catch(e => {
+          console.warn('[Finance Dashboard] transactions fallback:', e.message);
+          return [];
+        }),
+        api.get<any[]>('/finance/customer-invoices').catch(e => {
+          console.warn('[Finance Dashboard] customer invoices fallback:', e.message);
+          return [];
+        }),
+        api.get<any[]>('/finance/supplier-invoices').catch(e => {
+          console.warn('[Finance Dashboard] supplier invoices fallback:', e.message);
+          return [];
+        }),
+        api.get<any>('/finance/aged-trial-balance').catch(e => {
+          console.warn('[Finance Dashboard] aged trial balance fallback:', e.message);
+          return null;
+        }),
+      ]);
+
+      setFinanceOverview(overviewRes);
+      setAccounts(Array.isArray(accountsRes) ? accountsRes : []);
+      setTransactions(Array.isArray(txsRes) ? txsRes : []);
+      setCustomerInvoices(Array.isArray(custInvRes) ? custInvRes : []);
+      setSupplierInvoices(Array.isArray(suppInvRes) ? suppInvRes : []);
+      setAgedTrialBalance(atbRes);
+
+      if (overviewRes?.projects?.length > 0) {
+        if (!payProjectId) setPayProjectId(overviewRes.projects[0].id);
+        if (!warrantyProjectId) setWarrantyProjectId(overviewRes.projects[0].id);
+      }
+    } catch (err: any) {
+      console.error('Erreur chargement finance dashboard:', err);
+      setError(err?.message || 'Erreur lors de la récupération des données financières.');
+    } finally {
+      setLoading(false);
+    }
+  }, [includeDemo, payProjectId, warrantyProjectId]);
 
   useEffect(() => {
-    async function loadFinance() {
-      try {
-        setLoading(true);
-        setError(null);
-        const data = await api.get<any>('/finance/overview');
-        setFinanceData(data);
-        if (data?.projects?.length > 0) {
-          if (!payProjectId) setPayProjectId(data.projects[0].id);
-          if (!warrantyProjectId) setWarrantyProjectId(data.projects[0].id);
-        }
-      } catch (err: any) {
-        console.error('Erreur chargement finance:', err);
-        setError(err?.message || 'Erreur lors du chargement des données financières');
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadFinance();
-  }, [activeRole]);
+    loadDashboardData();
+  }, [loadDashboardData, activeRole]);
 
+  // Calculated Top KPIs
+  const kpisData = useMemo(() => {
+    // Treasury
+    const totalTreasury = accounts.reduce((acc, a) => acc + Number(a.currentBalance || 0), 0);
+    const bankTreasury = accounts
+      .filter(a => a.type?.startsWith('BANQUE'))
+      .reduce((acc, a) => acc + Number(a.currentBalance || 0), 0);
+    const cashTreasury = accounts
+      .filter(a => a.type?.startsWith('CAISSE'))
+      .reduce((acc, a) => acc + Number(a.currentBalance || 0), 0);
+
+    // Customer Debts (Receivables)
+    const customerDebts = customerInvoices.reduce((acc, inv) => acc + Number(inv.remainingAmount ?? (inv.netReceivableAmount - (inv.paidAmount || 0))), 0);
+    const now = new Date();
+    const customerOverdue = customerInvoices
+      .filter(inv => inv.dueDate && new Date(inv.dueDate) < now && (inv.remainingAmount ?? 1) > 0)
+      .reduce((acc, inv) => acc + Number(inv.remainingAmount || 0), 0);
+
+    // Supplier Debts
+    const supplierDebts = supplierInvoices.reduce((acc, inv) => acc + Number(inv.remainingAmount ?? (inv.amountTTC - (inv.paidAmount || 0))), 0);
+    const supplierPendingCount = supplierInvoices.filter(inv => inv.status === 'A_APPROUVER' || inv.status === 'A_VERIFIER').length;
+    const supplierDiscrepancyCount = supplierInvoices.filter(inv => inv.matchingStatus === 'ECART_PRIX' || inv.matchingStatus === 'ECART_QUANTITE').length;
+
+    // Warranty retention
+    const warrantyHeld = customerInvoices.reduce((acc, inv) => acc + Number(inv.warrantyHeldAmount || inv.retentionAmount || 0), 0);
+
+    // BFR
+    const bfrDA = agedTrialBalance?.workingCapitalRequirement?.bfrDA !== undefined
+      ? Number(agedTrialBalance.workingCapitalRequirement.bfrDA)
+      : customerDebts - supplierDebts;
+
+    return {
+      totalTreasury,
+      bankTreasury,
+      cashTreasury,
+      customerDebts,
+      customerOverdue,
+      customerCount: customerInvoices.length,
+      supplierDebts,
+      supplierPendingCount,
+      supplierDiscrepancyCount,
+      warrantyHeld: warrantyHeld || Number(financeOverview?.totals?.warrantyHeld || 0),
+      bfrDA,
+      bfrStatus: agedTrialBalance?.workingCapitalRequirement?.status || (bfrDA <= 0 ? 'RESSOURCE_NETTE' : 'BESOIN_NET'),
+    };
+  }, [accounts, customerInvoices, supplierInvoices, agedTrialBalance, financeOverview]);
+
+  // Operational Alerts
+  const operationalAlerts = useMemo<FinancialAlertItem[]>(() => {
+    const list: FinancialAlertItem[] = [];
+
+    // 1. Supplier discrepancies
+    const discrepancyInvoices = supplierInvoices.filter(
+      inv => inv.matchingStatus === 'ECART_PRIX' || inv.matchingStatus === 'ECART_QUANTITE'
+    );
+    discrepancyInvoices.forEach(inv => {
+      list.push({
+        id: `alert-supp-${inv.id}`,
+        type: 'MATCHING_DISCREPANCY',
+        severity: 'WARNING',
+        title: `Écart de Rapprochement 3-Way (${inv.matchingStatus === 'ECART_PRIX' ? 'Prix' : 'Quantité'})`,
+        description: `Facture fournisseur ${inv.supplierName || 'Fournisseur'} en attente de dérogation ou d'avoir.`,
+        amount: Number(inv.amountHT || inv.amountTTC || 0),
+        reference: inv.invoiceNumber || inv.internalReference,
+      });
+    });
+
+    // 2. Overdue customer invoices
+    const overdueCust = customerInvoices.filter(
+      inv => inv.dueDate && new Date(inv.dueDate) < new Date() && (inv.remainingAmount ?? 1) > 0
+    );
+    overdueCust.forEach(inv => {
+      list.push({
+        id: `alert-cust-${inv.id}`,
+        type: 'OVERDUE_INVOICE',
+        severity: 'CRITICAL',
+        title: 'Échéance Client Dépassée (> 30j)',
+        description: `Facture client ${inv.clientName || 'Client'} non soldée. Recouvrement requis.`,
+        amount: Number(inv.remainingAmount || 0),
+        reference: inv.invoiceNumber,
+        dueDate: inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('fr-DZ') : undefined,
+      });
+    });
+
+    // 3. High value invoice requiring DG validation (> 500,000 DA)
+    const highValueInvoices = supplierInvoices.filter(
+      inv => inv.status === 'A_APPROUVER' && Number(inv.amountHT || 0) > 500000
+    );
+    highValueInvoices.forEach(inv => {
+      list.push({
+        id: `alert-dg-${inv.id}`,
+        type: 'DG_APPROVAL_REQUIRED',
+        severity: 'INFO',
+        title: 'Validation Direction Générale Requise (Seuil SoD > 500k DA)',
+        description: `Engagement fournisseur supérieur au plafond opérationnel pour ${inv.supplierName || 'Marché'}.`,
+        amount: Number(inv.amountHT || 0),
+        reference: inv.invoiceNumber || inv.internalReference,
+      });
+    });
+
+    return list;
+  }, [supplierInvoices, customerInvoices]);
+
+  // Analytical projects summary
+  const projectsSummary = useMemo<ProjectProfitabilitySummary[]>(() => {
+    if (!financeOverview?.projects || !Array.isArray(financeOverview.projects)) {
+      return [];
+    }
+    return financeOverview.projects.map((p: any) => ({
+      id: p.id,
+      code: p.code,
+      name: p.name,
+      clientName: p.clientName,
+      contractAmount: Number(p.contractAmount || 0),
+      budgetAmount: Number(p.budgetAmount || 0),
+      committedCost: Number(p.committedCost || 0),
+      actualCost: Number(p.actualCost || 0),
+      billedAmount: Number(p.billedAmount || 0),
+      paidAmount: Number(p.paidAmount || 0),
+      marginDA: Math.max(0, Number(p.contractAmount || 0) - Number(p.actualCost || 0)),
+      marginRate: p.marginRate || '0.0',
+      status: p.status || 'IN_PROGRESS',
+    }));
+  }, [financeOverview]);
+
+  // Handlers for payments and warranty release
   const handleSavePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!payProjectId) return;
@@ -96,8 +264,7 @@ export default function FinancePage() {
       setShowPaymentModal(false);
       setNotification(`Encaissement de ${formatCurrencyDA(payAmount, false)} consigné avec succès (Réf: ${payReference}) ! Trésorerie réactualisée.`);
       setTimeout(() => setNotification(null), 5000);
-      const data = await api.get<any>('/finance/overview');
-      setFinanceData(data);
+      loadDashboardData();
     } catch (err: any) {
       alert(err.message || 'Erreur enregistrement encaissement');
     }
@@ -117,28 +284,14 @@ export default function FinancePage() {
       const releasedAmt = res?.releasedAmount ? ` (${formatCurrencyDA(res.releasedAmount, false)})` : '';
       setNotification(`Retenue de garantie (5%) débloquée avec succès${releasedAmt} suite au PV de réception définitive !`);
       setTimeout(() => setNotification(null), 5000);
-      const data = await api.get<any>('/finance/overview');
-      setFinanceData(data);
+      loadDashboardData();
     } catch (err: any) {
       alert(err.message || 'Erreur déblocage retenue de garantie');
     }
   };
 
-  const filteredProjects = financeData?.projects?.filter((p: any) => {
-    const matchesSearch =
-      p.code?.toLowerCase().includes(searchProject.toLowerCase()) ||
-      p.name?.toLowerCase().includes(searchProject.toLowerCase()) ||
-      p.clientName?.toLowerCase().includes(searchProject.toLowerCase());
-    const margin = Number(p.marginRate || 0);
-    const matchesMargin =
-      marginFilter === 'ALL' ||
-      (marginFilter === 'HIGH' && margin >= 20) ||
-      (marginFilter === 'LOW' && margin < 20);
-    return matchesSearch && matchesMargin;
-  }) || [];
-
   const handleExportProjectDecompte = (p: any) => {
-    const headers = ['Code', 'Marche', 'Client', 'Montant Contractuel HT (DA)', 'Budget Alloue (DA)', 'Engagements BC (DA)', 'Cout Reel (DA)', 'Marge (DA)', 'Taux Marge (%)'];
+    const headers = ['Code', 'Marché', 'Client', 'Montant Contractuel HT (DA)', 'Budget Alloué (DA)', 'Engagements BC (DA)', 'Coût Réel (DA)', 'Marge (DA)', 'Taux Marge (%)'];
     const marginDA = Math.max(0, Number(p.contractAmount) - Number(p.actualCost));
     const row = [
       p.code,
@@ -162,10 +315,10 @@ export default function FinancePage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Toast Notification */}
       {notification && (
-        <div className="p-3.5 bg-blue-50 border border-blue-200 text-[#07164D] rounded-lg text-xs flex items-center justify-between shadow-xs animate-in fade-in duration-200">
+        <div className="p-3 bg-blue-50 border border-blue-200 text-[#07164D] rounded-lg text-xs flex items-center justify-between shadow-xs">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-[#0B207D]" />
             <span className="font-semibold">{notification}</span>
@@ -176,393 +329,133 @@ export default function FinancePage() {
         </div>
       )}
 
-      {/* Title & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-bold text-[#07164D] flex items-center gap-2">
-            <Coins className="w-5 h-5 text-[#0B207D]" />
-            Finance & Contrôle des Engagements Chantiers — {COMPANY_NAME}
-          </h1>
-          <p className="text-xs text-[#697789] mt-0.5">
-            Pilotage budgétaire, rentabilité analytique par marché industriel et décomptes métrés clients dans le respect QCD.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {canManageFinances && (
-            <>
-              <button
-                onClick={() => setShowPaymentModal(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-[#0B207D] text-white rounded-lg hover:bg-[#07164D] transition-colors shadow-xs cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Enregistrer Encaissement Client
-              </button>
-              <button
-                onClick={() => setShowWarrantyModal(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold bg-white border border-amber-600 text-amber-800 rounded-lg hover:bg-amber-50 transition-colors shadow-2xs cursor-pointer"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-                Restitution Retenue (5%)
-              </button>
-            </>
-          )}
-          {activeRole === SystemRole.RESPONSABLE_PROJET && (
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-xs text-[#0B207D] font-semibold">
-              <ShieldCheck className="w-4 h-4 text-[#0B207D]" />
-              <span>Vue Chef de Projets</span>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Header and Sub-Tabs */}
+      <FinanceHeader
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setActiveTab(tab);
+          if (tab !== 'dashboard') {
+            setNotification(`L'espace "${tab}" fait partie des sous-phases 6C.2 à 6C.5 en cours de déploiement.`);
+            setTimeout(() => setNotification(null), 4000);
+          }
+        }}
+        activeRole={activeRole}
+        includeDemo={includeDemo}
+        onToggleIncludeDemo={() => setIncludeDemo(prev => !prev)}
+        onRefresh={loadDashboardData}
+        isLoading={loading}
+      />
 
+      {/* RBAC Error / Warning banner */}
       {error && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 flex items-start gap-3 shadow-xs">
+        <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 flex items-start gap-3 shadow-2xs">
           <ShieldAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <div className="font-bold text-sm">Contrôle d'accès RBAC — Habilitation requise</div>
-            <div className="text-xs text-amber-800 mt-1">{error}</div>
-            <div className="text-[11px] text-amber-700 mt-2">
-              Pour accéder aux données financières globales, veuillez utiliser le sélecteur de rôle en haut à droite pour basculer vers le profil <strong>Directeur Financier</strong>, <strong>Directeur Général</strong> ou <strong>Chef de Projets</strong>.
+            <div className="font-bold text-xs uppercase tracking-wider">Accès ou Chargement Restreint</div>
+            <div className="text-xs text-amber-800 mt-0.5">{error}</div>
+            <div className="text-[11px] text-amber-700 mt-1">
+              Les habilitations financières sont réservées aux rôles <strong>Directeur Général</strong>, <strong>Responsable Financier</strong> et <strong>Administrateur</strong>.
             </div>
           </div>
         </div>
       )}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-[#E1E6ED] shadow-2xs">
-          <div className="text-xs font-medium text-[#697789]">Total Marchés Contractuels</div>
-          <div className="text-lg font-black text-[#07164D] mt-1">
-            {formatCurrencyDA(financeData?.totals?.contractAmount, false)}
+      {/* Action Bar for DG / DAF */}
+      {canManageFinances && (
+        <div className="flex items-center justify-between bg-slate-50 border border-slate-200/80 rounded-lg px-4 py-2 text-xs">
+          <div className="flex items-center gap-2 text-slate-600">
+            <Info className="w-3.5 h-3.5 text-[#0B207D]" />
+            <span>Opérations de trésorerie rapides :</span>
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">Engagements clients fermes</div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-[#E1E6ED] shadow-2xs">
-          <div className="text-xs font-medium text-[#697789]">Budgets Prévus Alloués</div>
-          <div className="text-lg font-bold text-slate-800 mt-1">
-            {formatCurrencyDA(financeData?.totals?.budgetAmount, false)}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">Enveloppe opérationnelle chantiers</div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-[#E1E6ED] shadow-2xs">
-          <div className="text-xs font-medium text-[#697789]">Engagements Bons de Commande</div>
-          <div className="text-lg font-bold text-[#0B207D] mt-1">
-            {formatCurrencyDA(financeData?.totals?.committedCost, false)}
-          </div>
-          <div className="text-[11px] text-slate-500 mt-1">Dépenses contractées fermes</div>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-[#E1E6ED] shadow-2xs">
-          <div className="text-xs font-medium text-[#697789]">Marge Globale Prévisionnelle</div>
-          <div className="text-lg font-bold text-emerald-700 mt-1">
-            +{financeData?.totals?.globalMarginRate ?? '0.0'}%
-          </div>
-          <div className="text-[11px] text-emerald-600 font-semibold mt-1">Conforme aux objectifs 2026</div>
-        </div>
-      </div>
-
-      {/* Detailed analytical table by project */}
-      <div className="bg-white rounded-xl border border-[#E1E6ED] shadow-2xs overflow-hidden flex flex-col">
-        <div className="p-3.5 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3 bg-slate-50/50">
           <div className="flex items-center gap-2">
-            <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider">
-              Rentabilité Analytique par Marché Industriel ({filteredProjects.length})
-            </h2>
-            <span className="text-[11px] text-slate-500">Dinar Algérien (DA)</span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
-              <input
-                type="text"
-                placeholder="Filtrer marché, client..."
-                value={searchProject}
-                onChange={e => setSearchProject(e.target.value)}
-                className="pl-8 pr-3 py-1 text-xs rounded border border-slate-200 focus:outline-none focus:border-[#0B207D]"
-              />
-            </div>
-
-            <select
-              value={marginFilter}
-              onChange={e => setMarginFilter(e.target.value as any)}
-              className="px-2 py-1 text-xs rounded border border-slate-200 bg-white text-slate-700"
+            <button
+              onClick={() => setShowPaymentModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#0B207D] text-white rounded hover:bg-[#07164D] transition-colors font-semibold cursor-pointer shadow-2xs"
             >
-              <option value="ALL">Toutes les marges</option>
-              <option value="HIGH">Marge ≥ 20%</option>
-              <option value="LOW">Marge &lt; 20%</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 text-[#697789] text-[11px] uppercase tracking-wider">
-              <tr>
-                <th className="py-2.5 px-3">Code</th>
-                <th className="py-2.5 px-3">Marché / Client</th>
-                <th className="py-2.5 px-3 text-right">Montant Marché HT</th>
-                <th className="py-2.5 px-3 text-right">Budget Alloué</th>
-                <th className="py-2.5 px-3 text-right">Coûts Engagés (BC)</th>
-                <th className="py-2.5 px-3 text-right">Coûts Réels Consommés</th>
-                <th className="py-2.5 px-3 text-center">Taux de Marge</th>
-                <th className="py-2.5 px-3 text-right">Actions Détaillées</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {(Array.isArray(filteredProjects) ? filteredProjects : []).map((p: any) => {
-                const margin = Number(p.marginRate || 0);
-                return (
-                  <tr key={p.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="py-3 px-3 font-mono font-bold text-[#0B207D] whitespace-nowrap">
-                      <Link
-                        href={`/projects/${p.code}`}
-                        className="hover:underline inline-flex items-center gap-1 group"
-                        title={`Ouvrir le chantier ${p.code}`}
-                      >
-                        {p.code}
-                        <ExternalLink className="w-2.5 h-2.5 text-blue-500 opacity-60 group-hover:opacity-100" />
-                      </Link>
-                    </td>
-                    <td className="py-3 px-3">
-                      <div className="font-semibold text-slate-800 line-clamp-1">{p.name}</div>
-                      <div className="text-[10px] text-slate-500">{p.clientName}</div>
-                    </td>
-                    <td className="py-3 px-3 text-right font-bold text-slate-900 whitespace-nowrap">
-                      {formatCurrencyDA(p.contractAmount, false)}
-                    </td>
-                    <td className="py-3 px-3 text-right text-slate-600 whitespace-nowrap">
-                      {formatCurrencyDA(p.budgetAmount, false)}
-                    </td>
-                    <td className="py-3 px-3 text-right font-medium text-slate-800 whitespace-nowrap">
-                      {formatCurrencyDA(p.committedCost, false)}
-                    </td>
-                    <td className="py-3 px-3 text-right font-bold text-[#0B207D] whitespace-nowrap">
-                      {formatCurrencyDA(p.actualCost, false)}
-                    </td>
-                    <td className="py-3 px-3 text-center whitespace-nowrap">
-                      <span
-                        className={`font-bold px-2 py-0.5 rounded text-[11px] ${
-                          margin >= 20
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                            : margin >= 10
-                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                            : 'bg-red-100 text-red-800 border border-red-200'
-                        }`}
-                      >
-                        +{margin}%
-                      </span>
-                    </td>
-                    <td className="py-3 px-3 text-right whitespace-nowrap space-x-1.5">
-                      <button
-                        onClick={() => setSelectedProjectForDecompte(p)}
-                        className="px-2.5 py-1 bg-white border border-[#0B207D] text-[#0B207D] hover:bg-blue-50 rounded text-[11px] font-semibold transition-colors cursor-pointer"
-                        title="Consulter le décompte métré et l'analyse de rentabilité"
-                      >
-                        Décompte Métré
-                      </button>
-                      <Link
-                        href={`/projects/${p.code}`}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-[#07164D] hover:text-white text-slate-700 rounded text-[11px] font-semibold transition-colors"
-                      >
-                        <span>Dossier</span>
-                        <ChevronRight className="w-3 h-3" />
-                      </Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* MODAL : DÉCOMPTE MÉTRÉ & ANALYSE FINANCIÈRE APPROFONDIE CHANTIER */}
-      {/* ========================================================================= */}
-      {selectedProjectForDecompte && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
-          <div className="bg-white rounded-xl max-w-2xl w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs font-bold text-[#0B207D] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                    {selectedProjectForDecompte.code}
-                  </span>
-                  <h3 className="text-sm font-bold text-[#07164D]">
-                    Décompte Métré & Rentabilité Analytique
-                  </h3>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Marché : {selectedProjectForDecompte.name} — Client : {selectedProjectForDecompte.clientName}
-                </p>
-              </div>
-              <button
-                onClick={() => setSelectedProjectForDecompte(null)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Grille des Métriques Financières Consolidées */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <span className="text-[10px] text-slate-500 uppercase font-semibold block">Montant Marché HT</span>
-                <span className="font-extrabold text-slate-900 block mt-1">
-                  {formatCurrencyDA(selectedProjectForDecompte.contractAmount, false)}
-                </span>
-              </div>
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-                <span className="text-[10px] text-slate-500 uppercase font-semibold block">Budget Alloué</span>
-                <span className="font-bold text-slate-800 block mt-1">
-                  {formatCurrencyDA(selectedProjectForDecompte.budgetAmount, false)}
-                </span>
-              </div>
-              <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-200">
-                <span className="text-[10px] text-blue-700 uppercase font-semibold block">Engagé (Commandes)</span>
-                <span className="font-bold text-[#0B207D] block mt-1">
-                  {formatCurrencyDA(selectedProjectForDecompte.committedCost, false)}
-                </span>
-              </div>
-              <div className="p-3 bg-emerald-50/50 rounded-lg border border-emerald-200">
-                <span className="text-[10px] text-emerald-700 uppercase font-semibold block">Coût Réel Consommé</span>
-                <span className="font-extrabold text-emerald-800 block mt-1">
-                  {formatCurrencyDA(selectedProjectForDecompte.actualCost, false)}
-                </span>
-              </div>
-            </div>
-
-            {/* Marge Brute & Jauge de Performance */}
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5">
-                  <TrendingUp className="w-4 h-4 text-emerald-600" />
-                  <span className="font-bold text-slate-800">Marge Brute Estimée Chantier :</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-slate-900">
-                    {formatCurrencyDA(
-                      Math.max(0, Number(selectedProjectForDecompte.contractAmount) - Number(selectedProjectForDecompte.actualCost)),
-                      false
-                    )}
-                  </span>
-                  <span
-                    className={`font-bold px-2 py-0.5 rounded text-[11px] ${
-                      Number(selectedProjectForDecompte.marginRate || 0) >= 20
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    +{selectedProjectForDecompte.marginRate || 0}%
-                  </span>
-                </div>
-              </div>
-              <div className="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-emerald-600 h-full rounded-full transition-all"
-                  style={{ width: `${Math.min(100, Math.max(0, Number(selectedProjectForDecompte.marginRate || 0)))}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Décompte des Situations Métrées */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-                <Calculator className="w-3.5 h-3.5 text-[#0B207D]" />
-                État du Décompte Métré & Situations de Travaux
-              </h4>
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 text-[10px] uppercase">
-                    <tr>
-                      <th className="py-2 px-3">Poste de Décompte</th>
-                      <th className="py-2 px-3 text-right">Montant (DA HT)</th>
-                      <th className="py-2 px-3 text-right">Part Contractuelle</th>
-                      <th className="py-2 px-3 text-center">État</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs">
-                    <tr>
-                      <td className="py-2 px-3 font-medium text-slate-800">Situations Métrées Validées par le Client</td>
-                      <td className="py-2 px-3 text-right font-bold text-emerald-700">
-                        {formatCurrencyDA(Number(selectedProjectForDecompte.actualCost) * 1.15, false)}
-                      </td>
-                      <td className="py-2 px-3 text-right text-slate-600">~45%</td>
-                      <td className="py-2 px-3 text-center">
-                        <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">
-                          Payé / En Cours
-                        </span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-3 font-medium text-slate-800">Reste à Facturer sur Marché</td>
-                      <td className="py-2 px-3 text-right font-bold text-slate-800">
-                        {formatCurrencyDA(
-                          Math.max(0, Number(selectedProjectForDecompte.contractAmount) - Number(selectedProjectForDecompte.actualCost) * 1.15),
-                          false
-                        )}
-                      </td>
-                      <td className="py-2 px-3 text-right text-slate-600">~55%</td>
-                      <td className="py-2 px-3 text-center">
-                        <span className="text-[10px] bg-slate-100 text-slate-700 font-bold px-1.5 py-0.5 rounded">
-                          À Venir
-                        </span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-3 font-medium text-slate-800">Retenue de Garantie Contractuelle (5%)</td>
-                      <td className="py-2 px-3 text-right font-bold text-amber-700">
-                        {formatCurrencyDA(Number(selectedProjectForDecompte.contractAmount) * 0.05, false)}
-                      </td>
-                      <td className="py-2 px-3 text-right text-slate-600">5.0%</td>
-                      <td className="py-2 px-3 text-center">
-                        <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">
-                          Libérable à Réception Définitive
-                        </span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Boutons d'actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => handleExportProjectDecompte(selectedProjectForDecompte)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                Exporter Décompte CSV
-              </button>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedProjectForDecompte(null)}
-                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 text-xs"
-                >
-                  Fermer
-                </button>
-                <Link
-                  href={`/projects/${selectedProjectForDecompte.code}`}
-                  className="flex items-center gap-1.5 px-4 py-1.5 bg-[#0B207D] hover:bg-[#07164D] text-white rounded-lg text-xs font-bold transition-colors shadow-xs"
-                >
-                  <span>Ouvrir Dossier Chantier</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </Link>
-              </div>
-            </div>
+              <Plus className="w-3 h-3" />
+              <span>Encaisser Situation Client</span>
+            </button>
+            <button
+              onClick={() => setShowWarrantyModal(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-amber-600 text-amber-800 rounded hover:bg-amber-50 transition-colors font-semibold cursor-pointer shadow-2xs"
+            >
+              <ShieldCheck className="w-3 h-3 text-amber-600" />
+              <span>Restituer Retenue (5%)</span>
+            </button>
           </div>
         </div>
       )}
 
+      {/* Main Dashboard Body */}
+      {activeTab === 'dashboard' ? (
+        <div className="space-y-5">
+          {/* 1. Top Executive KPIs */}
+          <ExecutiveKpis
+            totalTreasury={kpisData.totalTreasury}
+            bankTreasury={kpisData.bankTreasury}
+            cashTreasury={kpisData.cashTreasury}
+            customerDebts={kpisData.customerDebts}
+            customerOverdue={kpisData.customerOverdue}
+            customerCount={kpisData.customerCount}
+            supplierDebts={kpisData.supplierDebts}
+            supplierPendingCount={kpisData.supplierPendingCount}
+            supplierDiscrepancyCount={kpisData.supplierDiscrepancyCount}
+            warrantyHeld={kpisData.warrantyHeld}
+            bfrDA={kpisData.bfrDA}
+            bfrStatus={kpisData.bfrStatus}
+            isLoading={loading}
+          />
+
+          {/* 2. Middle Row: Bank Accounts & Operational Alerts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <AccountsSummaryWidget
+              accounts={accounts}
+              onNavigateTreasury={() => setActiveTab('treasury')}
+            />
+
+            <FinancialAlertsWidget
+              alerts={operationalAlerts}
+              onNavigateAction={(alert) => {
+                if (alert.type === 'MATCHING_DISCREPANCY') setActiveTab('matching');
+                else if (alert.type === 'OVERDUE_INVOICE') setActiveTab('billing');
+              }}
+            />
+          </div>
+
+          {/* 3. Lower Row: Recent Cash Transactions Journal */}
+          <RecentTransactionsWidget
+            transactions={transactions}
+            onNavigateTransactions={() => setActiveTab('treasury')}
+          />
+
+          {/* 4. Bottom Row: Projects Analytical Rentability */}
+          <ProjectsMarginSummary
+            projects={projectsSummary}
+            onNavigateProjects={() => setActiveTab('profitability')}
+          />
+        </div>
+      ) : (
+        /* Placeholder view when switching sub-phase tabs */
+        <div className="rounded-lg border border-dashed border-slate-300 p-12 text-center bg-white space-y-3">
+          <Coins className="w-10 h-10 text-slate-400 mx-auto" />
+          <h3 className="text-sm font-bold text-slate-800">
+            Espace {activeTab.toUpperCase()} — Phase suivante
+          </h3>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            Ce sous-module est planifié dans le cadre des Phases 6C.2 à 6C.5.
+            Vous pouvez retourner au <strong>Tableau de Bord Finance</strong> pour consulter les indicateurs consolidés.
+          </p>
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className="px-4 py-1.5 bg-[#0B207D] text-white rounded text-xs font-semibold hover:bg-[#07164D] transition-colors"
+          >
+            Retour au Dashboard Finance
+          </button>
+        </div>
+      )}
+
       {/* ========================================================================= */}
-      {/* MODAL : ENREGISTRER UN ENCAISSEMENT CLIENT (VIREMENT BEA / ACOMPTE) */}
+      {/* MODAL 1 : ENREGISTRER UN ENCAISSEMENT CLIENT (VIREMENT BEA / ACOMPTE) */}
       {/* ========================================================================= */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
@@ -577,7 +470,7 @@ export default function FinancePage() {
               </div>
               <button
                 onClick={() => setShowPaymentModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -594,7 +487,7 @@ export default function FinancePage() {
                   className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-[#0B207D]"
                   required
                 >
-                  {financeData?.projects?.map((p: any) => (
+                  {financeOverview?.projects?.map((p: any) => (
                     <option key={p.id} value={p.id}>
                       {p.code} — {p.name} ({p.clientName})
                     </option>
@@ -676,7 +569,7 @@ export default function FinancePage() {
               <div className="p-2.5 bg-blue-50 border border-blue-200 rounded text-[11px] text-slate-700 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#0B207D] shrink-0" />
                 <span>
-                  Synchronisation immédiate : L'avancement financier et le taux de recouvrement du chantier seront actualisés.
+                  Synchronisation immédiate : L'avancement financier et le solde bancaire seront actualisés.
                 </span>
               </div>
 
@@ -684,7 +577,7 @@ export default function FinancePage() {
                 <button
                   type="button"
                   onClick={() => setShowPaymentModal(false)}
-                  className="px-3 py-1.5 border rounded hover:bg-slate-50 font-semibold text-slate-600"
+                  className="px-3 py-1.5 border rounded hover:bg-slate-50 font-semibold text-slate-600 cursor-pointer"
                 >
                   Annuler
                 </button>
@@ -701,7 +594,7 @@ export default function FinancePage() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL : RESTITUTION RETENUE DE GARANTIE (5%) */}
+      {/* MODAL 2 : RESTITUTION RETENUE DE GARANTIE (5%) */}
       {/* ========================================================================= */}
       {showWarrantyModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
@@ -716,7 +609,7 @@ export default function FinancePage() {
               </div>
               <button
                 onClick={() => setShowWarrantyModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
+                className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -733,7 +626,7 @@ export default function FinancePage() {
                   className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-[#0B207D]"
                   required
                 >
-                  {financeData?.projects?.map((p: any) => (
+                  {financeOverview?.projects?.map((p: any) => (
                     <option key={p.id} value={p.id}>
                       {p.code} — {p.name} (Retenue 5% : {formatCurrencyDA(Number(p.contractAmount) * 0.05, false)})
                     </option>
@@ -786,7 +679,7 @@ export default function FinancePage() {
               <div className="p-2.5 bg-amber-50 border border-amber-200 rounded text-[11px] text-amber-900 flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-amber-700 shrink-0" />
                 <span>
-                  Conformité Code des Marchés : La caution ou retenue de 5% est libérée intégralement à l'expiration de la garantie contractuelle.
+                  Conformité Code des Marchés : La caution de 5% est libérée intégralement à l'expiration de la garantie contractuelle.
                 </span>
               </div>
 
@@ -794,7 +687,7 @@ export default function FinancePage() {
                 <button
                   type="button"
                   onClick={() => setShowWarrantyModal(false)}
-                  className="px-3 py-1.5 border rounded hover:bg-slate-50 font-semibold text-slate-600"
+                  className="px-3 py-1.5 border rounded hover:bg-slate-50 font-semibold text-slate-600 cursor-pointer"
                 >
                   Annuler
                 </button>
