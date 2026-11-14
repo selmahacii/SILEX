@@ -37,7 +37,7 @@ export default function FinanceDashboardPage() {
 
   // Navigation tab state
   const [activeTab, setActiveTab] = useState<FinanceTab>('dashboard');
-  const [includeDemo, setIncludeDemo] = useState<boolean>(true);
+  const [includeDemo, setIncludeDemo] = useState<boolean>(false);
 
   // Data states
   const [loading, setLoading] = useState<boolean>(true);
@@ -379,7 +379,14 @@ export default function FinanceDashboardPage() {
         }}
         activeRole={activeRole}
         includeDemo={includeDemo}
-        onToggleIncludeDemo={() => setIncludeDemo(prev => !prev)}
+        onToggleIncludeDemo={() => {
+          if (!canManageFinances) {
+            setNotification('Le basculement en mode démonstration est réservé à la Direction Générale et Financière.');
+            setTimeout(() => setNotification(null), 4000);
+            return;
+          }
+          setIncludeDemo(prev => !prev);
+        }}
         onRefresh={loadDashboardData}
         isLoading={loading}
       />

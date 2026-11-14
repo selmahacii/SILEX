@@ -4200,7 +4200,7 @@ class ServerStore {
 
   // --- COMPTES FINANCIERS & TRÉSORERIE ---
   getFinancialAccounts(filter?: { includeDemo?: boolean }): StoredFinancialAccount[] {
-    if (filter?.includeDemo === false) {
+    if (!filter?.includeDemo) {
       return this.financialAccounts.filter(a => !a.isDemoAccount && !a.code?.startsWith('DEMO-'));
     }
     return this.financialAccounts;
@@ -4242,7 +4242,7 @@ class ServerStore {
   // --- MOUVEMENTS DE TRÉSORERIE & TRANSACTIONS ---
   getCashTransactions(filter?: { accountId?: string; projectId?: string; type?: string; includeDemo?: boolean }): StoredCashTransaction[] {
     let list = this.cashTransactions;
-    if (filter?.includeDemo === false) {
+    if (!filter?.includeDemo) {
       list = list.filter(t => !t.isDemoTransaction && !t.accountCode?.startsWith('DEMO-') && !t.id?.startsWith('tx-demo-'));
     }
     if (filter?.accountId) list = list.filter(t => t.accountId === filter.accountId || t.counterpartAccountId === filter.accountId);
@@ -4388,7 +4388,7 @@ class ServerStore {
   // --- FACTURATION CLIENT ---
   getCustomerInvoices(filter?: { projectId?: string; status?: string; includeDemo?: boolean }): StoredCustomerInvoice[] {
     let list = this.customerInvoices;
-    if (filter?.includeDemo === false) {
+    if (!filter?.includeDemo) {
       list = list.filter(i => !i.isDemoInvoice && !i.id?.startsWith('fac-demo-') && !i.id?.startsWith('inv-demo-'));
     }
     if (filter?.projectId) list = list.filter(i => i.projectId === filter.projectId);
@@ -4403,9 +4403,17 @@ class ServerStore {
   createCustomerInvoice(data: any, user?: any): StoredCustomerInvoice {
     const invNum = data.invoiceNumber || `FAC-${new Date().getFullYear()}-${String(this.customerInvoices.length + 1).padStart(4, '0')}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
+    let proj: StoredProject | undefined;
+    if (data.projectId || data.projectCode) {
+      proj = this.projects.find(p => p.id === data.projectId || p.code === data.projectCode);
+    }
+
     const amountHT = Number(data.amountHT || 0);
-    const vatRate = data.vatRate !== undefined ? Number(data.vatRate) : this.financialConfig.defaultVatRate;
-    const retentionRate = data.retentionRate !== undefined ? Number(data.retentionRate) : this.financialConfig.defaultRetentionRate;
+    const vatRate = data.vatRate !== undefined ? Number(data.vatRate) : (proj?.tvaRate !== undefined ? Number(proj.tvaRate) : this.financialConfig.defaultVatRate);
+    // Prévalence stricte des conditions contractuelles du marché sur le taux par défaut légal (5%)
+    const retentionRate = data.retentionRate !== undefined
+      ? Number(data.retentionRate)
+      : (proj?.retentionRate !== undefined ? Number(proj.retentionRate) : this.financialConfig.defaultRetentionRate);
 
     // Retenue de garantie calculée sur le montant HT (ex: 5%)
     const retentionAmount = Math.round((amountHT * retentionRate) / 100);
@@ -4413,11 +4421,6 @@ class ServerStore {
     const vatAmount = Math.round((amountHT * vatRate) / 100);
     // Net exigible = (Montant HT - Retenue) + TVA
     const netReceivableAmount = (amountHT - retentionAmount) + vatAmount;
-
-    let proj: StoredProject | undefined;
-    if (data.projectId || data.projectCode) {
-      proj = this.projects.find(p => p.id === data.projectId || p.code === data.projectCode);
-    }
 
     const newInvoice: StoredCustomerInvoice = {
       id: `fac-cli-${Date.now()}`,
@@ -4560,7 +4563,7 @@ class ServerStore {
   // --- FACTURATION FOURNISSEUR & 3-WAY MATCHING (BC vs BR vs Facture LIGNE PAR LIGNE) ---
   getSupplierInvoices(filter?: { supplierId?: string; projectId?: string; status?: string; includeDemo?: boolean }): StoredSupplierInvoice[] {
     let list = this.supplierInvoices;
-    if (filter?.includeDemo === false) {
+    if (!filter?.includeDemo) {
       list = list.filter(i => !i.isDemoInvoice && !i.id?.startsWith('fac-fou-demo-'));
     }
     if (filter?.supplierId) list = list.filter(i => i.supplierId === filter.supplierId);
@@ -4932,7 +4935,7 @@ class ServerStore {
   // --- BALANCE ÂGÉE & ÉCHÉANCIER CLIENT / FOURNISSEUR ---
   getAgedTrialBalance(filter?: { includeDemo?: boolean }) {
     const today = new Date().getTime();
-    const includeDemo = filter?.includeDemo !== false;
+    const includeDemo = filter?.includeDemo === true;
 
     const relevantCustomerInvoices = this.customerInvoices.filter(i => includeDemo || (!i.isDemoInvoice && !i.id?.startsWith('fac-demo-') && !i.id?.startsWith('inv-demo-')));
     const relevantSupplierInvoices = this.supplierInvoices.filter(i => includeDemo || (!i.isDemoInvoice && !i.id?.startsWith('fac-fou-demo-')));

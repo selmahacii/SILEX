@@ -326,7 +326,18 @@ export async function GET(
       );
     }
 
-    const includeDemo = req.nextUrl.searchParams.get('includeDemo') !== 'false';
+    // Sécurisation stricte du mode Démo (P1-1 durcissement Phase 6C.1.2)
+    // 1. Absence de paramètre ou valeur différente de 'true' : Production stricte (includeDemo = false).
+    // 2. Si includeDemo=true : inclusion autorisée UNIQUEMENT pour les rôles de direction financière (Admin, DG, DAF).
+    // Les autres rôles (ex: RESPONSABLE_PROJET) ne peuvent pas contourner cette restriction par URL.
+    const requestedDemo = req.nextUrl.searchParams.get('includeDemo') === 'true';
+    const canAccessDemo = [
+      SystemRole.ADMINISTRATEUR,
+      SystemRole.DIRECTEUR_GENERAL,
+      SystemRole.RESPONSABLE_FINANCIER,
+    ].includes(authUser.role);
+
+    const includeDemo = requestedDemo && canAccessDemo;
 
     if (clean.includes('/finance/distribution')) {
       const dist = await dbBridge.getCostDistribution();

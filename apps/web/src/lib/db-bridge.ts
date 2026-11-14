@@ -1849,7 +1849,7 @@ export const dbBridge = {
       summary: totals,
       projects: projectOverviews,
       distribution: serverStore.getCostDistribution(),
-      isDemoIncluded: options?.includeDemo !== false,
+      isDemoIncluded: options?.includeDemo === true,
     };
   },
 
@@ -1929,7 +1929,7 @@ export const dbBridge = {
   },
 
   async getFinancialAccounts(filter?: any, user?: any) {
-    const includeDemo = filter?.includeDemo !== false && filter?.isDemoAccount !== false;
+    const includeDemo = filter?.includeDemo === true && filter?.isDemoAccount !== false;
     let list: any[] = [];
     if (hasDb) {
       try {
@@ -2040,7 +2040,7 @@ export const dbBridge = {
   },
 
   async getCashTransactions(filter?: any) {
-    const includeDemo = filter?.includeDemo !== false;
+    const includeDemo = filter?.includeDemo === true;
     let list: any[] = [];
     if (hasDb) {
       try {
@@ -2251,7 +2251,7 @@ export const dbBridge = {
   },
 
   async getCustomerInvoices(filter?: any) {
-    const includeDemo = filter?.includeDemo !== false;
+    const includeDemo = filter?.includeDemo === true;
     if (hasDb) {
       try {
         const where: any = {};
@@ -2419,7 +2419,7 @@ export const dbBridge = {
   },
 
   async getSupplierInvoices(filter?: any) {
-    const includeDemo = filter?.includeDemo !== false;
+    const includeDemo = filter?.includeDemo === true;
     if (hasDb) {
       try {
         const where: any = {};
@@ -2652,7 +2652,7 @@ export const dbBridge = {
   },
 
   async getAgedTrialBalance(filter?: any) {
-    const includeDemo = filter?.includeDemo !== false;
+    const includeDemo = filter?.includeDemo === true;
     return serverStore.getAgedTrialBalance({ includeDemo });
   },
 
