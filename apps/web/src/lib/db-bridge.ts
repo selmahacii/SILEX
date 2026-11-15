@@ -2551,8 +2551,8 @@ export const dbBridge = {
         }
       }
 
-      // Si la commande n'existe pas dans PostgreSQL (ex: données démo en mémoire), garder l'isolation mémoire
-      if (!poInDb && (data.purchaseOrderId || data.purchaseOrderCode)) {
+      // Si la commande n'existe pas dans PostgreSQL (ex: données démo en mémoire ou facture sans BC persistant), garder l'isolation mémoire
+      if (!poInDb) {
         return serverStore.createSupplierInvoice(data, user);
       }
 
@@ -2633,6 +2633,27 @@ export const dbBridge = {
   },
 
   async recordSupplierPayment(invoiceId: string, data: any, user?: any) {
+    if (data?.accountId && !serverStore.getFinancialAccount(data.accountId) && hasDb) {
+      try {
+        const dbAcc = await (prisma as any).financialAccount.findUnique({ where: { id: data.accountId } });
+        if (dbAcc) {
+          (serverStore as any).financialAccounts.push({
+            id: dbAcc.id,
+            code: dbAcc.code,
+            name: dbAcc.name,
+            type: dbAcc.type,
+            bankName: dbAcc.bankName,
+            ribNumber: dbAcc.ribNumber,
+            currency: dbAcc.currency || 'DZD',
+            initialBalance: Number(dbAcc.initialBalance || 0),
+            currentBalance: Number(dbAcc.currentBalance || 0),
+            isDemoAccount: Boolean(dbAcc.isDemoAccount),
+            isActive: Boolean(dbAcc.isActive),
+          });
+        }
+      } catch {}
+    }
+
     const res = serverStore.recordSupplierPayment(invoiceId, data, user);
     if (hasDb && !data.isDemoPayment && !res.invoice?.isDemoInvoice) {
       let invInDb = null;
@@ -2643,13 +2664,21 @@ export const dbBridge = {
       }
       if (invInDb) {
         try {
-          await (prisma as any).supplierInvoice.update({
-            where: { id: res.invoice.id },
-            data: {
-              paidAmount: res.invoice.paidAmount,
-              remainingAmount: res.invoice.remainingAmount,
-              status: res.invoice.status as any,
-            },
+          await (prisma as any).$transaction(async (txPrisma: any) => {
+            await txPrisma.supplierInvoice.update({
+              where: { id: res.invoice.id },
+              data: {
+                paidAmount: res.invoice.paidAmount,
+                remainingAmount: res.invoice.remainingAmount,
+                status: res.invoice.status as any,
+              },
+            });
+            if (data.accountId) {
+              await txPrisma.financialAccount.update({
+                where: { id: data.accountId },
+                data: { currentBalance: { decrement: Number(data.amount) } },
+              }).catch(() => null);
+            }
           });
           return { ...res, persisted: true };
         } catch (err: any) {
@@ -2661,52 +2690,68 @@ export const dbBridge = {
   },
 
   async cancelSupplierInvoice(invoiceId: string, reason: string, user?: any) {
+    const res = serverStore.cancelSupplierInvoice(invoiceId, reason, user);
     if (hasDb) {
+      let invInDb = null;
       try {
-        const res = serverStore.cancelSupplierInvoice(invoiceId, reason, user);
-        await (prisma as any).$transaction(async (txPrisma: any) => {
-          await txPrisma.supplierInvoice.update({
-            where: { id: res.id },
-            data: { status: 'REJETEE', notes: res.notes },
+        invInDb = await (prisma as any).supplierInvoice.findUnique({ where: { id: res.id } });
+      } catch {
+        invInDb = null;
+      }
+      if (invInDb) {
+        try {
+          await (prisma as any).$transaction(async (txPrisma: any) => {
+            await txPrisma.supplierInvoice.update({
+              where: { id: res.id },
+              data: { status: 'REJETEE', notes: res.notes },
+            });
+            await txPrisma.invoiceLineMatching.updateMany({
+              where: { supplierInvoiceId: res.id },
+              data: { status: 'ANNULE', notes: `Annulé: ${reason}` },
+            });
           });
-          await txPrisma.invoiceLineMatching.updateMany({
-            where: { supplierInvoiceId: res.id },
-            data: { status: 'ANNULE', notes: `Annulé: ${reason}` },
-          });
-        });
-        return { ...res, persisted: true };
-      } catch (err: any) {
-        handleFinancePersistenceError('cancelSupplierInvoice', err);
+          return { ...res, persisted: true };
+        } catch (err: any) {
+          handleFinancePersistenceError('cancelSupplierInvoice', err);
+        }
       }
     }
-    return serverStore.cancelSupplierInvoice(invoiceId, reason, user);
+    return res;
   },
 
   async approveSupplierInvoiceWithDerogation(invoiceId: string, reason: string, user: any) {
+    const res = serverStore.approveSupplierInvoiceWithDerogation(invoiceId, reason, user);
     if (hasDb) {
+      let invInDb = null;
       try {
-        const res = serverStore.approveSupplierInvoiceWithDerogation(invoiceId, reason, user);
-        await (prisma as any).$transaction(async (txPrisma: any) => {
-          await txPrisma.supplierInvoice.update({
-            where: { id: res.id },
-            data: { status: 'APPROUVEE', approvalThresholdStatus: 'APPROVED', notes: res.notes },
+        invInDb = await (prisma as any).supplierInvoice.findUnique({ where: { id: res.id } });
+      } catch {
+        invInDb = null;
+      }
+      if (invInDb) {
+        try {
+          await (prisma as any).$transaction(async (txPrisma: any) => {
+            await txPrisma.supplierInvoice.update({
+              where: { id: res.id },
+              data: { status: 'APPROUVEE', approvalThresholdStatus: 'APPROVED', notes: res.notes },
+            });
+            await txPrisma.invoiceLineMatching.updateMany({
+              where: { supplierInvoiceId: res.id },
+              data: {
+                status: 'DEROGATION',
+                derogationReason: reason,
+                derogationApprovedById: user?.id || 'usr-dg-001',
+                derogationApprovedByName: user?.name || 'Direction Générale',
+              },
+            });
           });
-          await txPrisma.invoiceLineMatching.updateMany({
-            where: { supplierInvoiceId: res.id },
-            data: {
-              status: 'DEROGATION',
-              derogationReason: reason,
-              derogationApprovedById: user?.id || 'usr-dg-001',
-              derogationApprovedByName: user?.name || 'Direction Générale',
-            },
-          });
-        });
-        return { ...res, persisted: true };
-      } catch (err: any) {
-        handleFinancePersistenceError('approveSupplierInvoiceWithDerogation', err);
+          return { ...res, persisted: true };
+        } catch (err: any) {
+          handleFinancePersistenceError('approveSupplierInvoiceWithDerogation', err);
+        }
       }
     }
-    return serverStore.approveSupplierInvoiceWithDerogation(invoiceId, reason, user);
+    return res;
   },
 
   async getAgedTrialBalance(filter?: any) {

@@ -28,6 +28,7 @@ import { RecentTransactionsWidget, CashTransactionItem } from '@/components/fina
 import { ProjectsMarginSummary, ProjectProfitabilitySummary } from '@/components/finance/projects-margin-summary';
 import { TreasuryView } from '@/components/finance/treasury-view';
 import { BillingView } from '@/components/finance/billing-view';
+import { MatchingView } from '@/components/finance/matching-view';
 
 export default function FinanceDashboardPage() {
   const { activeRole } = useAuth();
@@ -394,8 +395,8 @@ export default function FinanceDashboardPage() {
             }
             window.history.replaceState({}, '', url.toString());
           }
-          if (tab !== 'dashboard' && tab !== 'treasury' && tab !== 'billing') {
-            setNotification(`L'espace "${tab}" fait partie des sous-phases 6C.4 à 6C.5 en cours de déploiement.`);
+          if (tab !== 'dashboard' && tab !== 'treasury' && tab !== 'billing' && tab !== 'matching') {
+            setNotification(`L'espace "${tab}" fait partie de la sous-phase 6C.5 en cours de déploiement.`);
             setTimeout(() => setNotification(null), 4000);
           }
         }}
@@ -537,15 +538,31 @@ export default function FinanceDashboardPage() {
           }}
           retentionRateLabel={retentionRateLabel}
         />
+      ) : activeTab === 'matching' ? (
+        /* Phase 6C.4 : Vue Rapprochement Fournisseurs & 3-Way Matching */
+        <MatchingView
+          invoices={supplierInvoices}
+          accounts={accounts}
+          projects={financeOverview?.projects || []}
+          canManage={canManageFinances}
+          activeRole={activeRole}
+          dgThreshold={dgApprovalThreshold}
+          pmThreshold={financialConfig?.pmApprovalThresholdDA || 600000}
+          onRefresh={loadDashboardData}
+          onNotify={(msg) => {
+            setNotification(msg);
+            setTimeout(() => setNotification(null), 5000);
+          }}
+        />
       ) : (
-        /* Placeholder view when switching sub-phase tabs (6C.4 et 6C.5) */
+        /* Placeholder view when switching sub-phase tabs (6C.5 Rentabilité) */
         <div className="rounded-lg border border-dashed border-slate-300 p-12 text-center bg-white space-y-3">
           <Coins className="w-10 h-10 text-slate-400 mx-auto" />
           <h3 className="text-sm font-bold text-slate-800">
             Espace {activeTab.toUpperCase()} — Phase suivante
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Ce sous-module est planifié dans le cadre des Phases 6C.4 à 6C.5.
+            Ce sous-module est planifié dans le cadre de la Phase 6C.5 (Rentabilité des Chantiers & BFR).
             Vous pouvez retourner au <strong>Tableau de Bord Finance</strong> pour consulter les indicateurs consolidés.
           </p>
           <button
