@@ -59,20 +59,21 @@ export default function CommercialModulePage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Formulaire nouvelle opportunité
-  const [newOppForm, setNewOppForm] = useState({
+  // Formulaire nouvelle opportunité (initialement vierge pour saisie réelle)
+  const initialOppForm = {
     title: '',
-    clientName: 'Client Industrie Démo (Sonatrach Raffinerie Skikda)',
+    clientName: '',
     sector: 'OIL_AND_GAS',
-    location: 'Zone Industrielle Skikda RA1K',
-    contactName: 'M. Mustapha Larbi',
-    contactEmail: 'm.larbi@sonatrach-skikda.dz',
-    contactPhone: '+213 (0) 38 75 22 10',
-    estimatedAmount: 35000000,
+    location: '',
+    contactName: '',
+    contactEmail: '',
+    contactPhone: '',
+    estimatedAmount: 0,
     submissionDeadline: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
-    priority: 'HAUTE',
-    notes: 'Travaux neufs et maintenance de tuyauterie haute pression.',
-  });
+    priority: 'NORMALE',
+    notes: '',
+  };
+  const [newOppForm, setNewOppForm] = useState(initialOppForm);
 
   // Filtres
   const [searchTerm, setSearchTerm] = useState('');
@@ -99,9 +100,11 @@ export default function CommercialModulePage() {
       if (selectedCostSheet) {
         const updated = (sheetsRes || []).find((s: any) => s.id === selectedCostSheet.id);
         if (updated) setSelectedCostSheet(updated);
+        else setSelectedCostSheet(sheetsRes && sheetsRes.length > 0 ? sheetsRes[0] : null);
       } else if (sheetsRes && sheetsRes.length > 0) {
-        // Sélectionner par défaut la première fiche de démonstration
         setSelectedCostSheet(sheetsRes[0]);
+      } else {
+        setSelectedCostSheet(null);
       }
     } catch (err) {
       console.error('Erreur chargement commercial:', err);
@@ -200,6 +203,7 @@ export default function CommercialModulePage() {
       setActionLoading(true);
       const created: any = await api.post('/commercial/opportunities', newOppForm);
       showNotification(`Opportunité ${created?.code || ''} enregistrée avec succès !`);
+      setNewOppForm(initialOppForm);
       setShowNewOppModal(false);
       await loadData();
       setActiveTab('opportunities');
@@ -276,7 +280,7 @@ export default function CommercialModulePage() {
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
           <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pipeline Estimé</div>
           <div className="text-lg font-black text-[#0B207D] mt-1 truncate">
-            {formatCurrencyDA(kpis?.pipelineValue ?? 74500000)}
+            {formatCurrencyDA(kpis?.pipelineValue ?? 0)}
           </div>
           <div className="text-[10px] text-slate-400 mt-1">Affaires en vue</div>
         </div>
@@ -300,7 +304,7 @@ export default function CommercialModulePage() {
         <div className="bg-white p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 shadow-2xs">
           <div className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">Contrats Gagnés</div>
           <div className="text-lg font-black text-emerald-700 mt-1 truncate">
-            {formatCurrencyDA(kpis?.totalWonValue ?? 38700000)}
+            {formatCurrencyDA(kpis?.totalWonValue ?? 0)}
           </div>
           <div className="text-[10px] text-emerald-700 font-semibold mt-1">Projets convertis</div>
         </div>
@@ -308,7 +312,7 @@ export default function CommercialModulePage() {
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
           <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Taux Conversion</div>
           <div className="text-xl font-black text-[#E51A1A] mt-1">
-            {kpis?.conversionRate ?? 50.0}%
+            {kpis?.conversionRate ?? 0}%
           </div>
           <div className="text-[10px] text-slate-400 mt-1">Ratio d'adjudication</div>
         </div>
@@ -369,6 +373,27 @@ export default function CommercialModulePage() {
       {/* ONGLET 1 : FICHES DE COÛT COLLABORATIVES (PRIORITÉ N°1) */}
       {/* ======================================================== */}
       {activeTab === 'costSheets' && (
+        costSheets.length === 0 ? (
+          <div className="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-xs">
+            <div className="w-16 h-16 bg-blue-50 text-[#07164D] rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100">
+              <FileText className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 mb-1">
+              Aucune fiche de chiffrage active
+            </h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto mb-6">
+              Le registre des chiffrages collaboratifs est vierge. Créez une nouvelle opportunité d'affaires pour lancer un cycle d'estimation multi-services (Projet, Achats, RH, Finance, DG).
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowNewOppModal(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#07164D] hover:bg-[#0B207D] text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Créer une Opportunité</span>
+            </button>
+          </div>
+        ) : (
         <div className="space-y-6">
           {/* Sélecteur de fiche si plusieurs */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white p-3.5 rounded-xl border border-slate-200">
@@ -908,6 +933,7 @@ export default function CommercialModulePage() {
             </div>
           )}
         </div>
+        )
       )}
 
       {/* ======================================================== */}
@@ -953,7 +979,18 @@ export default function CommercialModulePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {opportunities.map((opp) => (
+                  {opportunities.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-slate-500">
+                        <Briefcase className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                        <p className="font-bold text-slate-700">Aucune opportunité d'affaires enregistrée</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Le registre est vierge. Cliquez sur « Créer Opportunité » pour enregistrer un nouvel appel d'offres ou consultation client.
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    opportunities.map((opp) => (
                     <tr key={opp.id} className="hover:bg-slate-50/80 transition-colors">
                       <td className="p-3 font-bold text-[#07164D]">{opp.code}</td>
                       <td className="p-3">
@@ -990,7 +1027,7 @@ export default function CommercialModulePage() {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </div>
@@ -1027,7 +1064,18 @@ export default function CommercialModulePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {quotes.map((q) => (
+                  {quotes.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="p-8 text-center text-slate-500">
+                        <FileText className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                        <p className="font-bold text-slate-700">Aucun devis client émis</p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Les devis officiels sont générés automatiquement suite à la validation d'une fiche de chiffrage par la Direction Générale.
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    quotes.map((q) => (
                     <tr key={q.id} className="hover:bg-slate-50 transition-colors">
                       <td className="p-3 font-bold text-[#07164D]">{q.quoteNumber}</td>
                       <td className="p-3 text-slate-600 font-mono text-[11px]">{q.costSheetRef}</td>
@@ -1052,7 +1100,7 @@ export default function CommercialModulePage() {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                  )))}
                 </tbody>
               </table>
             </div>
