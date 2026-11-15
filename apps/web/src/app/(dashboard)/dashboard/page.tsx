@@ -112,6 +112,10 @@ export default function ExecutiveDashboardPage() {
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#E51A1A]/10 text-[#E51A1A] border border-[#E51A1A]/30 uppercase">
                 Direction Générale
               </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 uppercase flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                Périmètre : Données Certifiées
+              </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               Fondée en {COMPANY_ESTABLISHED} • Services et maintenance industrielles, accompagnement de projets sur tout le territoire national.
@@ -236,7 +240,14 @@ export default function ExecutiveDashboardPage() {
             {formatCurrencyDA(kpis?.totalActualCosts, false)}
           </div>
           <div className="text-[11px] text-slate-500 mt-1">
-            Marge brute prévisionnelle : <strong className="text-emerald-700 font-bold">+{kpis?.projectedMarginRate}%</strong>
+            Marge prévisionnelle :{' '}
+            {kpis?.projectedMarginRate != null ? (
+              <strong className="text-emerald-700 font-bold">
+                +{kpis.projectedMarginRate}% ({formatCurrencyDA(kpis?.projectedMarginDA, false)})
+              </strong>
+            ) : (
+              <strong className="text-slate-500 italic">Non calculable (Données insuffisantes)</strong>
+            )}
           </div>
         </div>
 
@@ -249,8 +260,8 @@ export default function ExecutiveDashboardPage() {
             </span>
           </div>
           <div className="text-lg font-bold text-[#E51A1A] mt-2 flex items-center gap-2">
-            <span>{pendingWorkflows.filter((w: any) => w.status === 'PENDING' || w.status === 'PENDING_DG' || w.status === 'PENDING_APPROVAL' || w.status === 'SUBMITTED' || w.status === 'PRETE_POUR_VALIDATION').length || kpis?.pendingApprovalsCount || 0}</span>
-            <span className="text-xs font-normal text-slate-500">arbitrages requis</span>
+            <span>{kpis?.pendingApprovalsCount ?? pendingWorkflows.length}</span>
+            <span className="text-xs font-normal text-slate-500">arbitrages requis (DG)</span>
           </div>
           <Link
             href="/workflows"
@@ -290,7 +301,7 @@ export default function ExecutiveDashboardPage() {
               {formatCurrencyDA(commercialKpis?.pipelineValue || 0, false)}
             </div>
             <div className="text-[11px] text-emerald-400 mt-0.5">
-              {commercialKpis?.openOpportunities || 0} affaires en négociation
+              {commercialKpis?.inNegotiationCount ?? 0} en négociation ({commercialKpis?.activeOpportunities ?? 0} affaires actives)
             </div>
           </div>
 
@@ -511,7 +522,7 @@ export default function ExecutiveDashboardPage() {
                         )}
                       </div>
                       <div className="text-[10px] text-slate-400 mt-0.5">
-                        Demandeur : <strong>{w.requesterName || w.initiatorName || 'Chef de Projets'}</strong> ({w.department || w.initiatorDepartment || 'Opérations & Projets'}) • Montant : <strong className="text-slate-800">{formatCurrencyDA(Number(w.amountHT || 0), false)} HT</strong>
+                        Demandeur : <strong>{w.requesterName || w.initiatorName || 'Chef de Projets'}</strong> ({w.department || w.initiatorDepartment || 'Opérations & Projets'}) • Montant : <strong className="text-slate-800">{formatCurrencyDA(Number(w.amountHT || 0), false)} HT</strong> <span className="text-slate-500">({formatCurrencyDA(Number(w.amountTTC || Math.round(Number(w.amountHT || 0) * 1.19)), false)} TTC)</span>
                       </div>
                     </div>
                     <Link

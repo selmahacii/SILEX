@@ -145,7 +145,11 @@ export async function GET(
     return NextResponse.json(projects, { headers: corsHeaders() });
   }
 
-  // 4. Workflows (QCD Circuit)
+  // 4. Workflows (QCD Circuit & DG Inbox)
+  if (clean === '/workflows/inbox' || clean === '/workflows/pending') {
+    const inbox = await dbBridge.getWorkflowsInbox();
+    return NextResponse.json({ items: inbox, total: inbox.length }, { headers: corsHeaders() });
+  }
   if (clean.includes('/workflows')) {
     const wfs = await dbBridge.getWorkflows();
     return NextResponse.json({ items: wfs, total: wfs.length }, { headers: corsHeaders() });

@@ -722,9 +722,13 @@ export const dbBridge = {
     return serverStore.getProjectKpis();
   },
 
-  // --- WORKFLOWS (Circuit QCD) ---
-  async getWorkflows() {
-    return serverStore.getWorkflows();
+  // --- WORKFLOWS (Circuit QCD & Boîte d'Arbitrage DG) ---
+  async getWorkflows(filter?: any) {
+    return serverStore.getWorkflows(filter);
+  },
+
+  async getWorkflowsInbox() {
+    return serverStore.getWorkflowsInbox();
   },
 
   async createWorkflow(data: any) {

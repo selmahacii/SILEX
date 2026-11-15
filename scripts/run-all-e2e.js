@@ -21,4 +21,7 @@ execSync('npx tsx scripts/test-finance-e2e.js', { stdio: 'inherit' });
 console.log('\n--- SUITE 6 : MODULE QUALITÉ, QHSE, GED & WELD BOOK PERSISTANT ---');
 execSync('npx tsx scripts/test-quality-phase-g-e2e.js', { stdio: 'inherit' });
 
-console.log('\n🎉 TOUTES LES SUITES E2E DES MODULES 01, 02, 03, 04, 06 ET QUALITÉ ONT RÉUSSI À 100% !');
+console.log('\n--- SUITE 7 : PHASE H - CONSOLIDATION DIRECTION GÉNÉRALE & MARGES RÉELLES ---');
+execSync('npx tsx scripts/test-dashboard-phase-h-e2e.js', { stdio: 'inherit' });
+
+console.log('\n🎉 TOUTES LES SUITES E2E DES MODULES 01, 02, 03, 04, 06, QUALITÉ ET CONSOLIDATION DG ONT RÉUSSI À 100% !');

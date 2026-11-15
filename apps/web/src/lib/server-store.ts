@@ -3179,42 +3179,61 @@ class ServerStore {
     const totalProjects = this.projects.length;
     const activeProjects = this.projects.filter(p => p.status === ProjectStatus.IN_PROGRESS).length;
     const totalContractValue = this.projects.reduce((acc, p) => acc + (p.contractAmount || 0), 0);
-    const totalBudgetAllocated = this.projects.reduce((acc, p) => acc + (p.budgetAmount || 0), 0);
+    const totalInitialBudget = this.projects.reduce((acc, p) => acc + (p.budgetAmount || 0), 0);
+    const totalRevisedBudget = this.projects.reduce((acc, p) => acc + (p.revisedBudget || p.budgetAmount || 0), 0);
     const totalSpent = this.projects.reduce((acc, p) => acc + (p.spentBudget || p.actualCost || 0), 0);
     const totalCommitted = this.projects.reduce((acc, p) => acc + (p.committedBudget || p.committedCost || 0), 0);
+    const totalEac = this.projects.reduce((acc, p) => acc + ((p.spentBudget || p.actualCost || 0) + Math.max(0, (p.revisedBudget || p.budgetAmount || 0) - (p.spentBudget || p.actualCost || 0))), 0);
     const avgPhysicalProgress = totalProjects > 0
       ? Math.round(this.projects.reduce((acc, p) => acc + (p.physicalProgress || 0), 0) / totalProjects)
       : 0;
 
-    const marginDA = Math.max(0, totalContractValue - totalBudgetAllocated);
-    const projectedMarginRate = totalContractValue > 0
-      ? Number(((marginDA / totalContractValue) * 100).toFixed(1))
+    // Calcul rigoureux des marges selon les règles industrielles algériennes
+    // Marge prévisionnelle = Marché HT - Budget révisé
+    const projectedMarginDA = totalContractValue > 0 && totalRevisedBudget > 0
+      ? totalContractValue - totalRevisedBudget
       : 0;
+    const projectedMarginRate = totalContractValue > 0 && totalRevisedBudget > 0
+      ? Number(((projectedMarginDA / totalContractValue) * 100).toFixed(1))
+      : null;
 
-    const pendingApprovalsCount = (this.workflows || []).filter(w =>
-      w.status === 'PENDING' ||
-      w.status === 'PENDING_DG' ||
-      w.status === 'PENDING_APPROVAL' ||
-      w.status === 'SUBMITTED' ||
-      w.status === 'PRETE_POUR_VALIDATION'
-    ).length;
+    // Taux de marque = Marge prévisionnelle / Coût budgété
+    const markupRate = totalRevisedBudget > 0
+      ? Number(((projectedMarginDA / totalRevisedBudget) * 100).toFixed(1))
+      : null;
+
+    // Marge réalisée = (Avancement physique pondéré * Marché HT) - Coûts réels consommés
+    const earnedValue = this.projects.reduce((acc, p) => acc + ((p.contractAmount || 0) * (p.physicalProgress || 0) / 100), 0);
+    const realizedMarginDA = earnedValue - totalSpent;
+    const realizedMarginRate = earnedValue > 0
+      ? Number(((realizedMarginDA / earnedValue) * 100).toFixed(1))
+      : null;
+
+    const pendingApprovalsCount = this.getWorkflowsInbox().length;
 
     return {
       totalProjects,
       activeProjects,
       totalContractValue,
-      totalBudgetAllocated,
+      totalInitialBudget,
+      totalRevisedBudget,
+      totalBudgetAllocated: totalRevisedBudget,
+      totalBudget: totalRevisedBudget,
+      totalProjectBudgets: totalRevisedBudget,
       totalSpent,
+      totalActualCosts: totalSpent,
       totalCommitted,
+      totalCommittedCosts: totalCommitted,
+      totalEac,
       avgPhysicalProgress,
       activeProjectsCount: activeProjects,
       totalTurnover: totalContractValue,
       totalContracted: totalContractValue,
-      totalBudget: totalBudgetAllocated,
-      totalProjectBudgets: totalBudgetAllocated,
-      totalActualCosts: totalSpent,
-      totalCommittedCosts: totalCommitted,
+      projectedMarginDA,
       projectedMarginRate,
+      markupRate,
+      realizedMarginDA,
+      realizedMarginRate,
       pendingApprovalsCount,
       clientReceivables: this.calculateClientReceivables(),
       supplierPayables: this.calculateSupplierPayables(),
@@ -3222,9 +3241,25 @@ class ServerStore {
     };
   }
 
-  // --- WORKFLOWS (Circuit QCD) ---
-  getWorkflows() {
+  // --- WORKFLOWS (Circuit QCD & Décisions DG) ---
+  getWorkflows(filter?: { status?: string; type?: string; pendingOnly?: boolean }) {
+    if (filter?.pendingOnly) {
+      return this.getWorkflowsInbox();
+    }
+    if (filter?.status) {
+      return this.workflows.filter(w => w.status === filter.status);
+    }
     return this.workflows;
+  }
+
+  getWorkflowsInbox(): StoredWorkflow[] {
+    return (this.workflows || []).filter(w =>
+      w.status === 'PENDING' ||
+      w.status === 'PENDING_DG' ||
+      w.status === 'PENDING_APPROVAL' ||
+      w.status === 'SUBMITTED' ||
+      w.status === 'PRETE_POUR_VALIDATION'
+    );
   }
 
   getWorkflow(id: string) {
@@ -6514,9 +6549,10 @@ class ServerStore {
     const totalWonContractValue = this.costSheets
       .filter(cs => cs.status === 'GAGNEE')
       .reduce((sum, cs) => sum + (cs.proposedSellingPrice || 0), 0);
+    const wonOpportunitiesCount = this.opportunities.filter(o => o.status === 'GAGNEE').length;
 
     const conversionRate = oppCount > 0
-      ? Number(((this.opportunities.filter(o => o.status === 'GAGNEE').length / oppCount) * 100).toFixed(1))
+      ? Number(((wonOpportunitiesCount / oppCount) * 100).toFixed(1))
       : 0;
 
     const weightedPipelineValue = Math.round(
@@ -6531,9 +6567,30 @@ class ServerStore {
       }, 0)
     );
 
+    const stagesBreakdown: Record<string, { count: number; value: number }> = {
+      NOUVELLE: { count: 0, value: 0 },
+      QUALIFIEE: { count: 0, value: 0 },
+      VISITE_TECHNIQUE: { count: 0, value: 0 },
+      CHIFFRAGE: { count: 0, value: 0 },
+      VALIDATION_INTERNE: { count: 0, value: 0 },
+      OFFRE_SOUMISE: { count: 0, value: 0 },
+      NEGOCIATION: { count: 0, value: 0 },
+      GAGNEE: { count: 0, value: 0 },
+      PERDUE: { count: 0, value: 0 },
+      ANNULEE: { count: 0, value: 0 },
+    };
+
+    for (const opp of this.opportunities) {
+      const st = (opp.status as string) || 'NOUVELLE';
+      if (!stagesBreakdown[st]) stagesBreakdown[st] = { count: 0, value: 0 };
+      stagesBreakdown[st].count += 1;
+      stagesBreakdown[st].value += (opp.estimatedAmount || 0);
+    }
+
     return {
       totalOpportunities: oppCount,
       activeOpportunities: activeOpps.length,
+      openOpportunities: activeOpps.length,
       pipelineValue: totalPipelineValue,
       weightedPipelineValue,
       inNegotiationCount: inNegotiationOpps.length,
@@ -6542,10 +6599,13 @@ class ServerStore {
       inCostingValue,
       pendingCostSheetsCount: pendingCostSheets.length,
       approvedCostSheetsCount: approvedCostSheets.length,
+      validatedCostSheetsCount: approvedCostSheets.length,
       quotesSentCount: quotesSent.length,
       quotesAcceptedCount: quotesAccepted.length,
       totalWonValue: totalWonContractValue,
+      wonOpportunitiesCount,
       conversionRate,
+      stagesBreakdown,
     };
   }
 
