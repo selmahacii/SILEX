@@ -2760,7 +2760,63 @@ export const dbBridge = {
   },
 
   async getProjectProfitability(projectIdOrCode: string) {
-    return serverStore.getProjectProfitability(projectIdOrCode);
+    const storePnl = serverStore.getProjectProfitability(projectIdOrCode);
+    if (storePnl) return storePnl;
+
+    if (hasDb) {
+      try {
+        const dbProj = await prisma.project.findFirst({
+          where: {
+            OR: [
+              { id: projectIdOrCode },
+              { code: projectIdOrCode },
+            ],
+          },
+          include: { workSituations: true },
+        });
+
+        if (dbProj) {
+          const contractAmount = Number(dbProj.contractAmount || 0);
+          const estimatedBudget = Number(dbProj.budgetAmount || 0);
+          const wsList = Array.isArray(dbProj.workSituations) ? dbProj.workSituations : [];
+          const billedSituationsHT = wsList.reduce((sum: number, s: any) => sum + Number(s.amountHT || 0), 0);
+          const actualCost = Number(dbProj.actualCost || 0);
+          const committedCost = Number(dbProj.committedCost || 0);
+
+          const grossMarginDA = Math.max(0, (billedSituationsHT > 0 ? billedSituationsHT : contractAmount) - actualCost);
+          const grossMarginPercent = (billedSituationsHT > 0 ? billedSituationsHT : contractAmount) > 0
+            ? Number(((grossMarginDA / (billedSituationsHT > 0 ? billedSituationsHT : contractAmount)) * 100).toFixed(2))
+            : 0;
+
+          return {
+            projectId: dbProj.id,
+            projectCode: dbProj.code,
+            projectName: dbProj.name,
+            clientName: dbProj.clientName,
+            contractAmount,
+            estimatedBudget,
+            actualBilledHT: billedSituationsHT,
+            collectedTTC: 0,
+            realCosts: {
+              materials: Math.round(actualCost * 0.6),
+              labor: Math.round(actualCost * 0.3),
+              otherExpenses: Math.round(actualCost * 0.1),
+              totalDirectCost: actualCost,
+            },
+            committedRemaining: committedCost,
+            projectedFinalCost: actualCost + committedCost,
+            grossMarginDA,
+            grossMarginPercent,
+            budgetVarianceDA: estimatedBudget - (actualCost + committedCost),
+            isProfitable: grossMarginDA >= 0,
+          };
+        }
+      } catch (err) {
+        console.warn('[dbBridge.getProjectProfitability] Fallback DB error:', err);
+      }
+    }
+
+    return null;
   },
 
 
