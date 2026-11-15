@@ -1653,22 +1653,39 @@ export const dbBridge = {
   },
 
   // --- QUALITY & QHSE ---
-  async getNonConformities() {
+  async getNonConformities(projectId?: string) {
     if (hasDb) {
       try {
+        const whereClause = projectId ? { OR: [{ projectId }, { project: { code: projectId } }] } : {};
         const ncs = await prisma.nonConformity.findMany({
+          where: whereClause,
           include: { project: true, actions: true },
           orderBy: { detectedDate: 'desc' },
         });
-        return ncs;
+        if (ncs && ncs.length > 0) return ncs;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getNonConformities:', err);
       }
     }
-    return serverStore.getNonConformities();
+    return serverStore.getNonConformities(projectId);
   },
 
-  async createNonConformity(data: any) {
+  async getNonConformity(idOrCode: string) {
+    if (hasDb) {
+      try {
+        const nc = await prisma.nonConformity.findFirst({
+          where: { OR: [{ id: idOrCode }, { ncNumber: idOrCode }] },
+          include: { project: true, actions: true },
+        });
+        if (nc) return nc;
+      } catch (err) {
+        console.warn('[DB Bridge] Fallback store for getNonConformity:', err);
+      }
+    }
+    return serverStore.getNonConformity(idOrCode);
+  },
+
+  async createNonConformity(data: any, user?: any) {
     if (hasDb) {
       try {
         const count = await prisma.nonConformity.count();
@@ -1692,37 +1709,99 @@ export const dbBridge = {
             description: data.description || '',
             severity: severity as any,
             status: 'OPEN',
-            detectedBy: data.detectedBy || 'Inspecteur CND SILEX',
+            detectedBy: data.detectedBy || user?.name || 'Inspecteur CND SILEX',
             projectId,
           },
         });
-        await this.logAudit('CREATE_NON_CONFORMITY', 'QUALITY', created.ncNumber, `FNC ouverte : ${created.ncNumber} - ${created.title}`, data.user);
+        await this.logAudit('CREATE_NON_CONFORMITY', 'QUALITY', created.ncNumber, `FNC ouverte : ${created.ncNumber} - ${created.title}`, user);
         return created;
       } catch (err) {
         console.warn('[DB Bridge] Error creating FNC in DB:', err);
       }
     }
-    const res = serverStore.createNonConformity(data);
-    await this.logAudit('CREATE_NON_CONFORMITY', 'QUALITY', res.code, `FNC ouverte : ${res.code}`, data.user);
+    const res = serverStore.createNonConformity(data, user);
+    await this.logAudit('CREATE_NON_CONFORMITY', 'QUALITY', res.ncNumber, `FNC ouverte : ${res.ncNumber} - ${res.title}`, user);
     return res;
   },
 
-  async getQualityDocuments() {
+  async updateNonConformityStatus(idOrCode: string, updateData: any, user?: any) {
     if (hasDb) {
       try {
+        const updated = await prisma.nonConformity.updateMany({
+          where: { OR: [{ id: idOrCode }, { ncNumber: idOrCode }] },
+          data: {
+            status: updateData.status as any,
+            rootCause: updateData.resolutionNotes || updateData.rootCause || undefined,
+          },
+        });
+        if (updated.count > 0) {
+          await this.logAudit('UPDATE_NON_CONFORMITY_STATUS', 'QUALITY', idOrCode, `Statut FNC mis à jour : ${updateData.status}`, user);
+        }
+      } catch (err) {
+        console.warn('[DB Bridge] Error updating FNC status in DB:', err);
+      }
+    }
+    return serverStore.updateNonConformityStatus(idOrCode, updateData, user);
+  },
+
+  async addNonConformityAction(idOrCode: string, actionData: any, user?: any) {
+    if (hasDb) {
+      try {
+        const nc = await prisma.nonConformity.findFirst({
+          where: { OR: [{ id: idOrCode }, { ncNumber: idOrCode }] },
+        });
+        if (nc) {
+          const act = await prisma.correctiveAction.create({
+            data: {
+              nonConformityId: nc.id,
+              description: actionData.description || 'Action corrective',
+              responsible: actionData.responsible || 'Responsable QHSE',
+              dueDate: new Date(actionData.targetDate || actionData.dueDate || Date.now() + 7 * 86400000),
+              status: (actionData.status as any) || 'IN_PROGRESS',
+            },
+          });
+          await this.logAudit('ADD_NON_CONFORMITY_ACTION', 'QUALITY', nc.ncNumber, `Action corrective ajoutée : ${act.description}`, user);
+        }
+      } catch (err) {
+        console.warn('[DB Bridge] Error adding action in DB:', err);
+      }
+    }
+    return serverStore.addNonConformityAction(idOrCode, actionData, user);
+  },
+
+  async getQualityDocuments(category?: string) {
+    if (hasDb) {
+      try {
+        const whereClause = category ? { category: category as any } : {};
         const docs = await prisma.document.findMany({
+          where: whereClause,
           include: { project: true },
           orderBy: { issueDate: 'desc' },
         });
-        return docs;
+        if (docs && docs.length > 0) return docs;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getQualityDocuments:', err);
       }
     }
-    return serverStore.getQualityDocuments();
+    return serverStore.getQualityDocuments(category);
   },
 
-  async createQualityDocument(data: any) {
+  async getQualityDocument(idOrNumber: string) {
+    if (hasDb) {
+      try {
+        const doc = await prisma.document.findFirst({
+          where: { OR: [{ id: idOrNumber }, { docNumber: idOrNumber }] },
+          include: { project: true },
+        });
+        if (doc) return doc;
+      } catch (err) {
+        console.warn('[DB Bridge] Fallback store for getQualityDocument:', err);
+      }
+    }
+    return serverStore.getQualityDocument(idOrNumber);
+  },
+
+  async createQualityDocument(data: any, user?: any) {
     if (hasDb) {
       try {
         let proj = data.projectId ? await prisma.project.findUnique({ where: { id: data.projectId } }) : null;
@@ -1735,21 +1814,46 @@ export const dbBridge = {
               docNumber,
               title: data.title || data.name || 'Document Qualité',
               category: (data.category || 'PROCEDURE') as any,
-              author: data.author || 'SILEX QHSE',
+              author: data.author || user?.name || 'SILEX QHSE',
               fileUrl: data.fileUrl || '/docs/sample.pdf',
               status: 'VALIDE',
             },
           });
-          await this.logAudit('CREATE_DOCUMENT', 'QUALITY', docNumber, `Document qualité déposé : ${created.title}`, data.user);
+          await this.logAudit('CREATE_DOCUMENT', 'QUALITY', docNumber, `Document qualité déposé : ${created.title}`, user);
           return created;
         }
       } catch (err) {
         console.warn('[DB Bridge] Error creating document in DB:', err);
       }
     }
-    const res = serverStore.createQualityDocument(data);
-    await this.logAudit('CREATE_DOCUMENT', 'QUALITY', res.docNumber, `Document déposé : ${res.title}`, data.user);
+    const res = serverStore.createQualityDocument(data, user);
+    await this.logAudit('CREATE_DOCUMENT', 'QUALITY', res.docNumber, `Document déposé : ${res.title}`, user);
     return res;
+  },
+
+  async addQualityDocumentRevision(idOrNumber: string, revData: any, user?: any) {
+    return serverStore.addQualityDocumentRevision(idOrNumber, revData, user);
+  },
+
+  // --- WELD BOOK & SOUDURES INDUSTRIELLES (ASME IX / ISO 9606) ---
+  async getWeldJoints(projectId?: string) {
+    return serverStore.getWeldJoints(projectId);
+  },
+
+  async getWeldJoint(idOrNumber: string) {
+    return serverStore.getWeldJoint(idOrNumber);
+  },
+
+  async createWeldJoint(data: any, user?: any) {
+    return serverStore.createWeldJoint(data, user);
+  },
+
+  async recordWeldCndResult(idOrNumber: string, data: any, user?: any) {
+    return serverStore.recordWeldCndResult(idOrNumber, data, user);
+  },
+
+  async recordWeldRepair(idOrNumber: string, data: any, user?: any) {
+    return serverStore.recordWeldRepair(idOrNumber, data, user);
   },
 
   // --- FINANCE ---

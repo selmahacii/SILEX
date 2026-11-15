@@ -1316,6 +1316,114 @@ export interface StoredFinancialConfig {
   allowAutoApprovalOnMatch: boolean;
 }
 
+// ============================================================================
+// PHASE G : QUALITÉ, QHSE, GED TECHNIQUE & WELD BOOK UNITAIRE (ASME IX / ISO 9606)
+// ============================================================================
+
+export interface StoredWeldJoint {
+  id: string;
+  jointNumber: string; // Ex: J-01-VAP-HP, J-05-VAPEUR-HP
+  projectId?: string;
+  projectCode: string;
+  projectName: string;
+  lineIso: string; // Ex: ISO-316L-DN150-SCH80, ISO-A106-DN200-SCH80
+  spoolId?: string; // Ex: SPL-01, SPL-04
+  diameterNominal?: string; // Ex: DN150 (6"), DN200 (8")
+  thicknessMm?: number; // Ex: 7.11, 12.7
+  material: string; // Ex: Inox 316L (Nuance Z2CND17-12), Acier Carbone ASTM A106 Gr.B
+  heatNumberPipe?: string; // Ex: HEAT-A106-99412
+  heatNumberFitting?: string; // Ex: HEAT-ELB-A234-8831
+  welderName: string; // Ex: Amar Bouzid
+  welderStamp: string; // Ex: S-02
+  welderCqsRef?: string; // Ex: CQS-BV-2026-088
+  weldingProcess: string; // Ex: 141 (TIG) racine + 111 (SMAW / ARC) remplissage
+  dmosRef: string; // Ex: DMOS-01-ASME-IX
+  weldDate: string; // Ex: 2026-02-14
+  visualInspection: {
+    status: 'CONFORME' | 'NON_CONFORME';
+    inspectorName: string;
+    date: string;
+    notes?: string;
+  };
+  cndInspection: {
+    type: '100% Ressuage PT + 100% Radio RT' | '100% Ressuage (PT)' | 'Contrôle Ultrasons (UT) + Ressuage' | 'Examen Visuel VT + Épreuve Hydro' | string;
+    requiredRatePercent: number; // Ex: 100% ou 10%
+    status: 'CONFORME' | 'A_REPARER' | 'COUPE' | 'EN_ATTENTE_CND';
+    cndReportRef?: string; // Ex: RAP-RT-2026-018
+    filmRef?: string; // Ex: FLM-RT-8841
+    controlDate?: string;
+    controllingBody: string; // Ex: Bureau Veritas Algérie (COFREND II)
+    defectType?: string; // Ex: Inclusion de laitier, Caniveau, Soufflure
+  };
+  repairHistory?: Array<{
+    repairIndex: number;
+    repairDate: string;
+    repairWelderStamp: string;
+    repairDmosRef: string;
+    postRepairCndStatus: 'CONFORME' | 'NON_CONFORME';
+    postRepairReportRef?: string;
+    notes?: string;
+  }>;
+  status: 'CONFORME' | 'EN_ATTENTE_CND' | 'A_REPARER' | 'REPARE_CONFORME' | 'REJETE' | 'LIBERE_EPREUVE';
+  createdAt: string;
+}
+
+export interface StoredNonConformityAction {
+  id: string;
+  description: string;
+  responsible: string;
+  targetDate: string;
+  completedDate?: string;
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED' | 'VERIFIED';
+}
+
+export interface StoredNonConformity {
+  id: string;
+  ncNumber: string; // Ex: FNC-2026-001
+  code: string;     // Alias pour compatibilité
+  title: string;
+  description: string;
+  severity: 'MINEURE' | 'MAJEURE' | 'CRITIQUE';
+  status: 'OPEN' | 'UNDER_INVESTIGATION' | 'CORRECTIVE_ACTION_PENDING' | 'RESOLVED' | 'CLOSED';
+  detectedBy: string;
+  detectedDate: string;
+  projectId?: string;
+  projectCode?: string;
+  projectName?: string;
+  project?: { id: string; code: string; name: string };
+  weldJointId?: string;
+  weldJointNumber?: string;
+  rootCause?: string; // Analyse 5M / Ishikawa, Explication métallurgique
+  resolutionNotes?: string;
+  closeType?: 'VISA_CND' | 'DEROGATION_CLIENT' | 'SCRAP_REBUT' | 'INVESTIGATION' | string;
+  closedBy?: string;
+  closedDate?: string;
+  actions: StoredNonConformityAction[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoredQualityDocRevision {
+  revision: string;
+  changeNotes: string;
+  author: string;
+  date: string;
+}
+
+export interface StoredQualityDocument {
+  id: string;
+  docNumber: string; // Ex: DOC-2026-001, MOS-WPS-2026-614
+  title: string;
+  category: 'PROCEDURE' | 'DMOS' | 'QMOS' | 'PAQ' | 'CND' | string;
+  author: string;
+  version: string;
+  status: 'VALIDE' | 'EN_REVISION' | 'OBSOLETE' | 'APPROUVE';
+  revisions: StoredQualityDocRevision[];
+  fileUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 class ServerStore {
   private users: ServerUser[] = [];
   private projects: StoredProject[] = [];
@@ -1334,8 +1442,9 @@ class ServerStore {
   private attendances: any[] = [];
   private fleetAssets: any[] = [];
   private maintenanceOrders: any[] = [];
-  private nonConformities: any[] = [];
-  private qualityDocuments: any[] = [];
+  private nonConformities: StoredNonConformity[] = [];
+  private qualityDocuments: StoredQualityDocument[] = [];
+  private weldJoints: StoredWeldJoint[] = [];
   public financePayments: any[] = [];
   private auditLogs: any[] = [];
   private rolePermissions: Record<string, any> = {};
@@ -2330,6 +2439,348 @@ class ServerStore {
         ],
       });
     }
+
+    // Initialiser les données Qualité, FNC, GED et Weld Book
+    this.initQualityBaseline();
+  }
+
+  private initQualityBaseline() {
+    this.qualityDocuments = [
+      {
+        id: 'doc-001',
+        docNumber: 'DOC-2026-001',
+        title: 'Manuel d\'Assurance Qualité & Procédures Générales QHSE (ISO 9001:2015)',
+        category: 'PAQ',
+        author: 'Direction Qualité & QHSE SILEX',
+        version: '3.2',
+        status: 'APPROUVE',
+        revisions: [
+          { revision: '3.0', changeNotes: 'Édition initiale triennale du système de management de la qualité', author: 'Direction Qualité SILEX', date: '2024-01-10' },
+          { revision: '3.2', changeNotes: 'Audit de recertification Sonatrach & Bureau Veritas', author: 'Direction Qualité SILEX', date: '2026-01-10' },
+        ],
+        createdAt: '2024-01-10T08:00:00Z',
+        updatedAt: '2026-01-10T14:00:00Z',
+      },
+      {
+        id: 'doc-002',
+        docNumber: 'DOC-2026-002',
+        title: 'Descriptif de Mode Opératoire de Soudage DMOS-01 (TIG 141 racine + SMAW 111 remplissage)',
+        category: 'DMOS',
+        author: 'Ingénieur Matériaux & Soudage (IWE SILEX)',
+        version: '2.0',
+        status: 'VALIDE',
+        revisions: [
+          { revision: '1.0', changeNotes: 'Création initiale sur acier au carbone A106 Gr.B', author: 'Ingénieur IWE SILEX', date: '2025-05-12' },
+          { revision: '2.0', changeNotes: 'Qualification sur nuance A106 Gr.B et P91 selon ASME IX / Sonatrach GS-EP-EXP-103', author: 'Ingénieur IWE SILEX', date: '2026-01-15' },
+        ],
+        createdAt: '2025-05-12T09:00:00Z',
+        updatedAt: '2026-01-15T11:00:00Z',
+      },
+      {
+        id: 'doc-003',
+        docNumber: 'DOC-2026-003',
+        title: 'Qualification de Mode Opératoire de Soudage QMOS-2025-089 (ASME IX / Sonatrach GS-EP-EXP-103)',
+        category: 'QMOS',
+        author: 'Bureau Veritas Algérie (Organisme Tiers)',
+        version: '1.0',
+        status: 'APPROUVE',
+        revisions: [
+          { revision: '1.0', changeNotes: 'Procès-verbal d\'essais mécaniques et micrographie contradictoire BV / Sonatrach', author: 'Bureau Veritas Algérie', date: '2025-11-20' },
+        ],
+        createdAt: '2025-11-20T10:00:00Z',
+        updatedAt: '2025-11-20T10:00:00Z',
+      },
+      {
+        id: 'doc-004',
+        docNumber: 'DOC-2026-004',
+        title: 'Procédure de Contrôle Non-Destructif CND-PT-RT-01 (Ressuage & Radiographie X/Gamma)',
+        category: 'CND',
+        author: 'Responsable Contrôle CND (COFREND II SILEX)',
+        version: '2.1',
+        status: 'VALIDE',
+        revisions: [
+          { revision: '2.0', changeNotes: 'Standardisation des critères d\'acceptabilité ASME Section V & B31.3', author: 'Responsable CND', date: '2025-08-10' },
+          { revision: '2.1', changeNotes: 'Intégration du protocole radioprotection zone balisée Sonatrach', author: 'Responsable CND', date: '2026-01-08' },
+        ],
+        createdAt: '2025-08-10T08:00:00Z',
+        updatedAt: '2026-01-08T16:00:00Z',
+      },
+      {
+        id: 'doc-005',
+        docNumber: 'DOC-2026-005',
+        title: 'Plan d\'Assurance Qualité PAQ-PRJ-2026-001 (Chantier Rénovation Tuyauteries HP Skikda)',
+        category: 'PAQ',
+        author: 'Karim Mansouri (Chef de Projet SILEX)',
+        version: '1.1',
+        status: 'VALIDE',
+        revisions: [
+          { revision: '1.0', changeNotes: 'Soumission initiale au Maître d\'Ouvrage', author: 'Karim Mansouri', date: '2026-09-25' },
+          { revision: '1.1', changeNotes: 'Levée des remarques client et visa bon pour exécution RA1K', author: 'Karim Mansouri', date: '2026-10-02' },
+        ],
+        createdAt: '2026-09-25T11:00:00Z',
+        updatedAt: '2026-10-02T15:00:00Z',
+      },
+    ];
+
+    this.weldJoints = [
+      {
+        id: 'weld-001',
+        jointNumber: 'J-01-VAP-HP',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+        lineIso: 'ISO-A106-DN200-SCH80',
+        spoolId: 'SPL-01',
+        diameterNominal: 'DN200 (8")',
+        thicknessMm: 12.7,
+        material: 'Acier Carbone ASTM A106 Gr.B',
+        heatNumberPipe: 'HEAT-A106-99412',
+        heatNumberFitting: 'HEAT-ELB-A234-8831',
+        welderName: 'Amar Bouzid',
+        welderStamp: 'S-02',
+        welderCqsRef: 'CQS-BV-2026-088',
+        weldingProcess: 'TIG 141 (racine) + SMAW 111 (remplissage)',
+        dmosRef: 'DMOS-01-ASME-IX',
+        weldDate: '2026-10-15',
+        visualInspection: {
+          status: 'CONFORME',
+          inspectorName: 'Mustapha Kaci (Inspecteur VT)',
+          date: '2026-10-15',
+          notes: 'Aspect régulier, pénétration complète, surépaisseur conforme 1.5mm',
+        },
+        cndInspection: {
+          type: '100% Ressuage PT + 100% Radio RT',
+          requiredRatePercent: 100,
+          status: 'CONFORME',
+          cndReportRef: 'RAP-RT-2026-018',
+          filmRef: 'FLM-RT-8841',
+          controlDate: '2026-10-16',
+          controllingBody: 'Bureau Veritas Algérie (COFREND II)',
+        },
+        status: 'LIBERE_EPREUVE',
+        createdAt: '2026-10-15T14:00:00Z',
+      },
+      {
+        id: 'weld-002',
+        jointNumber: 'J-02-VAP-HP',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+        lineIso: 'ISO-A106-DN200-SCH80',
+        spoolId: 'SPL-01',
+        diameterNominal: 'DN200 (8")',
+        thicknessMm: 12.7,
+        material: 'Acier Carbone ASTM A106 Gr.B',
+        heatNumberPipe: 'HEAT-A106-99412',
+        welderName: 'Amar Bouzid',
+        welderStamp: 'S-02',
+        welderCqsRef: 'CQS-BV-2026-088',
+        weldingProcess: 'TIG 141 (racine) + SMAW 111 (remplissage)',
+        dmosRef: 'DMOS-01-ASME-IX',
+        weldDate: '2026-10-16',
+        visualInspection: {
+          status: 'CONFORME',
+          inspectorName: 'Mustapha Kaci',
+          date: '2026-10-16',
+        },
+        cndInspection: {
+          type: '100% Ressuage PT + 100% Radio RT',
+          requiredRatePercent: 100,
+          status: 'CONFORME',
+          cndReportRef: 'RAP-RT-2026-019',
+          filmRef: 'FLM-RT-8842',
+          controlDate: '2026-10-17',
+          controllingBody: 'Bureau Veritas Algérie (COFREND II)',
+        },
+        status: 'LIBERE_EPREUVE',
+        createdAt: '2026-10-16T16:00:00Z',
+      },
+      {
+        id: 'weld-003',
+        jointNumber: 'J-03-INX-GNL',
+        projectId: 'prj-2026-002',
+        projectCode: 'PRJ-2026-002',
+        projectName: 'Montage mécanique & tuyauterie circuits vapeur centrale 2x400MW',
+        lineIso: 'ISO-316L-DN150-SCH40S',
+        spoolId: 'SPL-02',
+        diameterNominal: 'DN150 (6")',
+        thicknessMm: 7.11,
+        material: 'Inox 316L (Nuance Z2CND17-12)',
+        heatNumberPipe: 'HEAT-INOX-77341',
+        welderName: 'Nabil Meziani',
+        welderStamp: 'S-05',
+        welderCqsRef: 'CQS-TUV-2025-104',
+        weldingProcess: 'TIG 141 intégral (racine + remplissage)',
+        dmosRef: 'DMOS-02-INOX-ASME-IX',
+        weldDate: '2026-10-20',
+        visualInspection: {
+          status: 'CONFORME',
+          inspectorName: 'Rachid Benaissa',
+          date: '2026-10-20',
+        },
+        cndInspection: {
+          type: '100% Ressuage (PT)',
+          requiredRatePercent: 100,
+          status: 'CONFORME',
+          cndReportRef: 'RAP-PT-2026-031',
+          controlDate: '2026-10-21',
+          controllingBody: 'COFREND II SILEX',
+        },
+        status: 'CONFORME',
+        createdAt: '2026-10-20T11:00:00Z',
+      },
+      {
+        id: 'weld-004',
+        jointNumber: 'J-04-INX-GNL',
+        projectId: 'prj-2026-002',
+        projectCode: 'PRJ-2026-002',
+        projectName: 'Montage mécanique & tuyauterie circuits vapeur centrale 2x400MW',
+        lineIso: 'ISO-316L-DN150-SCH40S',
+        spoolId: 'SPL-02',
+        diameterNominal: 'DN150 (6")',
+        thicknessMm: 7.11,
+        material: 'Inox 316L (Nuance Z2CND17-12)',
+        heatNumberPipe: 'HEAT-INOX-77341',
+        heatNumberFitting: 'HEAT-ELB-316L-771',
+        welderName: 'Nabil Meziani',
+        welderStamp: 'S-05',
+        welderCqsRef: 'CQS-TUV-2025-104',
+        weldingProcess: 'TIG 141',
+        dmosRef: 'DMOS-02-INOX-ASME-IX',
+        weldDate: '2026-10-22',
+        visualInspection: {
+          status: 'NON_CONFORME',
+          inspectorName: 'Rachid Benaissa',
+          date: '2026-10-22',
+          notes: 'Défaut d’aspect caniveau visible en position 3G',
+        },
+        cndInspection: {
+          type: '100% Ressuage PT + 100% Radio RT',
+          requiredRatePercent: 100,
+          status: 'CONFORME',
+          cndReportRef: 'RAP-RT-2026-025-R1',
+          filmRef: 'FLM-RT-8901',
+          controlDate: '2026-10-24',
+          controllingBody: 'Bureau Veritas Algérie (COFREND II)',
+          defectType: 'Caniveau et porosité initiale résolus par réparation',
+        },
+        repairHistory: [
+          {
+            repairIndex: 1,
+            repairDate: '2026-10-23',
+            repairWelderStamp: 'S-02',
+            repairDmosRef: 'DMOS-REP-01',
+            postRepairCndStatus: 'CONFORME',
+            postRepairReportRef: 'RAP-RT-2026-025-R1',
+            notes: 'Gougeage mécanique du défaut, meulage à blanc, ressuage intermédiaire vierge, réfection passe TIG sous argon pur et radio 100% conforme.',
+          },
+        ],
+        status: 'REPARE_CONFORME',
+        createdAt: '2026-10-22T09:00:00Z',
+      },
+      {
+        id: 'weld-005',
+        jointNumber: 'J-05-VAPEUR-HP',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+        lineIso: 'ISO-316L-DN150-SCH80',
+        spoolId: 'SPL-03',
+        diameterNominal: 'DN150 (6")',
+        thicknessMm: 11.0,
+        material: 'Inox 316L (Nuance Z2CND17-12)',
+        welderName: 'Amar Bouzid',
+        welderStamp: 'S-02',
+        welderCqsRef: 'CQS-BV-2026-088',
+        weldingProcess: 'TIG 141 racine + SMAW 111 remplissage',
+        dmosRef: 'DMOS-01 (TIG 141 racine + SMAW 111)',
+        weldDate: '2026-11-05',
+        visualInspection: {
+          status: 'CONFORME',
+          inspectorName: 'Mustapha Kaci',
+          date: '2026-11-05',
+        },
+        cndInspection: {
+          type: '100% Ressuage PT + 100% Radio RT',
+          requiredRatePercent: 100,
+          status: 'EN_ATTENTE_CND',
+          controllingBody: 'Bureau Veritas Algérie (COFREND II)',
+        },
+        status: 'EN_ATTENTE_CND',
+        createdAt: '2026-11-05T15:30:00Z',
+      },
+    ];
+
+    this.nonConformities = [
+      {
+        id: 'nc-001',
+        ncNumber: 'FNC-2026-001',
+        code: 'FNC-2026-001',
+        title: 'Inclusion de laitier et caniveau détecté sur le joint soudé J-04 ligne Inox 316L',
+        description: 'Lors du contrôle radiographique systématique (tir radio n° FLM-RT-8901), détection d’un caniveau continu de 25 mm et porosité interne non admissible selon code ASME B31.3 Catégorie Fluide Sévère.',
+        severity: 'MAJEURE',
+        status: 'CLOSED',
+        detectedBy: 'Inspecteur CND Bureau Veritas Algérie (COFREND II)',
+        detectedDate: '2026-10-22T17:00:00Z',
+        projectId: 'prj-2026-002',
+        projectCode: 'PRJ-2026-002',
+        projectName: 'Montage mécanique & tuyauterie circuits vapeur centrale 2x400MW',
+        project: { id: 'prj-2026-002', code: 'PRJ-2026-002', name: 'Montage mécanique & tuyauterie circuits vapeur centrale 2x400MW' },
+        weldJointNumber: 'J-04-INX-GNL',
+        rootCause: 'Vitesse d’avance excessive lors de la première passe de remplissage et instabilité du débit d’argon de protection.',
+        resolutionNotes: 'Réfection complète du cordon selon DMOS-REP-01 par soudeur qualifié S-02 (Amar Bouzid). Contrôle CND contradictoire par radio RT rapport RAP-RT-2026-025-R1 100% conforme sans aucun défaut résiduel.',
+        closeType: 'Visa CND Conforme',
+        closedBy: 'Direction Qualité SILEX',
+        closedDate: '2026-10-24T18:00:00Z',
+        actions: [
+          {
+            id: 'act-001',
+            description: 'Gougeage complet du cordon défectueux et reprise de passe sous contrôle direct',
+            responsible: 'Chef d’équipe Soudage & Responsable CND',
+            targetDate: '2026-10-23',
+            completedDate: '2026-10-23',
+            status: 'COMPLETED',
+          },
+          {
+            id: 'act-002',
+            description: 'Sensibilisation des soudeurs au respect du débit de gaz de chambrage (Argon pur 99.99%)',
+            responsible: 'Superviseur QHSE',
+            targetDate: '2026-10-25',
+            completedDate: '2026-10-25',
+            status: 'COMPLETED',
+          },
+        ],
+        createdAt: '2026-10-22T17:30:00Z',
+        updatedAt: '2026-10-24T18:00:00Z',
+      },
+      {
+        id: 'nc-002',
+        ncNumber: 'FNC-2026-002',
+        code: 'FNC-2026-002',
+        title: 'Absence de certificat matière CCPU 3.1 sur lot de coudes 90° ASTM A234 WPB',
+        description: 'Lors de la réception magasin du bon de livraison BL-PETRO-2026-088, le lot de 15 coudes DN200 ne présentait pas le certificat CCPU 3.1 original visé. Mise en zone quarantaine immédiate.',
+        severity: 'CRITIQUE',
+        status: 'UNDER_INVESTIGATION',
+        detectedBy: 'Magasinier Central & Responsable Contrôle Réception SILEX',
+        detectedDate: '2026-11-02T10:00:00Z',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+        project: { id: 'prj-2026-001', code: 'PRJ-2026-001', name: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques' },
+        rootCause: 'Fournisseur PETRO-PIPE ALGERIE a omis de joindre la liasse documentaire avec le bordereau de transport.',
+        actions: [
+          {
+            id: 'act-003',
+            description: 'Blocage physique en zone quarantaine et mise en demeure formelle du fournisseur pour transmission CCPU 3.1',
+            responsible: 'Responsable Achats & Approvisionnements',
+            targetDate: '2026-11-12',
+            status: 'IN_PROGRESS',
+          },
+        ],
+        createdAt: '2026-11-02T10:30:00Z',
+        updatedAt: '2026-11-02T10:30:00Z',
+      },
+    ];
   }
 
   deleteUser(id: string) {
@@ -4411,49 +4862,358 @@ class ServerStore {
     return order;
   }
 
-  // --- QUALITY & QHSE ---
-  getNonConformities() {
+  // --- QUALITY, QHSE, GED & WELD BOOK UNITAIRE ---
+  getNonConformities(projectId?: string): StoredNonConformity[] {
+    if (projectId) {
+      return this.nonConformities.filter(nc => nc.projectId === projectId || nc.projectCode === projectId);
+    }
     return this.nonConformities;
   }
 
-  createNonConformity(data: any) {
-    const code = `FNC-2026-${String(this.nonConformities.length + 1).padStart(3, '0')}`;
-    const nc = {
-      id: `nc-${Date.now()}`,
-      code,
+  getNonConformity(idOrCode: string): StoredNonConformity | undefined {
+    return this.nonConformities.find(nc => nc.id === idOrCode || nc.ncNumber === idOrCode || nc.code === idOrCode);
+  }
+
+  createNonConformity(data: any, user?: any): StoredNonConformity {
+    const nextNum = this.nonConformities.length + 1;
+    const ncNumber = data.ncNumber || `FNC-2026-${String(nextNum).padStart(3, '0')}`;
+    
+    let projectObj: { id: string; code: string; name: string } | undefined = undefined;
+    let projId = data.projectId;
+    let projCode = data.projectCode;
+    let projName = data.projectName;
+
+    if (projId || projCode) {
+      const p = this.getProject(projId || projCode);
+      if (p) {
+        projId = p.id;
+        projCode = p.code;
+        projName = p.name;
+        projectObj = { id: p.id, code: p.code, name: p.name };
+      }
+    }
+
+    const initialActions: StoredNonConformityAction[] = [];
+    if (Array.isArray(data.actions) && data.actions.length > 0) {
+      initialActions.push(...data.actions);
+    } else if (data.correctiveAction) {
+      initialActions.push({
+        id: `act-${Date.now()}-01`,
+        description: data.correctiveAction,
+        responsible: data.correctiveActionResp || 'Chef de Chantier',
+        targetDate: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
+        status: 'PENDING',
+      });
+    }
+
+    const nc: StoredNonConformity = {
+      id: `nc-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      ncNumber,
+      code: ncNumber,
       title: data.title || 'Fiche de Non-Conformité',
       description: data.description || '',
       severity: data.severity || 'MAJEURE',
-      status: 'OUVERTE',
-      detectedBy: data.detectedBy || 'Inspecteur CND SILEX',
-      projectId: data.projectId,
-      projectCode: this.getProject(data.projectId)?.code || '',
-      correctiveAction: data.correctiveAction || '',
-      correctiveActionResp: data.correctiveActionResp || '',
+      status: (data.status as any) || 'OPEN',
+      detectedBy: data.detectedBy || user?.name || 'Inspecteur CND SILEX',
+      detectedDate: data.detectedDate || new Date().toISOString(),
+      projectId: projId,
+      projectCode: projCode,
+      projectName: projName,
+      project: projectObj,
+      weldJointNumber: data.weldJointNumber,
+      rootCause: data.rootCause || '',
+      resolutionNotes: data.resolutionNotes || '',
+      closeType: data.closeType,
+      actions: initialActions,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
+
     this.nonConformities.unshift(nc);
-    this.addAuditLog('CREATE_NON_CONFORMITY', 'QUALITY', nc.code, `FNC ouverte : ${nc.code} - ${nc.title}`);
+    this.addAuditLog('CREATE_NON_CONFORMITY', 'QUALITY', nc.ncNumber, `FNC ouverte : ${nc.ncNumber} - ${nc.title} (Gravité ${nc.severity})`, user);
     return nc;
   }
 
-  getQualityDocuments() {
+  updateNonConformityStatus(idOrCode: string, updateData: any, user?: any): StoredNonConformity {
+    const nc = this.getNonConformity(idOrCode);
+    if (!nc) {
+      throw new Error(`Fiche de non-conformité introuvable : ${idOrCode}`);
+    }
+
+    if (updateData.status) {
+      nc.status = updateData.status;
+      if (updateData.status === 'CLOSED') {
+        nc.closedBy = user?.name || 'Direction Qualité SILEX';
+        nc.closedDate = new Date().toISOString();
+      }
+    }
+
+    if (updateData.closeType) {
+      nc.closeType = updateData.closeType;
+    }
+
+    if (updateData.resolutionNotes) {
+      nc.resolutionNotes = updateData.resolutionNotes;
+      if (!nc.rootCause) {
+        nc.rootCause = updateData.resolutionNotes;
+      }
+    }
+
+    if (updateData.rootCause) {
+      nc.rootCause = updateData.rootCause;
+    }
+
+    nc.updatedAt = new Date().toISOString();
+    this.addAuditLog('UPDATE_NON_CONFORMITY_STATUS', 'QUALITY', nc.ncNumber, `Statut FNC ${nc.ncNumber} mis à jour : ${nc.status} (${nc.closeType || 'Clôture directe'})`, user);
+    return nc;
+  }
+
+  addNonConformityAction(idOrCode: string, actionData: any, user?: any): { action: StoredNonConformityAction; nonConformity: StoredNonConformity } {
+    const nc = this.getNonConformity(idOrCode);
+    if (!nc) {
+      throw new Error(`Fiche de non-conformité introuvable : ${idOrCode}`);
+    }
+
+    const action: StoredNonConformityAction = {
+      id: `act-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      description: actionData.description || 'Action corrective d\'éradication',
+      responsible: actionData.responsible || 'Responsable Qualité Chantier',
+      targetDate: actionData.targetDate || new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0],
+      status: actionData.status || 'IN_PROGRESS',
+    };
+
+    if (!nc.actions) nc.actions = [];
+    nc.actions.push(action);
+
+    if (nc.status === 'OPEN') {
+      nc.status = 'UNDER_INVESTIGATION';
+    }
+
+    nc.updatedAt = new Date().toISOString();
+    this.addAuditLog('ADD_NON_CONFORMITY_ACTION', 'QUALITY', nc.ncNumber, `Action corrective ajoutée sur ${nc.ncNumber} : ${action.description} (${action.responsible})`, user);
+    return { action, nonConformity: nc };
+  }
+
+  getQualityDocuments(category?: string): StoredQualityDocument[] {
+    if (category) {
+      return this.qualityDocuments.filter(d => d.category?.toUpperCase() === category.toUpperCase());
+    }
     return this.qualityDocuments;
   }
 
-  createQualityDocument(data: any) {
-    const doc = {
-      id: `doc-${Date.now()}`,
-      docNumber: data.docNumber || `DOC-2026-${String(this.qualityDocuments.length + 1).padStart(3, '0')}`,
-      title: data.title,
+  getQualityDocument(idOrNumber: string): StoredQualityDocument | undefined {
+    return this.qualityDocuments.find(d => d.id === idOrNumber || d.docNumber === idOrNumber);
+  }
+
+  createQualityDocument(data: any, user?: any): StoredQualityDocument {
+    const nextNum = this.qualityDocuments.length + 1;
+    const docNumber = data.docNumber || `DOC-2026-${String(nextNum).padStart(3, '0')}`;
+    const initialVersion = data.version || '1.0';
+
+    const doc: StoredQualityDocument = {
+      id: `doc-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      docNumber,
+      title: data.title || 'Procédure Qualité SILEX',
       category: data.category || 'PROCEDURE',
-      author: data.author || 'Direction Technique SILEX',
-      version: data.version || '1.0',
-      status: 'VALIDE',
+      author: data.author || user?.name || 'Direction Technique SILEX',
+      version: initialVersion,
+      status: data.status || 'VALIDE',
+      revisions: [
+        {
+          revision: initialVersion,
+          changeNotes: data.changeNotes || 'Édition initiale enregistrée dans la GED',
+          author: data.author || user?.name || 'Direction Technique SILEX',
+          date: new Date().toISOString().split('T')[0],
+        },
+      ],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    this.qualityDocuments.push(doc);
+    this.addAuditLog('CREATE_QUALITY_DOC', 'QUALITY', doc.docNumber, `Document qualité déposé en GED : ${doc.docNumber} - ${doc.title} (v${doc.version})`, user);
+    return doc;
+  }
+
+  addQualityDocumentRevision(idOrNumber: string, revData: any, user?: any): StoredQualityDocument {
+    const doc = this.getQualityDocument(idOrNumber);
+    if (!doc) {
+      throw new Error(`Document qualité introuvable : ${idOrNumber}`);
+    }
+
+    const newRev = revData.version || revData.revision || `${(parseFloat(doc.version) + 0.1).toFixed(1)}`;
+    const revisionItem: StoredQualityDocRevision = {
+      revision: newRev,
+      changeNotes: revData.changeNotes || 'Mise à jour et révision technique',
+      author: revData.author || user?.name || 'Direction Technique SILEX',
+      date: revData.date || new Date().toISOString().split('T')[0],
+    };
+
+    if (!doc.revisions) doc.revisions = [];
+    doc.revisions.push(revisionItem);
+    doc.version = newRev;
+    doc.updatedAt = new Date().toISOString();
+
+    this.addAuditLog('UPDATE_QUALITY_DOC_REVISION', 'QUALITY', doc.docNumber, `Nouvelle révision ${newRev} pour ${doc.docNumber} : ${revisionItem.changeNotes}`, user);
+    return doc;
+  }
+
+  // --- WELD BOOK & SOUDURES INDUSTRIELLES (ASME IX / ISO 9606) ---
+  getWeldJoints(projectId?: string): StoredWeldJoint[] {
+    if (projectId) {
+      return this.weldJoints.filter(w => w.projectId === projectId || w.projectCode === projectId);
+    }
+    return this.weldJoints;
+  }
+
+  getWeldJoint(idOrNumber: string): StoredWeldJoint | undefined {
+    return this.weldJoints.find(w => w.id === idOrNumber || w.jointNumber === idOrNumber);
+  }
+
+  createWeldJoint(data: any, user?: any): StoredWeldJoint {
+    const nextIdx = this.weldJoints.length + 1;
+    const jointNumber = data.jointNumber || `J-${String(nextIdx).padStart(2, '0')}-SOUDL`;
+
+    let projId = data.projectId;
+    let projCode = data.projectCode;
+    let projName = data.projectName;
+
+    if (projId || projCode) {
+      const p = this.getProject(projId || projCode);
+      if (p) {
+        projId = p.id;
+        projCode = p.code;
+        projName = p.name;
+      }
+    }
+
+    if (!projCode) projCode = 'PRJ-2026-001';
+    if (!projName) projName = 'Chantier Rénovation Tuyauteries';
+
+    const visualStatus = data.visualInspection?.status || (data.status === 'REJETE' ? 'NON_CONFORME' : 'CONFORME');
+    const cndStatus = data.cndInspection?.status || (data.status === 'EN_ATTENTE_CND' ? 'EN_ATTENTE_CND' : 'CONFORME');
+
+    const weld: StoredWeldJoint = {
+      id: `weld-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      jointNumber,
+      projectId: projId,
+      projectCode: projCode,
+      projectName: projName,
+      lineIso: data.lineIso || 'ISO-DN150-STD',
+      spoolId: data.spoolId || 'SPL-01',
+      diameterNominal: data.diameterNominal || 'DN150 (6")',
+      thicknessMm: Number(data.thicknessMm) || 7.11,
+      material: data.material || 'Acier Carbone ASTM A106 Gr.B',
+      heatNumberPipe: data.heatNumberPipe || '',
+      heatNumberFitting: data.heatNumberFitting || '',
+      welderName: data.welderName || data.welder || 'Amar Bouzid',
+      welderStamp: data.welderStamp || 'S-02',
+      welderCqsRef: data.welderCqsRef || 'CQS-BV-2026-088',
+      weldingProcess: data.weldingProcess || 'TIG 141 racine + SMAW 111 remplissage',
+      dmosRef: data.dmosRef || data.dmos || 'DMOS-01-ASME-IX',
+      weldDate: data.weldDate || data.date || new Date().toISOString().split('T')[0],
+      visualInspection: {
+        status: visualStatus,
+        inspectorName: data.visualInspection?.inspectorName || data.inspector || user?.name || 'Inspecteur VT SILEX',
+        date: data.visualInspection?.date || new Date().toISOString().split('T')[0],
+        notes: data.visualInspection?.notes || 'Contrôle visuel d\'aspect géométrique',
+      },
+      cndInspection: {
+        type: data.cndInspection?.type || data.cnd || data.cndType || '100% Ressuage PT + 100% Radio RT',
+        requiredRatePercent: data.cndInspection?.requiredRatePercent || 100,
+        status: cndStatus,
+        cndReportRef: data.cndInspection?.cndReportRef || data.cndReportRef,
+        filmRef: data.cndInspection?.filmRef || data.filmRef,
+        controlDate: data.cndInspection?.controlDate || (cndStatus !== 'EN_ATTENTE_CND' ? new Date().toISOString().split('T')[0] : undefined),
+        controllingBody: data.cndInspection?.controllingBody || data.inspector || 'Bureau Veritas Algérie (COFREND II)',
+        defectType: data.cndInspection?.defectType || data.defectType,
+      },
+      repairHistory: data.repairHistory || [],
+      status: (data.status as any) || (cndStatus === 'EN_ATTENTE_CND' ? 'EN_ATTENTE_CND' : 'CONFORME'),
       createdAt: new Date().toISOString(),
     };
-    this.qualityDocuments.push(doc);
-    return doc;
+
+    this.weldJoints.unshift(weld);
+    this.addAuditLog('CREATE_WELD_JOINT', 'QUALITY', weld.jointNumber, `Joint de soudure ${weld.jointNumber} consigné au Weld Book (${weld.lineIso}, nuance ${weld.material}, soudeur ${weld.welderStamp})`, user);
+    return weld;
+  }
+
+  recordWeldCndResult(idOrNumber: string, data: any, user?: any): StoredWeldJoint {
+    const weld = this.getWeldJoint(idOrNumber);
+    if (!weld) {
+      throw new Error(`Joint de soudure introuvable : ${idOrNumber}`);
+    }
+
+    const cndStatus: 'CONFORME' | 'A_REPARER' | 'COUPE' | 'EN_ATTENTE_CND' = data.status || 'CONFORME';
+
+    weld.cndInspection = {
+      type: data.type || weld.cndInspection.type,
+      requiredRatePercent: data.requiredRatePercent ?? weld.cndInspection.requiredRatePercent,
+      status: cndStatus,
+      cndReportRef: data.cndReportRef || weld.cndInspection.cndReportRef || `RAP-RT-${Date.now().toString().slice(-4)}`,
+      filmRef: data.filmRef || weld.cndInspection.filmRef,
+      controlDate: data.controlDate || new Date().toISOString().split('T')[0],
+      controllingBody: data.controllingBody || weld.cndInspection.controllingBody,
+      defectType: data.defectType || (cndStatus === 'A_REPARER' ? 'Défaut interne' : undefined),
+    };
+
+    if (cndStatus === 'CONFORME') {
+      weld.status = 'CONFORME';
+    } else if (cndStatus === 'A_REPARER') {
+      weld.status = 'A_REPARER';
+
+      if (data.autoCreateFnc) {
+        this.createNonConformity({
+          title: `Défaut CND sur joint ${weld.jointNumber} (${data.defectType || 'Inclusion/Porosité'})`,
+          description: `Contrôle CND ${weld.cndInspection.type} non-conforme : ${data.defectType || 'Défaut de compacité'}. Rapport ${weld.cndInspection.cndReportRef}, contrôlé par ${weld.cndInspection.controllingBody}.`,
+          severity: 'MAJEURE',
+          detectedBy: weld.cndInspection.controllingBody,
+          projectId: weld.projectId,
+          projectCode: weld.projectCode,
+          weldJointNumber: weld.jointNumber,
+        }, user);
+      }
+    } else if (cndStatus === 'COUPE') {
+      weld.status = 'REJETE';
+    }
+
+    this.addAuditLog('RECORD_WELD_CND_RESULT', 'QUALITY', weld.jointNumber, `Contrôle CND enregistré pour ${weld.jointNumber} : ${cndStatus} (${weld.cndInspection.type}, rapport ${weld.cndInspection.cndReportRef || 'N/A'})`, user);
+    return weld;
+  }
+
+  recordWeldRepair(idOrNumber: string, data: any, user?: any): StoredWeldJoint {
+    const weld = this.getWeldJoint(idOrNumber);
+    if (!weld) {
+      throw new Error(`Joint de soudure introuvable : ${idOrNumber}`);
+    }
+
+    if (!weld.repairHistory) weld.repairHistory = [];
+    const repairIndex = weld.repairHistory.length + 1;
+    const postCndStatus: 'CONFORME' | 'NON_CONFORME' = data.postRepairCndStatus || 'CONFORME';
+
+    const repairItem = {
+      repairIndex,
+      repairDate: data.repairDate || new Date().toISOString().split('T')[0],
+      repairWelderStamp: data.repairWelderStamp || 'S-02',
+      repairDmosRef: data.repairDmosRef || 'DMOS-REP-01',
+      postRepairCndStatus: postCndStatus,
+      postRepairReportRef: data.postRepairReportRef || `RAP-RT-REP-${repairIndex}`,
+      notes: data.notes || 'Gougeage complet du cordon défectueux et reprise de passe sous flux protecteur argon',
+    };
+
+    weld.repairHistory.push(repairItem);
+
+    if (postCndStatus === 'CONFORME') {
+      weld.status = 'REPARE_CONFORME';
+      weld.cndInspection.status = 'CONFORME';
+      weld.cndInspection.cndReportRef = repairItem.postRepairReportRef;
+    } else {
+      weld.status = 'A_REPARER';
+      weld.cndInspection.status = 'A_REPARER';
+    }
+
+    this.addAuditLog('RECORD_WELD_REPAIR', 'QUALITY', weld.jointNumber, `Réparation n°${repairIndex} consignée pour joint ${weld.jointNumber} : CND post-réparation ${postCndStatus}`, user);
+    return weld;
   }
 
   // --- FINANCE (Synthèse, Encaissements & Retenues) ---

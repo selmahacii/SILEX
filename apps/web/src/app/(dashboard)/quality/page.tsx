@@ -70,29 +70,68 @@ export default function QualityPage() {
   const [activeTab, setActiveTab] = useState<'ged_fnc' | 'weld_book'>('ged_fnc');
   const [showWeldModal, setShowWeldModal] = useState(false);
   const [searchWeld, setSearchWeld] = useState('');
+  const [weldProjectId, setWeldProjectId] = useState('');
   const [weldJointNumber, setWeldJointNumber] = useState('J-05-VAPEUR-HP');
   const [weldLineIso, setWeldLineIso] = useState('ISO-316L-DN150-SCH80');
+  const [weldSpoolId, setWeldSpoolId] = useState('SPL-03');
   const [weldMaterial, setWeldMaterial] = useState('Inox 316L (Nuance Z2CND17-12)');
-  const [weldWelderName, setWeldWelderName] = useState('Amar Bouzid (CQS-BV-2026-088)');
-  const [weldDmos, setWeldDmos] = useState('DMOS-01 (TIG 141 racine + SMAW 111 remplissage)');
+  const [weldDiameterNominal, setWeldDiameterNominal] = useState('DN150 (6")');
+  const [weldThicknessMm, setWeldThicknessMm] = useState('11.0');
+  const [weldHeatPipe, setWeldHeatPipe] = useState('HEAT-INOX-77341');
+  const [weldWelderName, setWeldWelderName] = useState('Amar Bouzid');
+  const [weldWelderStamp, setWeldWelderStamp] = useState('S-02');
+  const [weldWelderCqs, setWeldWelderCqs] = useState('CQS-BV-2026-088');
+  const [weldWeldingProcess, setWeldWeldingProcess] = useState('TIG 141 racine + SMAW 111 remplissage');
+  const [weldDmos, setWeldDmos] = useState('DMOS-01-ASME-IX');
   const [weldCndType, setWeldCndType] = useState('100% Ressuage PT + 100% Radio RT');
   const [weldInspector, setWeldInspector] = useState('Bureau Veritas Algérie (COFREND II)');
   const [weldStatus, setWeldStatus] = useState<'CONFORME' | 'REPARE_CONFORME' | 'EN_ATTENTE_CND'>('CONFORME');
   const [weldRecords, setWeldRecords] = useState<any[]>([]);
 
+  // Modal Contrôle CND
+  const [showCndModal, setShowCndModal] = useState(false);
+  const [selectedWeldForCnd, setSelectedWeldForCnd] = useState<any | null>(null);
+  const [cndResultStatus, setCndResultStatus] = useState<'CONFORME' | 'A_REPARER' | 'COUPE'>('CONFORME');
+  const [cndReportRef, setCndReportRef] = useState('');
+  const [cndFilmRef, setCndFilmRef] = useState('');
+  const [cndControllingBody, setCndControllingBody] = useState('Bureau Veritas Algérie (COFREND II)');
+  const [cndDefectType, setCndDefectType] = useState('');
+  const [cndAutoFnc, setCndAutoFnc] = useState(true);
+
+  // Modal Réparation Soudure
+  const [showRepairModal, setShowRepairModal] = useState(false);
+  const [selectedWeldForRepair, setSelectedWeldForRepair] = useState<any | null>(null);
+  const [repairWelderStamp, setRepairWelderStamp] = useState('S-02');
+  const [repairDmosRef, setRepairDmosRef] = useState('DMOS-REP-01');
+  const [repairPostCndStatus, setRepairPostCndStatus] = useState<'CONFORME' | 'NON_CONFORME'>('CONFORME');
+  const [repairReportRef, setRepairReportRef] = useState('');
+  const [repairNotes, setRepairNotes] = useState('Gougeage complet du cordon défectueux et reprise de passe sous flux protecteur argon');
+
+  // Modal Nouvelle Révision Document GED
+  const [showDocRevModal, setShowDocRevModal] = useState(false);
+  const [selectedDocForRev, setSelectedDocForRev] = useState<any | null>(null);
+  const [revVersion, setRevVersion] = useState('');
+  const [revNotes, setRevNotes] = useState('');
+  const [revAuthor, setRevAuthor] = useState('Direction Technique SILEX');
+
   const loadQualityData = async () => {
     try {
       setLoading(true);
-      const [docs, ncs, prjs] = await Promise.all([
+      const [docs, ncs, welds, prjs] = await Promise.all([
         api.get<any[]>('/quality/documents'),
         api.get<any[]>('/quality/non-conformities'),
+        api.get<any[]>('/quality/weld-book'),
         api.get<any[]>('/projects'),
       ]);
       setDocuments(Array.isArray(docs) ? docs : []);
       setNonConformities(Array.isArray(ncs) ? ncs : []);
+      setWeldRecords(Array.isArray(welds) ? welds : []);
       setProjects(Array.isArray(prjs) ? prjs : []);
 
-      if (prjs.length > 0 && !ncProjectId) setNcProjectId(prjs[0].id);
+      if (prjs && prjs.length > 0) {
+        if (!ncProjectId) setNcProjectId(prjs[0].id);
+        if (!weldProjectId) setWeldProjectId(prjs[0].id);
+      }
     } catch (err) {
       console.error('Erreur qualité:', err);
     } finally {
@@ -258,30 +297,105 @@ export default function QualityPage() {
     nc.description?.toLowerCase().includes(searchNC.toLowerCase())
   );
 
-  const handleCreateWeldJoint = (e: React.FormEvent) => {
+  const handleCreateWeldJoint = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newWeld = {
-      id: `weld-${Date.now()}`,
-      jointNumber: weldJointNumber,
-      lineIso: weldLineIso,
-      material: weldMaterial,
-      welder: weldWelderName,
-      dmos: weldDmos,
-      cnd: weldCndType,
-      inspector: weldInspector,
-      date: new Date().toISOString().split('T')[0],
-      status: weldStatus,
-    };
-    setWeldRecords(prev => [newWeld, ...prev]);
-    setShowWeldModal(false);
-    setNotification(`Soudure ${weldJointNumber} consignée avec succès au Weld Book ! Traçabilité CND active.`);
-    setTimeout(() => setNotification(null), 5000);
+    try {
+      const created = await api.post<any>('/quality/weld-book', {
+        jointNumber: weldJointNumber,
+        projectId: weldProjectId || undefined,
+        lineIso: weldLineIso,
+        spoolId: weldSpoolId,
+        material: weldMaterial,
+        diameterNominal: weldDiameterNominal,
+        thicknessMm: Number(weldThicknessMm) || 7.11,
+        heatNumberPipe: weldHeatPipe,
+        welderName: weldWelderName,
+        welderStamp: weldWelderStamp,
+        welderCqsRef: weldWelderCqs,
+        weldingProcess: weldWeldingProcess,
+        dmosRef: weldDmos,
+        cndType: weldCndType,
+        inspector: weldInspector,
+        status: weldStatus,
+      });
+      setShowWeldModal(false);
+      await loadQualityData();
+      setNotification(`Soudure ${created.jointNumber} consignée avec succès au Weld Book ! Traçabilité CND active.`);
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur consignation joint de soudure');
+    }
+  };
+
+  const handleRecordCndResult = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedWeldForCnd) return;
+    try {
+      const updated = await api.post<any>(`/quality/weld-book/${selectedWeldForCnd.id}/cnd`, {
+        status: cndResultStatus,
+        cndReportRef: cndReportRef || `RAP-RT-${Date.now().toString().slice(-4)}`,
+        filmRef: cndFilmRef || `FLM-${Date.now().toString().slice(-4)}`,
+        controllingBody: cndControllingBody,
+        defectType: cndResultStatus === 'A_REPARER' ? (cndDefectType || 'Défaut interne non admissible') : undefined,
+        autoCreateFnc: cndResultStatus === 'A_REPARER' && cndAutoFnc,
+      });
+      setShowCndModal(false);
+      setSelectedWeldForCnd(null);
+      await loadQualityData();
+      setNotification(`Contrôle CND consigné pour le joint ${updated.jointNumber} : ${updated.status} !`);
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur enregistrement contrôle CND');
+    }
+  };
+
+  const handleRecordRepair = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedWeldForRepair) return;
+    try {
+      const updated = await api.post<any>(`/quality/weld-book/${selectedWeldForRepair.id}/repair`, {
+        repairWelderStamp,
+        repairDmosRef,
+        postRepairCndStatus: repairPostCndStatus,
+        postRepairReportRef: repairReportRef || `RAP-RT-REP-${Date.now().toString().slice(-4)}`,
+        notes: repairNotes,
+      });
+      setShowRepairModal(false);
+      setSelectedWeldForRepair(null);
+      await loadQualityData();
+      setNotification(`Réparation consignée pour le joint ${updated.jointNumber} : statut ${updated.status} !`);
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur enregistrement réparation');
+    }
+  };
+
+  const handleCreateDocRevision = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDocForRev) return;
+    try {
+      const updated = await api.post<any>(`/quality/documents/${selectedDocForRev.id}/revisions`, {
+        version: revVersion,
+        changeNotes: revNotes,
+        author: revAuthor,
+      });
+      setShowDocRevModal(false);
+      setSelectedDocForRev(null);
+      await loadQualityData();
+      setNotification(`Nouvelle révision v${updated.version} enregistrée pour ${updated.docNumber} !`);
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err: any) {
+      alert(err.message || 'Erreur enregistrement révision document');
+    }
   };
 
   const filteredWelds = weldRecords.filter(w =>
     w.jointNumber?.toLowerCase().includes(searchWeld.toLowerCase()) ||
     w.lineIso?.toLowerCase().includes(searchWeld.toLowerCase()) ||
     w.welder?.toLowerCase().includes(searchWeld.toLowerCase()) ||
+    w.welderName?.toLowerCase().includes(searchWeld.toLowerCase()) ||
+    w.welderStamp?.toLowerCase().includes(searchWeld.toLowerCase()) ||
+    w.projectCode?.toLowerCase().includes(searchWeld.toLowerCase()) ||
     w.material?.toLowerCase().includes(searchWeld.toLowerCase())
   );
 
@@ -399,19 +513,39 @@ export default function QualityPage() {
                       <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded border border-emerald-200">
                         {doc.status}
                       </span>
+                      {doc.revisions && doc.revisions.length > 1 && (
+                        <span className="text-[10px] bg-blue-50 text-blue-700 px-1.5 py-0.2 rounded border border-blue-200">
+                          {doc.revisions.length} révisions
+                        </span>
+                      )}
                     </div>
                     <div className="font-semibold text-slate-800 mt-1">{doc.title}</div>
                     <div className="text-[11px] text-slate-500 mt-0.5">
                       Catégorie : <strong>{doc.category}</strong> • Auteur : {doc.author}
                     </div>
                   </div>
-                  <button
-                    onClick={() => alert(`Téléchargement certifié de la procédure ${doc.docNumber}`)}
-                    className="p-1.5 text-slate-500 hover:text-[#0A7F7C] hover:bg-teal-50 rounded"
-                    title="Télécharger Document"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => {
+                        setSelectedDocForRev(doc);
+                        const nextV = (parseFloat(doc.version || '1.0') + 0.1).toFixed(1);
+                        setRevVersion(nextV);
+                        setRevNotes('Mise à jour et révision technique validée');
+                        setShowDocRevModal(true);
+                      }}
+                      className="px-2 py-1 text-[10px] font-semibold bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded cursor-pointer"
+                      title="Créer une nouvelle révision"
+                    >
+                      + Rév.
+                    </button>
+                    <button
+                      onClick={() => alert(`Téléchargement certifié de la procédure ${doc.docNumber}`)}
+                      className="p-1.5 text-slate-500 hover:text-[#0A7F7C] hover:bg-teal-50 rounded"
+                      title="Télécharger Document"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -603,44 +737,159 @@ export default function QualityPage() {
             <table className="w-full text-xs text-left">
               <thead className="bg-slate-50 text-[10px] uppercase font-bold text-slate-600 border-b">
                 <tr>
-                  <th className="p-2.5">Repère Joint</th>
+                  <th className="p-2.5">Repère Joint & Chantier</th>
                   <th className="p-2.5">Ligne ISO / Isométrique</th>
-                  <th className="p-2.5">Nuance Matière</th>
-                  <th className="p-2.5">Soudeur & N° CQS</th>
-                  <th className="p-2.5">DMOS Utilisé</th>
+                  <th className="p-2.5">Nuance & Coulée</th>
+                  <th className="p-2.5">Soudeur (Poinçon & CQS)</th>
+                  <th className="p-2.5">DMOS & Procédé</th>
                   <th className="p-2.5">Contrôle CND & Organisme</th>
                   <th className="p-2.5 text-center">Date</th>
-                  <th className="p-2.5 text-right">Statut</th>
+                  <th className="p-2.5 text-center">Statut</th>
+                  <th className="p-2.5 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredWelds.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-8 text-center text-slate-500 text-xs">
+                    <td colSpan={9} className="p-8 text-center text-slate-500 text-xs">
                       Aucun joint de soudure consigné pour l’instant. Cliquez sur « Consigner un Joint de Soudure » pour enrichir le Weld Book.
                     </td>
                   </tr>
                 ) : (
-                  filteredWelds.map(w => (
-                    <tr key={w.id} className="hover:bg-slate-50">
-                      <td className="p-2.5 font-mono font-bold text-[#0B207D]">{w.jointNumber}</td>
-                      <td className="p-2.5 font-mono text-slate-700">{w.lineIso}</td>
-                      <td className="p-2.5 text-slate-800 font-semibold">{w.material}</td>
-                      <td className="p-2.5 text-slate-700">{w.welder}</td>
-                      <td className="p-2.5 text-slate-600 text-[11px]">{w.dmos}</td>
-                      <td className="p-2.5">
-                        <div className="font-semibold text-slate-800">{w.cnd}</div>
-                        <div className="text-[10px] text-slate-500">{w.inspector}</div>
-                      </td>
-                      <td className="p-2.5 text-center text-slate-500">{formatDateDZ(w.date)}</td>
-                      <td className="p-2.5 text-right">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                          <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-                          <span>{w.status}</span>
-                        </span>
-                      </td>
-                    </tr>
-                  ))
+                  filteredWelds.map(w => {
+                    const isConforme = w.status === 'CONFORME' || w.status === 'LIBERE_EPREUVE';
+                    const isRepare = w.status === 'REPARE_CONFORME';
+                    const isDefect = w.status === 'A_REPARER';
+                    const isPending = w.status === 'EN_ATTENTE_CND';
+                    const isRejet = w.status === 'REJETE';
+
+                    return (
+                      <React.Fragment key={w.id}>
+                        <tr className="hover:bg-slate-50">
+                          <td className="p-2.5">
+                            <div className="font-mono font-bold text-[#0B207D]">{w.jointNumber}</div>
+                            <div className="text-[10px] text-slate-500 font-sans mt-0.5">
+                              {w.projectCode || 'PRJ-2026-001'} {w.spoolId ? `• Spool ${w.spoolId}` : ''}
+                            </div>
+                          </td>
+                          <td className="p-2.5 font-mono text-slate-700">
+                            <div>{w.lineIso}</div>
+                            {w.diameterNominal && (
+                              <div className="text-[10px] text-slate-500 font-sans">{w.diameterNominal} {w.thicknessMm ? `(${w.thicknessMm} mm)` : ''}</div>
+                            )}
+                          </td>
+                          <td className="p-2.5">
+                            <div className="text-slate-800 font-semibold">{w.material}</div>
+                            {w.heatNumberPipe && (
+                              <div className="text-[10px] text-teal-700 font-mono">Coulée: {w.heatNumberPipe}</div>
+                            )}
+                          </td>
+                          <td className="p-2.5">
+                            <div className="text-slate-800 font-semibold">{w.welderName || w.welder}</div>
+                            <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-0.5">
+                              <span className="font-mono font-bold bg-slate-100 px-1 py-0.2 rounded text-[10px] text-slate-800">
+                                Poinçon {w.welderStamp || 'S-02'}
+                              </span>
+                              {w.welderCqsRef && <span>{w.welderCqsRef}</span>}
+                            </div>
+                          </td>
+                          <td className="p-2.5">
+                            <div className="text-slate-700 font-medium text-[11px]">{w.dmosRef || w.dmos}</div>
+                            {w.weldingProcess && (
+                              <div className="text-[10px] text-slate-500">{w.weldingProcess}</div>
+                            )}
+                          </td>
+                          <td className="p-2.5">
+                            <div className="font-semibold text-slate-800">{w.cndInspection?.type || w.cnd}</div>
+                            <div className="text-[10px] text-slate-500">
+                              {w.cndInspection?.controllingBody || w.inspector}
+                              {w.cndInspection?.cndReportRef && ` • ${w.cndInspection.cndReportRef}`}
+                            </div>
+                          </td>
+                          <td className="p-2.5 text-center text-slate-500">{formatDateDZ(w.weldDate || w.date)}</td>
+                          <td className="p-2.5 text-center">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              isConforme
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : isRepare
+                                ? 'bg-teal-50 text-teal-800 border-teal-200'
+                                : isDefect
+                                ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                : isPending
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : 'bg-red-50 text-red-800 border-red-200'
+                            }`}>
+                              {isConforme && <CheckCircle2 className="w-3 h-3 text-emerald-700" />}
+                              {isRepare && <ShieldCheck className="w-3 h-3 text-teal-700" />}
+                              {isDefect && <AlertTriangle className="w-3 h-3 text-rose-700" />}
+                              {isPending && <Clock className="w-3 h-3 text-amber-700" />}
+                              <span>{w.status}</span>
+                            </span>
+                          </td>
+                          <td className="p-2.5 text-right">
+                            <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                              <button
+                                onClick={() => {
+                                  setSelectedWeldForCnd(w);
+                                  setCndResultStatus('CONFORME');
+                                  setCndReportRef(w.cndInspection?.cndReportRef || '');
+                                  setCndFilmRef(w.cndInspection?.filmRef || '');
+                                  setCndControllingBody(w.cndInspection?.controllingBody || 'Bureau Veritas Algérie (COFREND II)');
+                                  setCndDefectType('');
+                                  setShowCndModal(true);
+                                }}
+                                className="px-2 py-1 text-[10px] font-semibold bg-white border border-[#0B207D] text-[#0B207D] hover:bg-blue-50 rounded cursor-pointer transition-colors"
+                                title="Enregistrer / Mettre à jour contrôle CND"
+                              >
+                                Contrôle CND
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedWeldForRepair(w);
+                                  setRepairWelderStamp(w.welderStamp || 'S-02');
+                                  setRepairDmosRef('DMOS-REP-01');
+                                  setRepairPostCndStatus('CONFORME');
+                                  setRepairReportRef(`RAP-RT-REP-${Date.now().toString().slice(-4)}`);
+                                  setRepairNotes('Gougeage complet du cordon défectueux et réfection sous argon');
+                                  setShowRepairModal(true);
+                                }}
+                                className={`px-2 py-1 text-[10px] font-semibold rounded cursor-pointer transition-colors ${
+                                  isDefect
+                                    ? 'bg-orange-600 hover:bg-orange-700 text-white shadow-2xs'
+                                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                                }`}
+                                title="Consigner réparation soudure"
+                              >
+                                Réparer
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {w.repairHistory && w.repairHistory.length > 0 && (
+                          <tr className="bg-orange-50/30">
+                            <td colSpan={9} className="p-2 pl-6 text-[11px] text-slate-700 border-b border-orange-100">
+                              <div className="flex items-center gap-2 text-orange-950 font-semibold">
+                                <Sparkles className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+                                <span>Historique des réparations consignées :</span>
+                              </div>
+                              <div className="space-y-1 mt-1 pl-5">
+                                {w.repairHistory.map((rep: any) => (
+                                  <div key={rep.repairIndex} className="text-slate-600 flex items-center justify-between text-[10px]">
+                                    <span>
+                                      • Réparation n°{rep.repairIndex} ({formatDateDZ(rep.repairDate)}) par {rep.repairWelderStamp} via {rep.repairDmosRef} — {rep.notes}
+                                    </span>
+                                    <span className="font-bold text-teal-800">
+                                      CND post-réparation : {rep.postRepairCndStatus} ({rep.postRepairReportRef})
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -1083,6 +1332,24 @@ export default function QualityPage() {
             </div>
 
             <form onSubmit={handleCreateWeldJoint} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Chantier / Projet Rattaché *
+                </label>
+                <select
+                  value={weldProjectId}
+                  onChange={e => setWeldProjectId(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-[#0B207D]"
+                  required
+                >
+                  {(Array.isArray(projects) ? projects : []).map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.code} — {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
@@ -1112,6 +1379,46 @@ export default function QualityPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Spool ID
+                  </label>
+                  <input
+                    type="text"
+                    value={weldSpoolId}
+                    onChange={e => setWeldSpoolId(e.target.value)}
+                    placeholder="Ex: SPL-03"
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D] font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Diamètre Nominal
+                  </label>
+                  <input
+                    type="text"
+                    value={weldDiameterNominal}
+                    onChange={e => setWeldDiameterNominal(e.target.value)}
+                    placeholder="Ex: DN150 (6\)"
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Épaisseur (mm)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={weldThicknessMm}
+                    onChange={e => setWeldThicknessMm(e.target.value)}
+                    placeholder="Ex: 11.0"
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
@@ -1123,11 +1430,55 @@ export default function QualityPage() {
                     className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-[#0B207D]"
                   >
                     <option value="Inox 316L (Nuance Z2CND17-12)">Inox 316L (Nuance Z2CND17-12)</option>
-                    <option value="Acier Carbone A106 Gr.B">Acier Carbone A106 Gr.B</option>
+                    <option value="Acier Carbone ASTM A106 Gr.B">Acier Carbone ASTM A106 Gr.B</option>
                     <option value="Acier Allié P91 (Haute Température)">Acier Allié P91 (Haute Température)</option>
                     <option value="Inox 304L Tuyauterie Agro/Chimie">Inox 304L Tuyauterie Agro/Chimie</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    N° Coulée Tube / Raccord
+                  </label>
+                  <input
+                    type="text"
+                    value={weldHeatPipe}
+                    onChange={e => setWeldHeatPipe(e.target.value)}
+                    placeholder="Ex: HEAT-INOX-77341"
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D] font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Soudeur Qualifié (Nom) *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={weldWelderName}
+                    onChange={e => setWeldWelderName(e.target.value)}
+                    placeholder="Ex: Amar Bouzid"
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Poinçon *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={weldWelderStamp}
+                    onChange={e => setWeldWelderStamp(e.target.value)}
+                    placeholder="Ex: S-02"
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D] font-mono text-center font-bold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
                     Procédé & DMOS Rattaché *
@@ -1141,20 +1492,18 @@ export default function QualityPage() {
                     className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D]"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Soudeur Qualifié (Nom & N° CQS) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={weldWelderName}
-                  onChange={e => setWeldWelderName(e.target.value)}
-                  placeholder="Ex: Amar Bouzid (CQS-BV-2026-088)"
-                  className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D]"
-                />
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    N° Qualification CQS
+                  </label>
+                  <input
+                    type="text"
+                    value={weldWelderCqs}
+                    onChange={e => setWeldWelderCqs(e.target.value)}
+                    placeholder="Ex: CQS-BV-2026-088"
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -1201,6 +1550,358 @@ export default function QualityPage() {
                   className="px-4 py-1.5 bg-[#0B207D] text-white font-bold rounded hover:bg-[#07164D] shadow-xs cursor-pointer"
                 >
                   Consigner au Weld Book
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL : ENREGISTRER RÉSULTAT CONTRÔLE CND (RT / PT / UT) */}
+      {/* ========================================================================= */}
+      {showCndModal && selectedWeldForCnd && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-[#0B207D]" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#07164D]">Contrôle CND & Évaluation Joint</h3>
+                  <p className="text-[11px] text-slate-500">Joint {selectedWeldForCnd.jointNumber} — {selectedWeldForCnd.lineIso}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCndModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRecordCndResult} className="space-y-3.5 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Résultat du Contrôle CND *
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <label
+                    onClick={() => setCndResultStatus('CONFORME')}
+                    className={`p-2.5 rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-colors text-center ${
+                      cndResultStatus === 'CONFORME'
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-950 font-bold'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 mb-1" />
+                    <span>Conforme</span>
+                    <span className="text-[9px] text-slate-500 font-normal">Libéré pour épreuve</span>
+                  </label>
+                  <label
+                    onClick={() => setCndResultStatus('A_REPARER')}
+                    className={`p-2.5 rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-colors text-center ${
+                      cndResultStatus === 'A_REPARER'
+                        ? 'border-rose-500 bg-rose-50 text-rose-950 font-bold'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <AlertTriangle className="w-4 h-4 text-rose-600 mb-1" />
+                    <span>À Réparer</span>
+                    <span className="text-[9px] text-slate-500 font-normal">Gougeage / Reprise</span>
+                  </label>
+                  <label
+                    onClick={() => setCndResultStatus('COUPE')}
+                    className={`p-2.5 rounded-lg border flex flex-col items-center justify-center cursor-pointer transition-colors text-center ${
+                      cndResultStatus === 'COUPE'
+                        ? 'border-red-500 bg-red-50 text-red-950 font-bold'
+                        : 'border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    <X className="w-4 h-4 text-red-600 mb-1" />
+                    <span>Coupe / Rebut</span>
+                    <span className="text-[9px] text-slate-500 font-normal">Rejet irrémédiable</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    N° Rapport CND *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={cndReportRef}
+                    onChange={e => setCndReportRef(e.target.value)}
+                    placeholder="Ex: RAP-RT-2026-042"
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D] font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    N° Cliché / Film Radio
+                  </label>
+                  <input
+                    type="text"
+                    value={cndFilmRef}
+                    onChange={e => setCndFilmRef(e.target.value)}
+                    placeholder="Ex: FLM-RT-9014"
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D] font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Organisme de Contrôle / Inspecteur *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={cndControllingBody}
+                  onChange={e => setCndControllingBody(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D]"
+                />
+              </div>
+
+              {cndResultStatus === 'A_REPARER' && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg space-y-2 animate-in fade-in duration-150">
+                  <div>
+                    <label className="block text-[11px] font-bold text-rose-900 uppercase tracking-wider mb-1">
+                      Type de Défaut Détecté *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={cndDefectType}
+                      onChange={e => setCndDefectType(e.target.value)}
+                      placeholder="Ex: Caniveau continu 20mm, inclusion de laitier..."
+                      className="w-full px-2.5 py-1.5 rounded border border-rose-300 focus:outline-none focus:border-rose-500 bg-white"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 text-rose-950 font-semibold cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={cndAutoFnc}
+                      onChange={e => setCndAutoFnc(e.target.checked)}
+                      className="text-rose-600 rounded"
+                    />
+                    <span>Ouvrir automatiquement une Fiche de Non-Conformité (FNC Majeure)</span>
+                  </label>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowCndModal(false)}
+                  className="px-3 py-1.5 border rounded hover:bg-slate-50 font-semibold text-slate-600"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-[#0B207D] text-white font-bold rounded hover:bg-[#07164D] shadow-xs cursor-pointer"
+                >
+                  Valider Contrôle CND
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL : CONSIGNER RÉPARATION SOUDURE & CND POST-RÉPARATION */}
+      {/* ========================================================================= */}
+      {showRepairModal && selectedWeldForRepair && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Flame className="w-5 h-5 text-orange-600" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#07164D]">Consigner Réparation Soudure</h3>
+                  <p className="text-[11px] text-slate-500">Joint {selectedWeldForRepair.jointNumber} — Gougeage & Reprise sous DMOS-REP</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowRepairModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleRecordRepair} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Poinçon Soudeur Réparateur *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={repairWelderStamp}
+                    onChange={e => setRepairWelderStamp(e.target.value)}
+                    placeholder="Ex: S-02"
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D] font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    DMOS Réparation Rattaché *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={repairDmosRef}
+                    onChange={e => setRepairDmosRef(e.target.value)}
+                    placeholder="Ex: DMOS-REP-01"
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Notes Métallurgiques & Mode Opératoire de Reprise *
+                </label>
+                <textarea
+                  required
+                  rows={2}
+                  value={repairNotes}
+                  onChange={e => setRepairNotes(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Contrôle CND Post-Réparation *
+                  </label>
+                  <select
+                    value={repairPostCndStatus}
+                    onChange={e => setRepairPostCndStatus(e.target.value as any)}
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 bg-white focus:outline-none focus:border-[#0B207D]"
+                  >
+                    <option value="CONFORME">Conforme (Réparation Validée)</option>
+                    <option value="NON_CONFORME">Non Conforme (Défaut Persistant)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Réf. Rapport CND Post-Réparation
+                  </label>
+                  <input
+                    type="text"
+                    value={repairReportRef}
+                    onChange={e => setRepairReportRef(e.target.value)}
+                    placeholder="Ex: RAP-RT-REP-01"
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D] font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowRepairModal(false)}
+                  className="px-3 py-1.5 border rounded hover:bg-slate-50 font-semibold text-slate-600"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-orange-600 text-white font-bold rounded hover:bg-orange-700 shadow-xs cursor-pointer"
+                >
+                  Enregistrer Réparation
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL : NOUVELLE RÉVISION DOCUMENT GED */}
+      {/* ========================================================================= */}
+      {showDocRevModal && selectedDocForRev && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150">
+          <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <FileCheck className="w-5 h-5 text-[#0A7F7C]" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#07164D]">Nouvelle Révision Document</h3>
+                  <p className="text-[11px] text-slate-500">{selectedDocForRev.docNumber} — {selectedDocForRev.title}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowDocRevModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateDocRevision} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Nouvelle Version / Rév. *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={revVersion}
+                    onChange={e => setRevVersion(e.target.value)}
+                    placeholder="Ex: 2.1"
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D] font-bold text-center"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Auteur / Valideur
+                  </label>
+                  <input
+                    type="text"
+                    value={revAuthor}
+                    onChange={e => setRevAuthor(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Motif / Modifications Apportées *
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={revNotes}
+                  onChange={e => setRevNotes(e.target.value)}
+                  placeholder="Ex: Intégration des exigences de soudage et critères de contrôle contradictoires..."
+                  className="w-full px-2.5 py-1.5 rounded border border-slate-300 focus:outline-none focus:border-[#0B207D]"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowDocRevModal(false)}
+                  className="px-3 py-1.5 border rounded hover:bg-slate-50 font-semibold text-slate-600"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 bg-[#0B207D] text-white font-bold rounded hover:bg-[#07164D] shadow-xs cursor-pointer"
+                >
+                  Enregistrer Révision
                 </button>
               </div>
             </form>

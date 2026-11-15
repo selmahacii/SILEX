@@ -18,4 +18,7 @@ execSync('npx tsx scripts/test-hr-e2e.js', { stdio: 'inherit' });
 console.log('\n--- SUITE 5 : MODULE 06 FINANCE, TRÉSORERIE & RENTABILITÉ PROJET ---');
 execSync('npx tsx scripts/test-finance-e2e.js', { stdio: 'inherit' });
 
-console.log('\n🎉 TOUTES LES SUITES E2E DES MODULES 01, 02, 03, 04 ET 06 ONT RÉUSSI À 100% !');
+console.log('\n--- SUITE 6 : MODULE QUALITÉ, QHSE, GED & WELD BOOK PERSISTANT ---');
+execSync('npx tsx scripts/test-quality-phase-g-e2e.js', { stdio: 'inherit' });
+
+console.log('\n🎉 TOUTES LES SUITES E2E DES MODULES 01, 02, 03, 04, 06 ET QUALITÉ ONT RÉUSSI À 100% !');

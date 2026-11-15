@@ -310,13 +310,38 @@ export async function GET(
     return NextResponse.json(assets, { headers: corsHeaders() });
   }
 
-  // 9. Quality & QHSE
+  // 9. Quality & QHSE & Weld Book
+  if (clean.startsWith('/quality/weld-book/') || clean.includes('/quality/weld-book/')) {
+    const jointId = resolvedParams.path[2] || resolvedParams.path[resolvedParams.path.length - 1];
+    const joint = await dbBridge.getWeldJoint(jointId);
+    if (!joint) return NextResponse.json({ error: 'Joint de soudure introuvable' }, { status: 404, headers: corsHeaders() });
+    return NextResponse.json(joint, { headers: corsHeaders() });
+  }
+  if (clean.includes('/quality/weld-book') || clean.includes('/weld-book')) {
+    const projId = req.nextUrl.searchParams.get('projectId') || req.nextUrl.searchParams.get('project') || undefined;
+    const joints = await dbBridge.getWeldJoints(projId);
+    return NextResponse.json(joints, { headers: corsHeaders() });
+  }
+  if (clean.startsWith('/quality/documents/') && resolvedParams.path.length >= 3) {
+    const docId = resolvedParams.path[2];
+    const doc = await dbBridge.getQualityDocument(docId);
+    if (!doc) return NextResponse.json({ error: 'Document qualité introuvable' }, { status: 404, headers: corsHeaders() });
+    return NextResponse.json(doc, { headers: corsHeaders() });
+  }
   if (clean.includes('/quality/documents')) {
-    const docs = await dbBridge.getQualityDocuments();
+    const cat = req.nextUrl.searchParams.get('category') || undefined;
+    const docs = await dbBridge.getQualityDocuments(cat);
     return NextResponse.json(docs, { headers: corsHeaders() });
   }
-  if (clean.includes('/quality/non-conformities') || clean.includes('/quality')) {
-    const ncs = await dbBridge.getNonConformities();
+  if (clean.startsWith('/quality/non-conformities/') && resolvedParams.path.length >= 3) {
+    const ncId = resolvedParams.path[2];
+    const nc = await dbBridge.getNonConformity(ncId);
+    if (!nc) return NextResponse.json({ error: 'FNC introuvable' }, { status: 404, headers: corsHeaders() });
+    return NextResponse.json(nc, { headers: corsHeaders() });
+  }
+  if (clean.includes('/quality/non-conformities') || clean === '/quality') {
+    const projId = req.nextUrl.searchParams.get('projectId') || req.nextUrl.searchParams.get('project') || undefined;
+    const ncs = await dbBridge.getNonConformities(projId);
     return NextResponse.json(ncs, { headers: corsHeaders() });
   }
 
@@ -900,13 +925,51 @@ export async function POST(
     return NextResponse.json(ot, { status: 201, headers: corsHeaders() });
   }
 
-  // 9. Quality & QHSE
+  // 9. Quality, QHSE, GED & Weld Book
+  if (clean.includes('/quality/weld-book/') && clean.endsWith('/cnd')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const jointId = resolvedParams.path[2];
+    const updated = await dbBridge.recordWeldCndResult(jointId, body, user);
+    return NextResponse.json(updated, { headers: corsHeaders() });
+  }
+  if (clean.includes('/quality/weld-book/') && clean.endsWith('/repair')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const jointId = resolvedParams.path[2];
+    const updated = await dbBridge.recordWeldRepair(jointId, body, user);
+    return NextResponse.json(updated, { headers: corsHeaders() });
+  }
+  if (clean.includes('/quality/weld-book') || clean === '/weld-book') {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const weld = await dbBridge.createWeldJoint(body, user);
+    return NextResponse.json(weld, { status: 201, headers: corsHeaders() });
+  }
+  if (clean.includes('/quality/non-conformities/') && clean.endsWith('/actions')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const ncId = resolvedParams.path[2];
+    const res = await dbBridge.addNonConformityAction(ncId, body, user);
+    return NextResponse.json(res, { status: 201, headers: corsHeaders() });
+  }
+  if (clean.includes('/quality/documents/') && clean.endsWith('/revisions')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const docId = resolvedParams.path[2];
+    const res = await dbBridge.addQualityDocumentRevision(docId, body, user);
+    return NextResponse.json(res, { status: 201, headers: corsHeaders() });
+  }
   if (clean.includes('/quality/documents')) {
-    const doc = await dbBridge.createQualityDocument(body);
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const doc = await dbBridge.createQualityDocument(body, user);
     return NextResponse.json(doc, { status: 201, headers: corsHeaders() });
   }
-  if (clean.includes('/quality/non-conformities') || clean.includes('/quality')) {
-    const nc = await dbBridge.createNonConformity(body);
+  if (clean.includes('/quality/non-conformities') || clean === '/quality') {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const nc = await dbBridge.createNonConformity(body, user);
     return NextResponse.json(nc, { status: 201, headers: corsHeaders() });
   }
 
@@ -1054,6 +1117,13 @@ export async function PATCH(
   }
 
   // 1. Milestones Update (/projects/:projectId/milestones/:milestoneId)
+  if (clean.includes('/quality/non-conformities/')) {
+    const ncId = resolvedParams.path[2] || resolvedParams.path[1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const updated = await dbBridge.updateNonConformityStatus(ncId, body, user);
+    return NextResponse.json(updated, { headers: corsHeaders() });
+  }
   if (clean.includes('/milestones/')) {
     const projCode = resolvedParams.path[1];
     const milestoneId = resolvedParams.path[3];
