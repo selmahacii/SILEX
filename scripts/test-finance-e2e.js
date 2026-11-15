@@ -34,16 +34,20 @@ async function run() {
   // ÉTAPE 1 : CONTRÔLE D'ISOLATION DES COMPTES DÉMO & SOLDE INITIAL
   // ============================================================================
   console.log('--- 1. Contrôle d’isolation des comptes financiers Démo ---');
-  const accounts = await dbBridge.getFinancialAccounts();
+  const accounts = await dbBridge.getFinancialAccounts({ includeDemo: true });
   assert(accounts.length >= 3, 'Au moins 3 comptes de trésorerie démo doivent être initialisés');
   
-  const beaAccount = accounts.find(a => a.code === 'DEMO-CPT-01');
-  const bnaAccount = accounts.find(a => a.code === 'DEMO-CPT-02');
-  const pettyCash = accounts.find(a => a.code === 'DEMO-CPT-03');
+  const rawBea = accounts.find(a => a.code === 'DEMO-CPT-01');
+  const rawBna = accounts.find(a => a.code === 'DEMO-CPT-02');
+  const rawPetty = accounts.find(a => a.code === 'DEMO-CPT-03');
 
-  assert(beaAccount, 'Compte DEMO-CPT-01 (BEA) introuvable');
-  assert(bnaAccount, 'Compte DEMO-CPT-02 (BNA) introuvable');
-  assert(pettyCash, 'Compte DEMO-CPT-03 (Caisse Régie) introuvable');
+  assert(rawBea, 'Compte DEMO-CPT-01 (BEA) introuvable');
+  assert(rawBna, 'Compte DEMO-CPT-02 (BNA) introuvable');
+  assert(rawPetty, 'Compte DEMO-CPT-03 (Caisse Régie) introuvable');
+
+  const beaAccount = serverStore.getFinancialAccount(rawBea.id) || rawBea;
+  const bnaAccount = serverStore.getFinancialAccount(rawBna.id) || rawBna;
+  const pettyCash = serverStore.getFinancialAccount(rawPetty.id) || rawPetty;
 
   assert.strictEqual(beaAccount.isDemoAccount, true, 'Le compte DEMO-CPT-01 doit être tagué isDemoAccount=true');
   assert.strictEqual(bnaAccount.isDemoAccount, true, 'Le compte DEMO-CPT-02 doit être tagué isDemoAccount=true');
@@ -280,7 +284,7 @@ async function run() {
   assert.strictEqual(pettyCash.currentBalance, cashBeforeTransfer + transferAmount, 'Caisse Régie doit être créditée de 500,000 DA');
 
   // Vérifier présence de deux transactions liées
-  const txs = await dbBridge.getCashTransactions();
+  const txs = await dbBridge.getCashTransactions({ includeDemo: true });
   const debitTx = txs.find(t => t.type === 'VIREMENT_INTERNE_EMIS' && t.referenceDocument === transferRes.transferRef);
   const creditTx = txs.find(t => t.type === 'VIREMENT_INTERNE_RECU' && t.referenceDocument === transferRes.transferRef);
   assert(debitTx, 'Transaction de débit manquante');

@@ -38,6 +38,7 @@ import {
   FileSpreadsheet,
   Percent,
   Award,
+  Boxes,
   Building2,
   Calendar,
   AlertOctagon,
@@ -1142,6 +1143,57 @@ export default function ProcurementPage() {
                   );
                 })()}
 
+                {/* Indicateurs SoD, Seuil d'approbation & Disponibilité Budgétaire / Stock */}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-slate-100 border border-slate-200 text-xs">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase font-bold text-slate-500">Niveau d'approbation SoD :</span>
+                      <span className={`px-2.5 py-0.5 rounded text-[11px] font-black ${
+                        selectedPR.requiredApprovalLevel === 'DIRECTEUR_GENERAL' || selectedPR.budgetExceeded
+                          ? 'bg-red-100 text-red-800 border border-red-300'
+                          : selectedPR.requiredApprovalLevel === 'RESPONSABLE_PROJET_ET_ACHATS'
+                          ? 'bg-purple-100 text-purple-800 border border-purple-300'
+                          : 'bg-blue-100 text-blue-800 border border-blue-300'
+                      }`}>
+                        {selectedPR.requiredApprovalLevel === 'DIRECTEUR_GENERAL' || selectedPR.budgetExceeded
+                          ? 'Arbitrage Obligatoire Direction Générale (>500k DA ou Hors-Budget)'
+                          : selectedPR.requiredApprovalLevel === 'RESPONSABLE_PROJET_ET_ACHATS'
+                          ? 'Double Visa : Responsable Projet & Achats (100k - 500k DA)'
+                          : 'Visa Responsable Achats (≤ 100k DA)'}
+                      </span>
+                    </div>
+                    {selectedPR.projectRemainingBudget !== undefined && (
+                      <span className="text-[11px] text-slate-600 font-medium">
+                        Solde budgétaire chantier : <strong>{formatCurrencyDA(selectedPR.projectRemainingBudget, false)}</strong>
+                      </span>
+                    )}
+                  </div>
+
+                  {selectedPR.budgetExceeded && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2.5 text-xs text-red-800">
+                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-bold">Alerte Dépassement Budgétaire Chantier</div>
+                        <div className="text-[11px] mt-0.5 text-red-700">
+                          Le montant estimé dépasse le solde budgétaire restant du chantier de {formatCurrencyDA(selectedPR.budgetExceededAmount || 0, false)}. En vertu des règles SoD de gouvernance SILEX, ce dossier est automatiquement escaladé vers la Direction Générale.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedPR.stockAvailableWarning && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2.5 text-xs text-amber-800">
+                      <Boxes className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-bold">Alerte Stock Magasin Disponible</div>
+                        <div className="text-[11px] mt-0.5 text-amber-700">
+                          Certains composants de cette DA sont actuellement disponibles en stock central. Privilégier une émission de Bon de Sortie Magasin (BSM) plutôt qu'un achat externe immédiat.
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Justification & Demandeur */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
                   <div>
@@ -1349,7 +1401,7 @@ export default function ProcurementPage() {
                     {!isDG ? (
                       <div className="text-amber-800 text-[11px] flex items-start gap-1.5">
                         <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                        <span>Règle de séparation stricte des fonctions (SoD) : Seul le <strong>Directeur Général</strong> peut approuver cette demande d'achat. Utilisez le sélecteur de rôle en haut à droite pour basculer sur Directeur Général.</span>
+                        <span>Règle de séparation stricte des fonctions (SoD) : Seul le <strong>Directeur Général</strong> ou l'<strong>Administrateur</strong> est habilité à approuver formellement cet engagement d'achat.</span>
                       </div>
                     ) : (
                       <div className="space-y-3">

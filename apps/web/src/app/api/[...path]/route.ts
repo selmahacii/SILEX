@@ -130,6 +130,10 @@ export async function GET(
       const hse = await dbBridge.getHseIncidents(code);
       return NextResponse.json(hse, { headers: corsHeaders() });
     }
+    if (subRoute === 'timesheets') {
+      const timesheets = await dbBridge.getProjectTimesheets(code);
+      return NextResponse.json(timesheets, { headers: corsHeaders() });
+    }
     const proj = await dbBridge.getProject(code);
     if (!proj) {
       return NextResponse.json({ error: 'Projet introuvable' }, { status: 404, headers: corsHeaders() });
@@ -185,6 +189,22 @@ export async function GET(
     const whId = req.nextUrl.searchParams.get('warehouseId') || undefined;
     const pinvs = await dbBridge.getPhysicalInventories(whId);
     return NextResponse.json(pinvs, { headers: corsHeaders() });
+  }
+  if (clean.includes('/inventory/bons-de-sortie/') || clean.includes('/inventory/bsm/')) {
+    const bsId = resolvedParams.path[resolvedParams.path.length - 1];
+    const bs = await dbBridge.getBonDeSortie(bsId);
+    if (!bs) return NextResponse.json({ error: 'Bon de sortie introuvable' }, { status: 404, headers: corsHeaders() });
+    return NextResponse.json(bs, { headers: corsHeaders() });
+  }
+  if (clean.includes('/inventory/bons-de-sortie') || clean.includes('/inventory/bsm')) {
+    const projId = req.nextUrl.searchParams.get('projectId') || req.nextUrl.searchParams.get('project') || undefined;
+    const bss = await dbBridge.getBonsDeSortie(projId);
+    return NextResponse.json(bss, { headers: corsHeaders() });
+  }
+  if (clean.includes('/inventory/traceability') || clean.includes('/procurement/traceability')) {
+    const q = req.nextUrl.searchParams.get('q') || req.nextUrl.searchParams.get('query') || '';
+    const res = await dbBridge.getMaterialTraceability(q);
+    return NextResponse.json(res, { headers: corsHeaders() });
   }
 
   // 5. Procurement (DA, BC, Fournisseurs)
@@ -488,6 +508,26 @@ export async function POST(
       const quote = await dbBridge.createCustomerQuote(sheetId, user);
       return NextResponse.json(quote, { status: 201, headers: corsHeaders() });
     }
+    if (action === 'create-revision') {
+      const revised = await dbBridge.createCostSheetRevision(sheetId, body.reason, user);
+      return NextResponse.json(revised, { status: 201, headers: corsHeaders() });
+    }
+    if (action === 'compare-versions') {
+      const comparison = await dbBridge.compareCostSheetVersions(sheetId, Number(body.versionA), Number(body.versionB));
+      return NextResponse.json(comparison, { headers: corsHeaders() });
+    }
+  }
+  if (clean.includes('/commercial/opportunities/') || clean.includes('/opportunities/')) {
+    const oppId = resolvedParams.path.find(p => p.startsWith('opp-') || p.startsWith('OPP-')) || resolvedParams.path[resolvedParams.path.length - 2] || resolvedParams.path[resolvedParams.path.length - 1];
+    const action = resolvedParams.path[resolvedParams.path.length - 1];
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+
+    if (action === 'stage' || action === 'update-stage' || body.stage) {
+      const stage = body.stage || body.newStage;
+      const updated = await dbBridge.updateOpportunityStage(oppId, stage, body, user);
+      return NextResponse.json(updated, { headers: corsHeaders() });
+    }
   }
   if (clean === '/commercial/quotes' || clean === '/quotes') {
     const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
@@ -535,6 +575,15 @@ export async function POST(
     if (subAction === 'stock-consumptions') {
       const sm = await dbBridge.recordProjectStockConsumption(projCode, body, user);
       return NextResponse.json(sm, { status: 201, headers: corsHeaders() });
+    }
+    if (subAction === 'timesheets') {
+      const ts = await dbBridge.createProjectTimesheet(projCode, body, user);
+      return NextResponse.json(ts, { status: 201, headers: corsHeaders() });
+    }
+    if (subAction === 'reception' || subAction === 'pvrp' || subAction === 'pvrd') {
+      const type = subAction === 'pvrd' ? 'PVRD' : subAction === 'pvrp' ? 'PVRP' : (body.type || 'PVRP');
+      const rec = await dbBridge.updateProjectReception(projCode, { ...body, type }, user);
+      return NextResponse.json(rec, { status: 201, headers: corsHeaders() });
     }
   }
 
@@ -681,11 +730,19 @@ export async function POST(
   }
 
   // Bons de réception & contrôle qualité
-  if (clean.includes('/inventory/goods-receipts') || clean.includes('/procurement/goods-receipts')) {
+  if (clean.includes('/inventory/goods-receipts') || clean.includes('/procurement/goods-receipts') || clean.includes('/inventory/receive-goods')) {
     const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
     const user = await parseUserFromToken(authHeader);
     const gr = await dbBridge.recordGoodsReceipt(body, user);
     return NextResponse.json(gr, { status: 201, headers: corsHeaders() });
+  }
+
+  // Bons de sortie magasin (BSM) & Imputation projet
+  if (clean.includes('/inventory/bons-de-sortie') || clean.includes('/inventory/bsm') || clean.includes('/inventory/issue-to-project')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const bsm = await dbBridge.createBonDeSortie(body, user);
+    return NextResponse.json(bsm, { status: 201, headers: corsHeaders() });
   }
 
   // Inventaires physiques
@@ -979,6 +1036,10 @@ export async function PATCH(
     const id = resolvedParams.path[resolvedParams.path.length - 1];
     const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
     const user = await parseUserFromToken(authHeader);
+    if (body.stage || body.newStage) {
+      const updated = await dbBridge.updateOpportunityStage(id, body.stage || body.newStage, body, user);
+      return NextResponse.json(updated, { headers: corsHeaders() });
+    }
     const updated = await dbBridge.updateOpportunity(id, body, user);
     return NextResponse.json(updated, { headers: corsHeaders() });
   }

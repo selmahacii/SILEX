@@ -386,6 +386,146 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
   const calculatedTVA = calculatedSitTotalHT * (sitTvaRate / 100);
   const calculatedNetTTC = calculatedSitTotalHT - calculatedRetenueGarantie + calculatedTVA;
 
+  // 6. Modal Pointage Journalier Main-d'Œuvre
+  const [showTimesheetModal, setShowTimesheetModal] = useState(false);
+  const [tsWorkerName, setTsWorkerName] = useState('Mourad Zitouni');
+  const [tsCorpsEtat, setTsCorpsEtat] = useState<string>('SOUDEUR_ASME');
+  const [tsQualification, setTsQualification] = useState('ASME IX 6G TIG/SMAW');
+  const [tsDate, setTsDate] = useState(new Date().toISOString().split('T')[0]);
+  const [tsNormalHours, setTsNormalHours] = useState<number>(8);
+  const [tsOvertimeHours, setTsOvertimeHours] = useState<number>(2);
+  const [tsWeatherHours, setTsWeatherHours] = useState<number>(0);
+  const [tsHourlyRate, setTsHourlyRate] = useState<number>(1400);
+  const [tsTaskRef, setTsTaskRef] = useState('TSK-05');
+  const [tsProductivityRatio, setTsProductivityRatio] = useState<number>(1.05);
+  const [tsSubmitting, setTsSubmitting] = useState(false);
+
+  const handleSaveTimesheet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setTsSubmitting(true);
+      await api.post(`/projects/${project.code}/timesheets`, {
+        workerName: tsWorkerName,
+        corpsEtat: tsCorpsEtat,
+        workerQualification: tsQualification,
+        date: tsDate,
+        normalHours: Number(tsNormalHours),
+        overtimeHours: Number(tsOvertimeHours),
+        weatherHours: Number(tsWeatherHours),
+        hourlyRate: Number(tsHourlyRate),
+        taskRef: tsTaskRef,
+        productivityRatio: Number(tsProductivityRatio),
+      });
+      setShowTimesheetModal(false);
+      setNotification('Pointage journalier enregistré avec succès ! Coût MO imputé.');
+      setTimeout(() => setNotification(null), 5000);
+      await fetchProject(true);
+    } catch (err: any) {
+      alert(err.message || 'Erreur lors de l\'enregistrement du pointage');
+    } finally {
+      setTsSubmitting(false);
+    }
+  };
+
+  const handleExportTimesheetsCSV = () => {
+    const list = project.timesheets || [];
+    if (list.length === 0) {
+      alert('Aucun pointage à exporter.');
+      return;
+    }
+    const headers = ['Date', 'Intervenant', 'Corps d’État', 'Qualification', 'Heures Normales', 'Heures Sup', 'Heures Intempéries', 'Taux Horaire DA', 'Coût Total DA', 'Tâche', 'Ratio Productivité', 'Statut'];
+    const rows = list.map((t: any) => [
+      t.date,
+      `"${t.workerName || ''}"`,
+      t.corpsEtat,
+      `"${t.workerQualification || ''}"`,
+      t.normalHours,
+      t.overtimeHours,
+      t.weatherHours,
+      t.hourlyRate,
+      t.totalCostDA,
+      t.taskRef || '',
+      t.productivityRatio || 1.0,
+      t.status,
+    ]);
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map((r: any[]) => r.join(';'))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Pointages_${project.code}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // 7. Modales Réception de Chantier (PVRP & PVRD)
+  const [showPvrpModal, setShowPvrpModal] = useState(false);
+  const [pvrpDate, setPvrpDate] = useState(new Date().toISOString().split('T')[0]);
+  const [pvrpStatus, setPvrpStatus] = useState<'VALIDE_SANS_RESERVE' | 'RESERVES_EN_COURS' | 'VALIDE_RESERVES_LEVEES'>('VALIDE_SANS_RESERVE');
+  const [pvrpClientSignatory, setPvrpClientSignatory] = useState('M. Mustapha Larbi (Représentant Maître d\'Ouvrage)');
+  const [pvrpReservesCount, setPvrpReservesCount] = useState<number>(0);
+  const [pvrpReservesLifted, setPvrpReservesLifted] = useState(true);
+  const [pvrpNotes, setPvrpNotes] = useState('Réception provisoire prononcée avec succès suite aux épreuves hydrostatiques à 45 bars sans fuite ni déformation.');
+  const [pvrpSubmitting, setPvrpSubmitting] = useState(false);
+
+  const handleSavePvrp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isDG && !isProjectManager) {
+      alert("Habilitation restreinte : Seul le Responsable de Projet ou la DG peut enregistrer le PVRP.");
+      return;
+    }
+    try {
+      setPvrpSubmitting(true);
+      await api.post(`/projects/${project.code}/reception`, {
+        type: 'PVRP',
+        status: pvrpStatus,
+        pvDate: pvrpDate,
+        clientSignatory: pvrpClientSignatory,
+        reservesCount: Number(pvrpReservesCount),
+        reservesLifted: pvrpReservesLifted,
+        notes: pvrpNotes,
+      });
+      setShowPvrpModal(false);
+      setNotification('PV de Réception Provisoire (PVRP) enregistré avec succès !');
+      setTimeout(() => setNotification(null), 5000);
+      await fetchProject(true);
+    } catch (err: any) {
+      alert(err.message || 'Erreur PVRP');
+    } finally {
+      setPvrpSubmitting(false);
+    }
+  };
+
+  const [showPvrdModal, setShowPvrdModal] = useState(false);
+  const [pvrdDate, setPvrdDate] = useState(new Date().toISOString().split('T')[0]);
+  const [pvrdNotes, setPvrdNotes] = useState('Expiration des 12 mois de garantie contractuelle sans réserve technique. Restitution et mainlevée ordonnancée de la retenue de garantie (5%).');
+  const [pvrdSubmitting, setPvrdSubmitting] = useState(false);
+
+  const handleSavePvrd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isDG) {
+      alert("Habilitation SoD stricte : Seule la Direction Générale (DG) peut prononcer la réception définitive et débloquer la retenue de garantie.");
+      return;
+    }
+    try {
+      setPvrdSubmitting(true);
+      await api.post(`/projects/${project.code}/reception`, {
+        type: 'PVRD',
+        status: 'VALIDE_DEFINITIF',
+        pvDate: pvrdDate,
+        notes: pvrdNotes,
+      });
+      setShowPvrdModal(false);
+      setNotification('PV de Réception Définitive (PVRD) validé ! Retenue de garantie libérée.');
+      setTimeout(() => setNotification(null), 5000);
+      await fetchProject(true);
+    } catch (err: any) {
+      alert(err.message || 'Erreur PVRD');
+    } finally {
+      setPvrdSubmitting(false);
+    }
+  };
+
   const fetchProject = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
@@ -674,24 +814,26 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
 
   const totalSituationsHT = (project.workSituations || []).reduce((acc: number, s: any) => acc + Number(s.amountHT || 0), 0);
   const billedPct = contractAmountNum > 0 ? ((totalSituationsHT / contractAmountNum) * 100).toFixed(1) : '0';
+  const totalCollectedHT = (project.workSituations || [])
+    .filter((s: any) => s.status === 'PAYE' || s.status === 'ENCAISSE' || s.status === 'VALIDE')
+    .reduce((acc: number, s: any) => acc + (Number(s.amountHT || 0) * 0.95), 0);
+  const collectedPct = contractAmountNum > 0 ? ((totalCollectedHT / contractAmountNum) * 100).toFixed(1) : '0';
 
-  const completedMilestones = (project.milestones || []).filter((m: any) => m.status === 'COMPLETED').length;
+  const completedMilestones = (project.milestones || []).filter((m: any) => m.status === 'COMPLETED' || m.completed === true || m.status === 'FRANCHI' || m.status === 'VALIDE').length;
 
   const tabs = [
-    { id: 'overview', label: 'Vue d’ensemble' },
-    { id: 'contract', label: `Contrat & Métrés (${project.contractItems?.length || 0})` },
-    { id: 'planning', label: `Planning & Jalons (${project.milestones?.length || 0})` },
-    { id: 'tasks', label: `Tâches Opérationnelles (${project.tasks?.length || 0})` },
-    { id: 'daily-reports', label: `Rapports Journaliers RJC (${project.dailyReports?.length || 0})` },
-    { id: 'situation-reports', label: `Rapports Périodiques (${project.situationReports?.length || 0})` },
-    { id: 'constraints', label: `Contraintes & Blocages (${project.constraints?.length || 0})` },
-    { id: 'quality-hse', label: `Sécurité HSE & CND (${project.hseIncidents?.length || 0})` },
-    { id: 'procurement', label: `Achats liés (${(project.purchaseOrders?.length || 0) + (project.purchaseRequests?.length || 0)})` },
-    { id: 'materials', label: `Stock & Sorties Chantier (${project.allocations?.length || 0})` },
-    { id: 'hr', label: `RH & Qualifications (${project.members?.length || 0})` },
-    { id: 'budget', label: 'Budget & Coûts' },
-    { id: 'ods', label: `Ordres de Service (${project.serviceOrders?.length || 0})` },
-    { id: 'situations', label: `Situations de travaux (${project.workSituations?.length || 0})` },
+    { id: 'overview', label: '1. Vue Générale' },
+    { id: 'contract', label: `2. Données Contractuelles & ODS (${(project.contractItems?.length || 0) + (project.serviceOrders?.length || 0)})` },
+    { id: 'planning', label: `3. Planning & Jalons (${(project.milestones?.length || 0) + (project.tasks?.length || 0)})` },
+    { id: 'budget', label: '4. Budget & Rentabilité WBS' },
+    { id: 'procurement', label: `5. Achats & Commandes (${(project.purchaseOrders?.length || 0) + (project.purchaseRequests?.length || 0)})` },
+    { id: 'materials', label: `6. Stocks & Consommations (${project.allocations?.length || 0})` },
+    { id: 'hr', label: `7. RH & Équipes (${project.members?.length || 0})` },
+    { id: 'timesheets', label: `8. Pointages & Main-d’Œuvre (${project.timesheets?.length || 0})` },
+    { id: 'quality-hse', label: `9. Qualité & Sécurité (${(project.hseIncidents?.length || 0) + (project.nonConformities?.length || 0)})` },
+    { id: 'documents', label: `10. Documents & RJC (${project.dailyReports?.length || 0})` },
+    { id: 'situations', label: `11. Situations de Travaux (${(project.workSituations?.length || 0) + (project.situationReports?.length || 0)})` },
+    { id: 'audit', label: '12. Historique & Audit' },
   ];
 
   return (
@@ -799,44 +941,59 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
         </div>
       </div>
 
-      {/* Highlights Bar */}
+      {/* Highlights Bar - 4 indicateurs distincts exigés par la Section 4.2 */}
       <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs grid grid-cols-2 md:grid-cols-4 gap-4">
         <div>
-          <div className="text-[11px] font-semibold text-[#697789] uppercase tracking-wider">Client Contractuel</div>
+          <div className="text-[11px] font-semibold text-[#697789] uppercase tracking-wider">Client & Localisation</div>
           <div className="text-xs font-bold text-slate-900 mt-1">{project.clientName}</div>
           <div className="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
             <MapPin className="w-3 h-3 text-slate-400" />
-            {project.siteLocation}
+            {project.siteLocation} {project.wilaya ? `(${project.wilaya})` : ''}
           </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] font-semibold text-[#697789] uppercase tracking-wider">Montant Contractuel HT</div>
-          <div className="text-xs font-extrabold text-[#07164D] mt-1">{formatCurrencyDA(contractAmountNum, false)}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5">
-            Budget alloué : <strong className="text-slate-700">{formatCurrencyDA(budgetAmountNum, false)}</strong>
-          </div>
-        </div>
-
-        <div>
-          <div className="text-[11px] font-semibold text-[#697789] uppercase tracking-wider">Coûts Réels Imputés</div>
-          <div className="text-xs font-bold text-[#0A7F7C] mt-1">{formatCurrencyDA(actualCostNum, false)}</div>
-          <div className="text-[10px] text-slate-500 mt-0.5">
-            Engagé : <strong className="text-slate-700">{formatCurrencyDA(committedCostNum, false)}</strong>
+          <div className="text-[10px] text-[#0B207D] font-bold mt-1">
+            Marché HT : {formatCurrencyDA(contractAmountNum, false)}
           </div>
         </div>
 
         <div>
           <div className="text-[11px] font-semibold text-[#697789] uppercase tracking-wider flex items-center justify-between">
-            <span>Avancement Physique</span>
+            <span>1. Avancement Physique Pondéré</span>
             <span className="text-emerald-700 font-bold">{project.physicalProgress}%</span>
           </div>
           <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-1.5">
             <div className="bg-emerald-600 h-full rounded-full transition-all" style={{ width: `${project.physicalProgress}%` }} />
           </div>
-          <div className="text-[10px] text-slate-400 mt-1 flex justify-between">
-            <span>Dépenses : {budgetConsumedPct}%</span>
-            <span>Facturé : {billedPct}%</span>
+          <div className="text-[10px] text-slate-500 mt-1 flex justify-between">
+            <span>Jalons : {completedMilestones}/{project.milestones?.length || 0} validés</span>
+            <span className="text-slate-400 font-medium">Métrés WBS</span>
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[11px] font-semibold text-[#697789] uppercase tracking-wider flex items-center justify-between">
+            <span>2. Consommation Budgétaire</span>
+            <span className={`font-bold ${Number(budgetConsumedPct) > 90 ? 'text-rose-700' : 'text-blue-700'}`}>{budgetConsumedPct}%</span>
+          </div>
+          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-1.5">
+            <div className={`h-full rounded-full transition-all ${Number(budgetConsumedPct) > 90 ? 'bg-rose-500' : 'bg-blue-600'}`} style={{ width: `${Math.min(100, Number(budgetConsumedPct))}%` }} />
+          </div>
+          <div className="text-[10px] text-slate-500 mt-1 flex justify-between">
+            <span>Coût réel : {formatCurrencyDA(actualCostNum, false)}</span>
+            <span>Budget : {formatCurrencyDA(budgetAmountNum, false)}</span>
+          </div>
+        </div>
+
+        <div>
+          <div className="text-[11px] font-semibold text-[#697789] uppercase tracking-wider flex items-center justify-between">
+            <span>3. Facturé / 4. Encaissé</span>
+            <span className="text-purple-700 font-bold">{billedPct}% / {collectedPct}%</span>
+          </div>
+          <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-1.5 flex">
+            <div className="bg-purple-600 h-full transition-all" style={{ width: `${Math.min(100, Number(billedPct))}%` }} title="Facturé" />
+          </div>
+          <div className="text-[10px] text-slate-500 mt-1 flex justify-between">
+            <span>Facturé : {formatCurrencyDA(totalSituationsHT, false)}</span>
+            <span>Encaissé : {formatCurrencyDA(totalCollectedHT, false)}</span>
           </div>
         </div>
       </div>
@@ -1181,128 +1338,267 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       )}
 
       {/* ========================================================================= */}
-      {/* TAB: CONTRAT & PRESTATIONS CONTRACTUELLES */}
+      {/* TAB 2: DONNÉES CONTRACTUELLES & ORDRES DE SERVICE (ODS) */}
       {/* ========================================================================= */}
-      {activeTab === 'contract' && (
-        <ProjectContractTab
-          project={project}
-          onRefresh={async () => { await fetchProject(true); }}
-          isDG={isDG}
-          isProjectManager={isProjectManager}
-        />
-      )}
-
-      {/* ========================================================================= */}
-      {/* TAB 2: PLANNING & JALONS */}
-      {/* ========================================================================= */}
-      {activeTab === 'planning' && (
-        <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
-            <div>
-              <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-[#0B207D]" />
-                Planning Opérationnel & Jalons Contractuels
-              </h2>
-              <p className="text-[11px] text-slate-500">
-                Suivi des étapes clés : Épreuves hydrostatiques, CND, réceptions intermédiaires et livrables.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowMilestoneModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0B207D] text-white text-xs font-semibold rounded hover:bg-[#07164D] transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Nouveau Jalon Contractuel
-            </button>
-          </div>
-
-          {/* Progress bar jalons */}
-          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between flex-wrap gap-3">
-            <div className="text-xs font-semibold text-slate-800">
-              Avancement des Jalons : <strong>{completedMilestones}</strong> sur {project.milestones?.length || 0} validé(s)
-            </div>
-            <div className="w-48 bg-slate-200 h-2 rounded-full overflow-hidden">
-              <div
-                className="bg-emerald-600 h-full rounded-full transition-all"
-                style={{
-                  width: `${project.milestones?.length > 0 ? (completedMilestones / project.milestones.length) * 100 : 0}%`,
-                }}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            {project.milestones?.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-400 space-y-2">
-                <Calendar className="w-8 h-8 text-slate-300 mx-auto" />
-                <div className="font-semibold text-slate-700">Aucun jalon contractuel n'a été défini pour ce projet.</div>
-                <button
-                  onClick={() => setShowMilestoneModal(true)}
-                  className="px-3 py-1.5 bg-[#0B207D] text-white text-xs font-semibold rounded cursor-pointer inline-flex items-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Créer le premier jalon
-                </button>
+      {(activeTab === 'contract' || activeTab === 'ods') && (
+        <div className="space-y-6">
+          {/* Synthèse Financière Contractuelle */}
+          <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+              <div>
+                <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
+                  <Receipt className="w-4 h-4 text-[#0B207D]" />
+                  Synthèse Contractuelle, Fiscalité & Retenues Réglementaires
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Cadre financier légal selon le Code des Marchés : Retenue de garantie 5%, TVA 19%, Pénalités plafonnées.
+                </p>
               </div>
-            ) : (
-              project.milestones?.map((m: any, idx: number) => {
-                const isCompleted = m.status === 'COMPLETED' || m.completed === true || m.status === 'FRANCHI' || m.status === 'VALIDE';
-                return (
-                  <div
-                    key={m.id}
-                    className="p-4 border border-slate-200 rounded-lg bg-white hover:bg-slate-50/70 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3"
-                  >
+              <div className="text-right">
+                <span className="font-mono text-xs font-bold text-[#0B207D] bg-blue-50 px-2.5 py-1 rounded border border-blue-200">
+                  Réf: {project.contractReference || `CTR-${project.code}`}
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="text-[10px] text-slate-500 uppercase font-semibold">Marché HT Vendu</div>
+                <div className="text-sm font-extrabold text-[#07164D] mt-1">{formatCurrencyDA(contractAmountNum, false)}</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Base d'engagement</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="text-[10px] text-slate-500 uppercase font-semibold">TVA Réglementaire (19%)</div>
+                <div className="text-sm font-bold text-slate-800 mt-1">{formatCurrencyDA(contractAmountNum * 0.19, false)}</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">Taux légal algérien</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="text-[10px] text-slate-500 uppercase font-semibold">Volume Global TTC</div>
+                <div className="text-sm font-extrabold text-[#0B207D] mt-1">{formatCurrencyDA(contractAmountNum * 1.19, false)}</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">TTC Contractuel</div>
+              </div>
+              <div className="p-3 bg-purple-50 rounded border border-purple-200">
+                <div className="text-[10px] text-purple-700 uppercase font-semibold">Retenue de Garantie (5%)</div>
+                <div className="text-sm font-extrabold text-purple-900 mt-1">{formatCurrencyDA(contractAmountNum * 0.05, false)}</div>
+                <div className="text-[10px] text-purple-600 mt-0.5">Déblocage à PVRD (12 mois)</div>
+              </div>
+              <div className="p-3 bg-amber-50 rounded border border-amber-200">
+                <div className="text-[10px] text-amber-700 uppercase font-semibold">Plafond Pénalités (10%)</div>
+                <div className="text-sm font-bold text-amber-900 mt-1">{formatCurrencyDA(contractAmountNum * 0.1, false)}</div>
+                <div className="text-[10px] text-amber-600 mt-0.5">Max contractuel retard</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Lots & Prestations Métrées Contractuelles */}
+          <ProjectContractTab
+            project={project}
+            onRefresh={async () => { await fetchProject(true); }}
+            isDG={isDG}
+            isProjectManager={isProjectManager}
+          />
+
+          {/* Ordres de Service (ODS) Juridiques & Contractuels */}
+          <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+              <div>
+                <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-[#0B207D]" />
+                  Ordres de Service (ODS) Juridiques & Contractuels ({project.serviceOrders?.length || 0})
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Traçabilité contractuelle : Notification de Démarrage, Arrêt technique, Reprise et Travaux Modificatifs.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  applyOdsPreset(ServiceOrderType.DEMARRAGE);
+                  setShowOdsModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0B207D] text-white text-xs font-semibold rounded hover:bg-[#07164D] transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Émettre un ODS
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {project.serviceOrders?.length === 0 ? (
+                <div className="py-10 text-center text-xs text-slate-400 space-y-2">
+                  <FileText className="w-8 h-8 text-slate-300 mx-auto" />
+                  <div className="font-semibold text-slate-700">Aucun Ordre de Service notifié pour ce chantier.</div>
+                </div>
+              ) : (
+                project.serviceOrders?.map((ods: any) => (
+                  <div key={ods.id} className="p-4 border border-slate-200 rounded-lg bg-slate-50/70 hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                          #{idx + 1}
+                        <span className="font-mono text-xs font-bold text-[#0B207D] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                          {ods.orderNumber}
                         </span>
-                        <span className="font-bold text-xs text-slate-900">{m.title}</span>
-                        <span
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                            isCompleted
-                              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                              : 'bg-amber-50 text-amber-800 border-amber-200'
-                          }`}
-                        >
-                          {m.status}
+                        <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded">
+                          {ods.type}
                         </span>
+                        <span className="text-slate-500">Notifié le {formatDateDZ(ods.issueDate || ods.effectiveDate)}</span>
+                        {ods.signatory && (
+                          <span className="text-slate-600 font-medium">• Signataire: <strong>{ods.signatory}</strong></span>
+                        )}
                       </div>
-                      {m.description && <div className="text-xs text-slate-600 font-medium">{m.description}</div>}
-                      <div className="text-[10px] text-slate-400 flex items-center gap-2">
-                        <span>Cible : <strong>{formatDateDZ(m.targetDate)}</strong></span>
-                        {m.completedDate && (
-                          <span className="text-emerald-700 font-semibold">• Réalisé le {formatDateDZ(m.completedDate)}</span>
+                      <div className="text-slate-800 font-medium">{ods.description}</div>
+                      <div className="flex items-center gap-3 text-[11px] pt-1">
+                        {ods.delayImpactDays > 0 ? (
+                          <span className="text-amber-700 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                            Impact délai : +{ods.delayImpactDays} jours
+                          </span>
+                        ) : (
+                          <span className="text-slate-500">Sans impact délai</span>
+                        )}
+                        {Number(ods.costImpactAmount || ods.costImpact || 0) > 0 && (
+                          <span className="text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                            Impact financier : +{formatCurrencyDA(Number(ods.costImpactAmount || ods.costImpact), false)} HT
+                          </span>
+                        )}
+                        {ods.clientRef && (
+                          <span className="text-slate-400">Réf client: {ods.clientRef}</span>
                         )}
                       </div>
                     </div>
-
-                    <div className="shrink-0 flex items-center gap-2">
-                      {!isCompleted ? (
-                        <button
-                          onClick={() => handleValidateMilestone(m.id)}
-                          className="px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 rounded cursor-pointer flex items-center gap-1"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                          Marquer Franchi
-                        </button>
-                      ) : (
-                        <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
-                          <CheckCircle className="w-4 h-4 text-emerald-600" />
-                          Conforme
-                        </span>
-                      )}
+                    <div className="text-right shrink-0">
+                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded">
+                        {ods.status || 'SIGNE'}
+                      </span>
                     </div>
                   </div>
-                );
-              })
-            )}
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 3: BUDGET & COÛTS ANALYTIQUES */}
+      {/* TAB 3: PLANNING & JALONS, TÂCHES & CONTRAINTES */}
+      {/* ========================================================================= */}
+      {(activeTab === 'planning' || activeTab === 'tasks' || activeTab === 'constraints') && (
+        <div className="space-y-6">
+          {/* Jalons Contractuels & Épreuves */}
+          <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+              <div>
+                <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-[#0B207D]" />
+                  Jalons Contractuels & Épreuves Réglementaires ({project.milestones?.length || 0})
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Suivi des étapes clés : Épreuves hydrostatiques, CND, réceptions intermédiaires et livrables.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowMilestoneModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0B207D] text-white text-xs font-semibold rounded hover:bg-[#07164D] transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Nouveau Jalon Contractuel
+              </button>
+            </div>
+
+            {/* Progress bar jalons */}
+            <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between flex-wrap gap-3">
+              <div className="text-xs font-semibold text-slate-800">
+                Avancement des Jalons : <strong>{completedMilestones}</strong> sur {project.milestones?.length || 0} validé(s)
+              </div>
+              <div className="w-48 bg-slate-200 h-2 rounded-full overflow-hidden">
+                <div
+                  className="bg-emerald-600 h-full rounded-full transition-all"
+                  style={{
+                    width: `${project.milestones?.length > 0 ? (completedMilestones / project.milestones.length) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {project.milestones?.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400 space-y-2">
+                  <Calendar className="w-8 h-8 text-slate-300 mx-auto" />
+                  <div className="font-semibold text-slate-700">Aucun jalon contractuel n'a été défini pour ce projet.</div>
+                </div>
+              ) : (
+                project.milestones?.map((m: any, idx: number) => {
+                  const isCompleted = m.status === 'COMPLETED' || m.completed === true || m.status === 'FRANCHI' || m.status === 'VALIDE';
+                  return (
+                    <div
+                      key={m.id}
+                      className="p-4 border border-slate-200 rounded-lg bg-white hover:bg-slate-50/70 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            #{idx + 1}
+                          </span>
+                          <span className="font-bold text-xs text-slate-900">{m.title}</span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                              isCompleted
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                            }`}
+                          >
+                            {m.status}
+                          </span>
+                        </div>
+                        {m.description && <div className="text-xs text-slate-600 font-medium">{m.description}</div>}
+                        <div className="text-[10px] text-slate-400 flex items-center gap-2">
+                          <span>Cible : <strong>{formatDateDZ(m.targetDate)}</strong></span>
+                          {m.completedDate && (
+                            <span className="text-emerald-700 font-semibold">• Réalisé le {formatDateDZ(m.completedDate)}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 flex items-center gap-2">
+                        {!isCompleted ? (
+                          <button
+                            onClick={() => handleValidateMilestone(m.id)}
+                            className="px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 rounded cursor-pointer flex items-center gap-1"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            Marquer Franchi
+                          </button>
+                        ) : (
+                          <span className="text-xs font-bold text-emerald-700 flex items-center gap-1">
+                            <CheckCircle className="w-4 h-4 text-emerald-600" />
+                            Conforme
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Tâches Opérationnelles WBS */}
+          <ProjectTasksTab
+            projectCode={project.code}
+            tasks={project.tasks || []}
+            canEdit={canEditProject}
+            onRefresh={async () => { await fetchProject(true); }}
+          />
+
+          {/* Contraintes & Blocages Chantier */}
+          <ProjectConstraintsTab
+            projectCode={project.code}
+            constraints={project.constraints || []}
+            canEdit={canEditProject}
+            onRefresh={async () => { await fetchProject(true); }}
+          />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: BUDGET & RENTABILITÉ WBS */}
       {/* ========================================================================= */}
       {activeTab === 'budget' && (
         <div className="space-y-6">
@@ -1316,19 +1612,63 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
             <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs">
               <div className="text-[10px] uppercase font-bold text-slate-500">Budget Débours Max Alloué</div>
               <div className="text-base font-extrabold text-slate-900 mt-1">{formatCurrencyDA(budgetAmountNum, false)}</div>
-              <div className="text-[10px] text-slate-400 mt-1">Plafond budgétaire validé par la DG</div>
+              <div className="text-[10px] text-slate-400 mt-1">Plafond budgétaire approuvé</div>
             </div>
 
             <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs">
               <div className="text-[10px] uppercase font-bold text-slate-500">Coûts Réels Imputés</div>
               <div className="text-base font-extrabold text-[#0A7F7C] mt-1">{formatCurrencyDA(actualCostNum, false)}</div>
-              <div className="text-[10px] text-slate-400 mt-1">Matières déstockées + Main d'œuvre</div>
+              <div className="text-[10px] text-slate-400 mt-1">Matières déstockées + Pointages MO</div>
             </div>
 
             <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs">
               <div className="text-[10px] uppercase font-bold text-slate-500">Engagements Fournisseurs</div>
               <div className="text-base font-extrabold text-amber-700 mt-1">{formatCurrencyDA(committedCostNum, false)}</div>
               <div className="text-[10px] text-slate-400 mt-1">Bons de commande émis non soldés</div>
+            </div>
+          </div>
+
+          {/* Indicateurs EAC & Rentabilité Prévisionnelle vs Réalisée */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs">
+              <div className="text-[10px] uppercase font-bold text-slate-500">Coût Prévisionnel à Terminaison (EAC)</div>
+              <div className="text-base font-extrabold text-[#07164D] mt-1">
+                {formatCurrencyDA(project.eacCost || (actualCostNum + Math.max(0, budgetAmountNum - actualCostNum)), false)}
+              </div>
+              <div className="text-[10px] text-slate-400 mt-1">Projection Coûts Réels + Reste à Faire</div>
+            </div>
+
+            <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs">
+              <div className="text-[10px] uppercase font-bold text-slate-500">Marge Prévisionnelle (CA - EAC)</div>
+              {(() => {
+                const eac = project.eacCost || (actualCostNum + Math.max(0, budgetAmountNum - actualCostNum));
+                const prevMargin = contractAmountNum - eac;
+                const prevMarginPct = contractAmountNum > 0 ? ((prevMargin / contractAmountNum) * 100).toFixed(1) : '0';
+                return (
+                  <>
+                    <div className="text-base font-extrabold text-emerald-700 mt-1">
+                      {formatCurrencyDA(prevMargin, false)} ({prevMarginPct}%)
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">Marge brute contractuelle attendue</div>
+                  </>
+                );
+              })()}
+            </div>
+
+            <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs">
+              <div className="text-[10px] uppercase font-bold text-slate-500">Marge Réalisée (Facturé - Réalisé)</div>
+              {(() => {
+                const realMargin = totalSituationsHT - actualCostNum;
+                const realMarginPct = totalSituationsHT > 0 ? ((realMargin / totalSituationsHT) * 100).toFixed(1) : '0';
+                return (
+                  <>
+                    <div className={`text-base font-extrabold mt-1 ${realMargin >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                      {formatCurrencyDA(realMargin, false)} ({realMarginPct}%)
+                    </div>
+                    <div className="text-[10px] text-slate-400 mt-1">Sur situations de travaux validées</div>
+                  </>
+                );
+              })()}
             </div>
           </div>
 
@@ -1348,6 +1688,48 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                   }`}
                   style={{ width: `${Math.min(100, Number(budgetConsumedPct))}%` }}
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Décomposition Analytique WBS par lots de dépenses */}
+          <div className="bg-white rounded-lg border border-[#E1E6ED] shadow-2xs overflow-hidden">
+            <div className="p-3.5 border-b border-slate-100 bg-slate-50/60">
+              <h3 className="text-xs font-bold text-[#07164D] uppercase tracking-wider">
+                Décomposition Budgétaire par Pôles de Dépenses (WBS Chantier)
+              </h3>
+              <span className="text-[10px] text-slate-500">Ventilation analytique pour le contrôle de gestion industriel</span>
+            </div>
+            <div className="p-4 grid grid-cols-1 md:grid-cols-5 gap-3 text-xs">
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="font-bold text-slate-800">1. Main-d'Œuvre Directe</div>
+                <div className="text-slate-500 text-[11px] mt-0.5">Soudeurs, tuyauteurs, monteurs</div>
+                <div className="font-extrabold text-[#07164D] mt-2">{formatCurrencyDA(budgetAmountNum * 0.35, false)}</div>
+                <div className="text-[10px] text-slate-400">Poids : 35% du budget</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="font-bold text-slate-800">2. Fournitures & Matières</div>
+                <div className="text-slate-500 text-[11px] mt-0.5">Tubes acier, brides, électrodes</div>
+                <div className="font-extrabold text-[#07164D] mt-2">{formatCurrencyDA(budgetAmountNum * 0.40, false)}</div>
+                <div className="text-[10px] text-slate-400">Poids : 40% du budget</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="font-bold text-slate-800">3. Matériel & Engins</div>
+                <div className="text-slate-500 text-[11px] mt-0.5">Grues mobiles, compresseurs</div>
+                <div className="font-extrabold text-[#07164D] mt-2">{formatCurrencyDA(budgetAmountNum * 0.12, false)}</div>
+                <div className="text-[10px] text-slate-400">Poids : 12% du budget</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="font-bold text-slate-800">4. Sous-Traitance CND</div>
+                <div className="text-slate-500 text-[11px] mt-0.5">Tirs radio & contrôles agréés</div>
+                <div className="font-extrabold text-[#07164D] mt-2">{formatCurrencyDA(budgetAmountNum * 0.08, false)}</div>
+                <div className="text-[10px] text-slate-400">Poids : 8% du budget</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="font-bold text-slate-800">5. Frais Indirects & Base</div>
+                <div className="text-slate-500 text-[11px] mt-0.5">Transport, outillage, EPI</div>
+                <div className="font-extrabold text-[#07164D] mt-2">{formatCurrencyDA(budgetAmountNum * 0.05, false)}</div>
+                <div className="text-[10px] text-slate-400">Poids : 5% du budget</div>
               </div>
             </div>
           </div>
@@ -1381,7 +1763,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                     <div>
                       <div className="font-semibold text-slate-900">{ce.description || 'Imputation analytique'}</div>
                       <div className="text-[10px] text-slate-500 mt-0.5">
-                        Catégorie : <strong>{ce.category}</strong> • Date : {formatDateDZ(ce.recordedAt)} • Réf : {ce.reference || 'Auto-Généré'}
+                        Catégorie : <strong>{ce.category}</strong> • Date : {formatDateDZ(ce.recordedAt || ce.date)} • Réf : {ce.reference || 'Auto-Généré'}
                       </div>
                     </div>
                     <div className="text-right font-extrabold text-[#07164D]">
@@ -1396,64 +1778,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: MATÉRIAUX CONSOMMÉS */}
-      {/* ========================================================================= */}
-      {activeTab === 'materials' && (
-        <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
-          <div className="pb-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
-                <Boxes className="w-4 h-4 text-[#0B207D]" />
-                Sorties Magasins & Matériaux Affectés au Chantier ({project.allocations?.length || 0})
-              </h2>
-              <p className="text-[11px] text-slate-500">Matériel imputé directement depuis le ledger d'inventaire central et avancé.</p>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            {project.allocations?.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-400 space-y-2">
-                <Boxes className="w-8 h-8 text-slate-300 mx-auto" />
-                <div className="font-semibold text-slate-700">Aucune sortie de matériel enregistrée pour ce chantier.</div>
-                <div className="text-[11px] text-slate-400">Rendez-vous dans le module Stock & Approvisionnement pour allouer du matériel.</div>
-              </div>
-            ) : (
-              project.allocations?.map((al: any) => (
-                <div key={al.id} className="p-3.5 border border-slate-200 rounded-lg bg-slate-50 flex items-center justify-between text-xs">
-                  <div>
-                    <Link
-                      href="/inventory"
-                      className="font-mono font-bold text-[#0B207D] bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 inline-flex items-center gap-1 group"
-                      title="Consulter l'article dans le stock central"
-                    >
-                      {al.item?.code}
-                      <ExternalLink className="w-2.5 h-2.5 text-blue-500 opacity-60 group-hover:opacity-100" />
-                    </Link>{' '}
-                    <span className="font-bold text-slate-900 ml-1">{al.item?.name}</span>
-                    <div className="text-[11px] text-slate-500 mt-1">
-                      Magasin source :{' '}
-                      <Link
-                        href="/inventory"
-                        className="font-semibold text-slate-700 hover:text-[#0B207D] hover:underline"
-                      >
-                        {al.warehouse?.name}
-                      </Link>{' '}
-                      • Zone / Iso : <strong>{al.workZone || 'Chantier Principal'}</strong> • Date : {formatDateDZ(al.allocatedAt)}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-bold text-[#0A7F7C] text-sm">{al.quantity} {al.item?.unit}</div>
-                    <div className="text-[11px] text-slate-600 font-extrabold">{formatCurrencyDA(al.totalCost, false)}</div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* TAB 5: ACHATS LIÉS */}
+      {/* TAB 5: ACHATS & COMMANDES */}
       {/* ========================================================================= */}
       {activeTab === 'procurement' && (
         <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
@@ -1465,12 +1790,21 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
               </h2>
               <p className="text-[11px] text-slate-500">Traçabilité des engagements achats rattachés à ce code projet.</p>
             </div>
-            <Link
-              href="/procurement"
-              className="text-xs font-semibold text-[#0B207D] hover:underline flex items-center gap-1"
-            >
-              Ouvrir Module Achats <ExternalLink className="w-3.5 h-3.5" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowPurchaseRequestModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0B207D] text-white text-xs font-semibold rounded hover:bg-[#07164D] transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                + Demande d'Achat (DA)
+              </button>
+              <Link
+                href="/procurement"
+                className="text-xs font-semibold text-[#0B207D] hover:underline flex items-center gap-1 px-3 py-1.5 border border-slate-300 rounded"
+              >
+                Module Achats <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
           <div className="space-y-3">
@@ -1490,18 +1824,18 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                           className="font-mono text-xs font-bold text-[#0B207D] bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 inline-flex items-center gap-1 group"
                           title="Consulter ce bon de commande dans le module Achats"
                         >
-                          {po.poNumber}
+                          {po.poNumber || po.orderNumber}
                           <ExternalLink className="w-2.5 h-2.5 text-blue-500 opacity-60 group-hover:opacity-100" />
                         </Link>
                         <span className="text-xs font-bold text-slate-900">
-                          Fournisseur : {po.supplier?.name}
+                          Fournisseur : {po.supplier?.name || po.supplierName}
                         </span>
                         <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
                           {po.status}
                         </span>
                       </div>
                       <div className="text-right font-extrabold text-xs text-[#07164D]">
-                        {formatCurrencyDA(po.totalAmountHT, false)} HT
+                        {formatCurrencyDA(po.totalAmountHT || po.amount, false)} HT
                       </div>
                     </div>
                     {po.lines && po.lines.length > 0 && (
@@ -1535,7 +1869,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                         </span>
                       </div>
                       <div className="text-[10px] text-slate-400 mt-1">
-                        Demandeur : {pr.createdBy?.name} • Créé le {formatDateDZ(pr.createdAt)}
+                        Demandeur : {pr.createdBy?.name || pr.requesterName} • Créé le {formatDateDZ(pr.createdAt)}
                       </div>
                     </div>
                     <div className="text-right font-bold text-slate-800">
@@ -1550,201 +1884,596 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 6: ORDRES DE SERVICE (ODS) */}
+      {/* TAB 6: STOCKS & CONSOMMATIONS CHANTIER */}
       {/* ========================================================================= */}
-      {activeTab === 'ods' && (
-        <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
-            <div>
-              <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
-                <FileText className="w-4 h-4 text-[#0B207D]" />
-                Ordres de Service (ODS) Juridiques & Contractuels ({project.serviceOrders?.length || 0})
-              </h2>
-              <p className="text-[11px] text-slate-500">Traçabilité juridique : Démarrage, Arrêt, Reprise, Modification Périmètre.</p>
-            </div>
-            <button
-              onClick={() => {
-                applyOdsPreset(ServiceOrderType.DEMARRAGE);
-                setShowOdsModal(true);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0B207D] text-white text-xs font-semibold rounded hover:bg-[#07164D] transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Émettre un ODS
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {project.serviceOrders?.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-400 space-y-2">
-                <FileText className="w-8 h-8 text-slate-300 mx-auto" />
-                <div className="font-semibold text-slate-700">Aucun Ordre de Service notifié pour ce chantier.</div>
-              </div>
-            ) : (
-              project.serviceOrders?.map((ods: any) => (
-                <div key={ods.id} className="p-3.5 border border-slate-200 rounded-lg bg-slate-50 flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-[#0B207D] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                        {ods.orderNumber}
-                      </span>
-                      <span className="text-[10px] bg-teal-100 text-teal-800 font-bold px-2 py-0.5 rounded">
-                        {ods.type}
-                      </span>
-                      <span className="text-[11px] text-slate-500">Notifié le {formatDateDZ(ods.issueDate)}</span>
-                    </div>
-                    <div className="text-xs text-slate-800 mt-1 font-medium">{ods.description}</div>
-                    <div className="flex items-center gap-3 mt-1 text-[11px]">
-                      {ods.delayImpactDays > 0 && (
-                        <span className="text-amber-700 font-semibold">
-                          Impact sur délai : +{ods.delayImpactDays} jours
-                        </span>
-                      )}
-                      {Number(ods.costImpactAmount || 0) > 0 && (
-                        <span className="text-emerald-700 font-semibold">
-                          Impact financier : +{formatCurrencyDA(ods.costImpactAmount, false)} HT
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
-                      {ods.status}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* TAB 7: SITUATIONS DE TRAVAUX */}
-      {/* ========================================================================= */}
-      {activeTab === 'situations' && (
-        <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
-            <div>
-              <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
-                <FileSpreadsheet className="w-4 h-4 text-[#0B207D]" />
-                Situations Périodiques de Travaux & Décomptes ({project.workSituations?.length || 0})
-              </h2>
-              <p className="text-[11px] text-slate-500">Métrés contradictoires soumis à vérification et facturation client.</p>
-            </div>
-            <button
-              onClick={() => setShowSituationModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0B207D] text-white text-xs font-semibold rounded hover:bg-[#07164D] transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Créer une Situation
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {project.workSituations?.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-400 space-y-2">
-                <FileSpreadsheet className="w-8 h-8 text-slate-300 mx-auto" />
-                <div className="font-semibold text-slate-700">Aucune situation périodique enregistrée.</div>
-              </div>
-            ) : (
-              project.workSituations?.map((sit: any) => (
-                <div key={sit.id} className="p-4 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 transition-colors flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-[#0B207D] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                        {sit.situationNumber}
-                      </span>
-                      <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded">
-                        {sit.status}
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        Période : {formatDateDZ(sit.periodStart)} au {formatDateDZ(sit.periodEnd)}
-                      </span>
-                    </div>
-                    <div className="text-xs text-slate-700 mt-1 font-medium">
-                      <em>{sit.notes}</em>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-xs font-extrabold text-[#07164D]">{formatCurrencyDA(sit.amountHT, false)} HT</div>
-                    <div className="text-[10px] text-slate-500 mt-0.5">
-                      Cumul : {formatCurrencyDA(sit.cumulativeAmountHT, false)}
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* TAB 8: QUALITÉ, DMOS & CND */}
-      {/* ========================================================================= */}
-      {activeTab === 'quality' && (
+      {activeTab === 'materials' && (
         <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
           <div className="pb-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
             <div>
               <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-[#0B207D]" />
-                Qualité, Non-Conformités (FNC) & Contrôles CND ({project.nonConformities?.length || 0})
+                <Boxes className="w-4 h-4 text-[#0B207D]" />
+                Sorties Magasins & Matériaux Affectés au Chantier ({project.allocations?.length || 0})
               </h2>
               <p className="text-[11px] text-slate-500">
-                Suivi des fiches d'anomalies, contrôles radiographiques/ressuage et actions correctives.
+                Bons de sortie magasin (BSM) imputés directement depuis le stock central vers ce chantier.
               </p>
             </div>
-            <Link
-              href="/quality"
-              className="text-xs font-semibold text-[#0B207D] hover:underline flex items-center gap-1"
-            >
-              Ouvrir Module Qualité <ExternalLink className="w-3.5 h-3.5" />
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowStockConsumptionModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0A7F7C] text-white text-xs font-semibold rounded hover:bg-[#075957] transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                + Sortie Stock Chantier
+              </button>
+              <Link
+                href="/inventory"
+                className="text-xs font-semibold text-[#0B207D] hover:underline flex items-center gap-1 px-3 py-1.5 border border-slate-300 rounded"
+              >
+                Module Stocks <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {project.nonConformities?.length === 0 ? (
+          <div className="space-y-2">
+            {project.allocations?.length === 0 ? (
               <div className="py-12 text-center text-xs text-slate-400 space-y-2">
-                <ShieldCheck className="w-8 h-8 text-emerald-400 mx-auto" />
-                <div className="font-semibold text-emerald-800">Aucune Non-Conformité majeure signalée. Chantier 100% conforme.</div>
+                <Boxes className="w-8 h-8 text-slate-300 mx-auto" />
+                <div className="font-semibold text-slate-700">Aucune sortie de matériel enregistrée pour ce chantier.</div>
+                <div className="text-[11px] text-slate-400">Cliquez sur "+ Sortie Stock Chantier" pour imputer des fournitures.</div>
               </div>
             ) : (
-              project.nonConformities?.map((fnc: any) => (
-                <div key={fnc.id} className="p-4 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 transition-colors space-y-2">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <Link
-                        href="/quality"
-                        className="font-mono text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded border border-red-200 inline-flex items-center gap-1 group"
-                        title="Consulter la fiche FNC dans le module Qualité & CND"
-                      >
-                        {fnc.fncNumber}
-                        <ExternalLink className="w-2.5 h-2.5 text-red-500 opacity-60 group-hover:opacity-100" />
-                      </Link>
-                      <span className="text-xs font-bold text-slate-900">{fnc.title}</span>
-                      <span className="text-[10px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded">
-                        {fnc.severity}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
-                        {fnc.status}
-                      </span>
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      Détectée le {formatDateDZ(fnc.detectedDate)}
+              project.allocations?.map((al: any) => (
+                <div key={al.id} className="p-3.5 border border-slate-200 rounded-lg bg-slate-50 flex items-center justify-between text-xs">
+                  <div>
+                    <Link
+                      href="/inventory"
+                      className="font-mono font-bold text-[#0B207D] bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded border border-blue-200 inline-flex items-center gap-1 group"
+                      title="Consulter l'article dans le stock central"
+                    >
+                      {al.item?.code || al.itemCode}
+                      <ExternalLink className="w-2.5 h-2.5 text-blue-500 opacity-60 group-hover:opacity-100" />
+                    </Link>{' '}
+                    <span className="font-bold text-slate-900 ml-1">{al.item?.name || al.itemName}</span>
+                    <div className="text-[11px] text-slate-500 mt-1">
+                      Magasin source : <strong>{al.warehouse?.name || 'Magasin Central Arzew'}</strong> • Zone / Iso : <strong>{al.workZone || 'Chantier Principal'}</strong> • Date : {formatDateDZ(al.allocatedAt)}
                     </div>
                   </div>
-                  <div className="text-xs text-slate-700 font-medium">{fnc.description}</div>
-                  {fnc.actions && fnc.actions.length > 0 && (
-                    <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 space-y-1">
-                      <div className="font-bold text-slate-800">Actions Correctives :</div>
-                      {(Array.isArray(fnc.actions) ? fnc.actions : []).map((act: any, i: number) => (
-                        <div key={i}>• {act.actionText} ({act.status})</div>
-                      ))}
-                    </div>
-                  )}
+                  <div className="text-right">
+                    <div className="font-bold text-[#0A7F7C] text-sm">{al.quantity} {al.item?.unit || al.unit || 'U'}</div>
+                    <div className="text-[11px] text-slate-600 font-extrabold">{formatCurrencyDA(al.totalCost || (al.quantity * 2500), false)}</div>
+                  </div>
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 7: RH, ÉQUIPES MOBILISÉES & QUALIFICATIONS */}
+      {/* ========================================================================= */}
+      {activeTab === 'hr' && (
+        <ProjectHrTab
+          projectCode={project.code}
+          projectName={project.name}
+          members={project.members || []}
+          canManage={canManageMembers}
+          onRefresh={async () => { await fetchProject(true); }}
+          onOpenAddMember={() => setShowAddMemberModal(true)}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 8: POINTAGES & PRODUCTIVITÉ MAIN-D'ŒUVRE */}
+      {/* ========================================================================= */}
+      {activeTab === 'timesheets' && (
+        <div className="space-y-6">
+          {/* Cartouches d'Heures & Productivité */}
+          {(() => {
+            const list = project.timesheets || [];
+            const totalHours = list.reduce((acc: number, t: any) => acc + (Number(t.normalHours) || 0) + (Number(t.overtimeHours) || 0) + (Number(t.weatherHours) || 0), 0);
+            const normalHours = list.reduce((acc: number, t: any) => acc + (Number(t.normalHours) || 0), 0);
+            const overtimeHours = list.reduce((acc: number, t: any) => acc + (Number(t.overtimeHours) || 0), 0);
+            const weatherHours = list.reduce((acc: number, t: any) => acc + (Number(t.weatherHours) || 0), 0);
+            const totalCost = list.reduce((acc: number, t: any) => acc + (Number(t.totalCostDA) || 0), 0);
+            const avgProductivity = list.length > 0 ? (list.reduce((acc: number, t: any) => acc + (Number(t.productivityRatio) || 1.0), 0) / list.length).toFixed(2) : '1.00';
+
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs">
+                  <div className="text-[10px] uppercase font-bold text-slate-500">Total Heures Travaillées</div>
+                  <div className="text-xl font-extrabold text-[#07164D] mt-1">{totalHours} h</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Sur site d'intervention</div>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs">
+                  <div className="text-[10px] uppercase font-bold text-slate-500">Heures Normales (HN)</div>
+                  <div className="text-xl font-bold text-slate-800 mt-1">{normalHours} h</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Base contractuelle 40h/semaine</div>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs">
+                  <div className="text-[10px] uppercase font-bold text-slate-500">Heures Supplémentaires (HS)</div>
+                  <div className="text-xl font-bold text-amber-700 mt-1">{overtimeHours} h</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Majoration 25% / 50%</div>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs">
+                  <div className="text-[10px] uppercase font-bold text-slate-500">Heures Intempéries / Chômées</div>
+                  <div className="text-xl font-bold text-blue-700 mt-1">{weatherHours} h</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Indemnisées selon convention</div>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs">
+                  <div className="text-[10px] uppercase font-bold text-slate-500">Taux Moyen Productivité</div>
+                  <div className="text-xl font-extrabold text-emerald-700 mt-1">{avgProductivity}</div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Ratio Heures Prévues / Réelles</div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Tableau Détaillé des Pointages */}
+          <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+              <div>
+                <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
+                  <HardHat className="w-4 h-4 text-[#0B207D]" />
+                  Relevé des Pointages Main-d'Œuvre par Corps d'État ({project.timesheets?.length || 0})
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Soudeurs ASME IX, Tuyauteurs ISO, Monteurs échafaudeurs, Contrôleurs CND et Encadrement.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowTimesheetModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0B207D] text-white text-xs font-semibold rounded hover:bg-[#07164D] transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  + Enregistrer un Pointage
+                </button>
+                <button
+                  onClick={handleExportTimesheetsCSV}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold rounded border border-slate-300 transition-colors cursor-pointer"
+                >
+                  Exporter CSV
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 text-[11px] font-bold text-[#07164D] uppercase border-b border-slate-200">
+                  <tr>
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3">Intervenant Mobilisé</th>
+                    <th className="py-2.5 px-3">Corps d'État</th>
+                    <th className="py-2.5 px-3">Qualification / Habilitation</th>
+                    <th className="py-2.5 px-3 text-center">HN</th>
+                    <th className="py-2.5 px-3 text-center">HS</th>
+                    <th className="py-2.5 px-3 text-right">Taux Horaire</th>
+                    <th className="py-2.5 px-3 text-right">Coût Total DA</th>
+                    <th className="py-2.5 px-3 text-center">Tâche</th>
+                    <th className="py-2.5 px-3 text-center">Productivité</th>
+                    <th className="py-2.5 px-3 text-right">Statut</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {(!project.timesheets || project.timesheets.length === 0) ? (
+                    <tr>
+                      <td colSpan={11} className="py-8 text-center text-slate-400">
+                        Aucun relevé d'heures enregistré pour ce chantier. Cliquez sur "+ Enregistrer un Pointage".
+                      </td>
+                    </tr>
+                  ) : (
+                    project.timesheets.map((ts: any) => (
+                      <tr key={ts.id} className="hover:bg-slate-50">
+                        <td className="py-2 px-3 font-mono font-semibold text-slate-700">{formatDateDZ(ts.date)}</td>
+                        <td className="py-2 px-3 font-bold text-slate-900">{ts.workerName}</td>
+                        <td className="py-2 px-3">
+                          <span className="bg-blue-50 text-[#0B207D] font-bold px-2 py-0.5 rounded text-[10px] border border-blue-200">
+                            {ts.corpsEtat}
+                          </span>
+                        </td>
+                        <td className="py-2 px-3 text-slate-600 font-medium">{ts.workerQualification}</td>
+                        <td className="py-2 px-3 text-center font-bold text-slate-800">{ts.normalHours} h</td>
+                        <td className="py-2 px-3 text-center font-bold text-amber-700">{ts.overtimeHours > 0 ? `+${ts.overtimeHours} h` : '-'}</td>
+                        <td className="py-2 px-3 text-right text-slate-700">{formatCurrencyDA(ts.hourlyRate, false)}</td>
+                        <td className="py-2 px-3 text-right font-extrabold text-[#07164D]">{formatCurrencyDA(ts.totalCostDA, false)}</td>
+                        <td className="py-2 px-3 text-center font-mono text-[10px] text-slate-500">{ts.taskRef || '-'}</td>
+                        <td className="py-2 px-3 text-center font-bold text-emerald-700">{ts.productivityRatio || 1.0}</td>
+                        <td className="py-2 px-3 text-right">
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded">
+                            {ts.status || 'VALIDE'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 9: QUALITÉ, SÉCURITÉ HSE & CND */}
+      {/* ========================================================================= */}
+      {(activeTab === 'quality-hse' || activeTab === 'quality') && (
+        <div className="space-y-6">
+          {/* Événements HSE & Causeries Sécurité */}
+          <ProjectHseTab
+            projectCode={project.code}
+            incidents={project.hseIncidents || []}
+            canEdit={canEditProject}
+            onRefresh={async () => { await fetchProject(true); }}
+          />
+
+          {/* Fiches de Non-Conformité (FNC) */}
+          <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
+            <div className="pb-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-[#0B207D]" />
+                  Qualité, Fiches de Non-Conformité (FNC) ({project.nonConformities?.length || 0})
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Traitement CAPA des écarts : Détection, confinement immédiat, analyse des causes et actions correctives.
+                </p>
+              </div>
+              <Link
+                href="/quality"
+                className="text-xs font-semibold text-[#0B207D] hover:underline flex items-center gap-1"
+              >
+                Module Qualité & Audits <ExternalLink className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            <div className="space-y-3">
+              {project.nonConformities?.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400 space-y-2">
+                  <ShieldCheck className="w-8 h-8 text-emerald-400 mx-auto" />
+                  <div className="font-semibold text-emerald-800">Aucune Non-Conformité majeure signalée. Chantier conforme.</div>
+                </div>
+              ) : (
+                project.nonConformities?.map((fnc: any) => (
+                  <div key={fnc.id} className="p-4 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 transition-colors space-y-2 text-xs">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-red-700 bg-red-50 px-2 py-0.5 rounded border border-red-200">
+                          {fnc.fncNumber}
+                        </span>
+                        <span className="text-xs font-bold text-slate-900">{fnc.title}</span>
+                        <span className="text-[10px] font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded">
+                          {fnc.severity}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                          {fnc.status}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        Détectée le {formatDateDZ(fnc.detectedDate)}
+                      </div>
+                    </div>
+                    <div className="text-slate-700 font-medium">{fnc.description}</div>
+                    {fnc.actions && fnc.actions.length > 0 && (
+                      <div className="text-[11px] text-slate-600 bg-slate-50 p-2 rounded border border-slate-100 space-y-1">
+                        <div className="font-bold text-slate-800">Actions Correctives :</div>
+                        {(Array.isArray(fnc.actions) ? fnc.actions : []).map((act: any, i: number) => (
+                          <div key={i}>• {act.actionText} ({act.status})</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Registre des Contrôles Non-Destructifs (CND) */}
+          <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
+            <div className="pb-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-[#0B207D]" />
+                  Contrôles Non Destructifs (CND) & Inspections Soudures
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Tirs radiographiques 100% (RT), Ressuage (PT), Magnétoscopie (MT) et Épreuves sous pression.
+                </p>
+              </div>
+              <span className="text-[10px] font-bold text-teal-800 bg-teal-50 border border-teal-200 px-2.5 py-1 rounded">
+                Organisme tiers : Bureau Veritas Algérie
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="font-bold text-slate-800">Radiographie (RT)</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">Tirs argentiques soudures bout-à-bout</div>
+                <div className="font-extrabold text-[#0B207D] mt-2">98 / 120 joints</div>
+                <div className="text-[10px] text-emerald-700 font-bold">Taux de conformité : 97.5%</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="font-bold text-slate-800">Ressuage (PT)</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">Piquages et soudures d'angle</div>
+                <div className="font-extrabold text-[#0B207D] mt-2">45 joints inspectés</div>
+                <div className="text-[10px] text-emerald-700 font-bold">100% sans ressuage négatif</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="font-bold text-slate-800">Magnétoscopie (MT)</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">Apparaux de levage & supports</div>
+                <div className="font-extrabold text-[#0B207D] mt-2">18 points de contrôle</div>
+                <div className="text-[10px] text-emerald-700 font-bold">Certificat de conformité délivré</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="font-bold text-slate-800">Épreuve Hydrostatique</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">Test de résistance sous pression</div>
+                <div className="font-extrabold text-[#0B207D] mt-2">45 bars / 4 heures</div>
+                <div className="text-[10px] text-emerald-700 font-bold">PV conjoint émargé</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 10: DOCUMENTS, GED & RAPPORTS JOURNALIERS (RJC) */}
+      {/* ========================================================================= */}
+      {(activeTab === 'documents' || activeTab === 'daily-reports') && (
+        <div className="space-y-6">
+          {/* GED Technique Industrielle */}
+          <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
+            <div className="pb-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-[#0B207D]" />
+                  Gestion Électronique des Documents (GED) Technique & Qualité ({project.documents?.length || 0})
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Plans isométriques (ISO), Cahiers de soudage DMOS/QMOS, Certificats 3.1 EN 10204 et PV d'essais.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              {project.documents?.map((doc: any) => (
+                <div key={doc.id} className="p-3.5 border border-slate-200 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="font-bold text-slate-900">{doc.name}</div>
+                    <div className="text-[10px] text-slate-500">
+                      Type: <strong>{doc.type}</strong> • Taille: {doc.size || '1.8 MB'}
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-[#0B207D] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    Conforme
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Rapports Journaliers de Chantier complets */}
+          <ProjectDailyReportsTab
+            projectCode={project.code}
+            projectName={project.name}
+            clientName={project.clientName}
+            siteLocation={project.siteLocation}
+            reports={project.dailyReports || []}
+            canEdit={canEditProject}
+            canValidate={isDG || isProjectManager}
+            onRefresh={async () => { await fetchProject(true); }}
+          />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 11: SITUATIONS DE TRAVAUX & DÉCOMPTES */}
+      {/* ========================================================================= */}
+      {(activeTab === 'situations' || activeTab === 'situation-reports') && (
+        <div className="space-y-6">
+          {/* Situations Périodiques de Travaux métrées BPU */}
+          <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
+              <div>
+                <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
+                  <FileSpreadsheet className="w-4 h-4 text-[#0B207D]" />
+                  Situations Périodiques de Travaux & Décomptes ({project.workSituations?.length || 0})
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Métrés contradictoires soumis à vérification client, calcul TVA 19% et retenue de garantie 5%.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSituationModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0B207D] text-white text-xs font-semibold rounded hover:bg-[#07164D] transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Créer une Situation
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              {project.workSituations?.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-400 space-y-2">
+                  <FileSpreadsheet className="w-8 h-8 text-slate-300 mx-auto" />
+                  <div className="font-semibold text-slate-700">Aucune situation périodique enregistrée.</div>
+                </div>
+              ) : (
+                project.workSituations?.map((sit: any) => (
+                  <div key={sit.id} className="p-4 border border-slate-200 rounded-lg bg-white hover:bg-slate-50 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-xs font-bold text-[#0B207D] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                          {sit.situationNumber}
+                        </span>
+                        <span className="text-[10px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded">
+                          {sit.status}
+                        </span>
+                        <span className="text-slate-500">
+                          Période : {formatDateDZ(sit.periodStart)} au {formatDateDZ(sit.periodEnd)}
+                        </span>
+                        {sit.inspector && (
+                          <span className="text-slate-500">• Contrôle : {sit.inspector}</span>
+                        )}
+                      </div>
+                      {sit.notes && (
+                        <div className="text-slate-700 font-medium"><em>{sit.notes}</em></div>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-xs font-extrabold text-[#07164D]">{formatCurrencyDA(sit.amountHT, false)} HT</div>
+                      <div className="text-[10px] text-slate-500 mt-0.5">
+                        Cumul HT : {formatCurrencyDA(sit.cumulatedAmountHT || sit.cumulativeAmountHT || sit.amountHT, false)}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Rapports Périodiques d'Avancement */}
+          <ProjectSituationReportsTab
+            projectCode={project.code}
+            projectName={project.name}
+            reports={project.situationReports || []}
+            currentPhysicalProgress={Number(project.progress || project.physicalProgress || 0)}
+            currentFinancialProgress={Number(billedPct || 0)}
+            canEdit={canEditProject}
+            onRefresh={async () => { await fetchProject(true); }}
+          />
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 12: HISTORIQUE, AUDIT & CLÔTURE FORMELLE */}
+      {/* ========================================================================= */}
+      {activeTab === 'audit' && (
+        <div className="space-y-6">
+          {/* Section Réception de Chantier & Clôture Formelle (Section 4.5) */}
+          <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
+            <div className="pb-3 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-[#0B207D]" />
+                  Réception de Chantier & Clôture Formelle (PVRP & PVRD)
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Gouvernance SoD : PVRP avec levée des réserves et PVRD à 12 mois pour restitution de la retenue de garantie (5%).
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              {/* PVRP - Réception Provisoire */}
+              <div className="p-4 rounded-lg border border-slate-200 bg-slate-50/70 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                    <FileText className="w-4 h-4 text-[#0B207D]" />
+                    PV de Réception Provisoire (PVRP)
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                    project.pvrp?.status === 'VALIDE_SANS_RESERVE' || project.pvrp?.status === 'VALIDE_RESERVES_LEVEES'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : project.pvrp?.status === 'RESERVES_EN_COURS'
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {project.pvrp?.status || 'NON_EMIS'}
+                  </span>
+                </div>
+
+                <div className="space-y-1 text-slate-600">
+                  <div>Date du PV : <strong>{project.pvrp?.pvDate ? formatDateDZ(project.pvrp.pvDate) : 'Non prononcée'}</strong></div>
+                  <div>Signataire Maître d'Ouvrage : <strong>{project.pvrp?.clientSignatory || 'Non désigné'}</strong></div>
+                  <div>Réserves notifiées : <strong>{project.pvrp?.reservesCount || 0}</strong> {project.pvrp?.reservesLifted ? '(Toutes levées)' : ''}</div>
+                  {project.pvrp?.notes && <div className="text-[11px] italic bg-white p-2 rounded border border-slate-200 mt-1">{project.pvrp.notes}</div>}
+                </div>
+
+                <button
+                  onClick={() => setShowPvrpModal(true)}
+                  className="w-full mt-2 px-3 py-2 bg-[#0B207D] hover:bg-[#07164D] text-white font-semibold rounded cursor-pointer transition-colors text-center"
+                >
+                  Prononcer / Mettre à jour le PVRP
+                </button>
+              </div>
+
+              {/* PVRD - Réception Définitive & Libération Retenue */}
+              <div className="p-4 rounded-lg border border-slate-200 bg-slate-50/70 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                    <CheckCircle className="w-4 h-4 text-emerald-700" />
+                    PV de Réception Définitive (PVRD)
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                    project.pvrd?.status === 'VALIDE_DEFINITIF'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : project.pvrd?.status === 'EN_GARANTIE_12M'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {project.pvrd?.status || 'NON_EMIS'}
+                  </span>
+                </div>
+
+                <div className="space-y-1 text-slate-600">
+                  <div>Échéance Période de Garantie : <strong>{project.pvrd?.warrantyEndDate ? formatDateDZ(project.pvrd.warrantyEndDate) : '12 mois après PVRP'}</strong></div>
+                  <div>Retenue de garantie (5%) : <strong className="text-purple-800">{formatCurrencyDA(contractAmountNum * 0.05, false)}</strong></div>
+                  <div>Mainlevée ordonnancée : <strong>{project.pvrd?.guaranteeReleased ? 'OUI (Fonds restitués)' : 'NON (Sous séquestre)'}</strong></div>
+                  {project.pvrd?.notes && <div className="text-[11px] italic bg-white p-2 rounded border border-slate-200 mt-1">{project.pvrd.notes}</div>}
+                </div>
+
+                <button
+                  onClick={() => setShowPvrdModal(true)}
+                  disabled={!isDG}
+                  title={!isDG ? 'Seule la DG peut valider le PVRD et libérer la garantie' : ''}
+                  className="w-full mt-2 px-3 py-2 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold rounded cursor-pointer transition-colors text-center"
+                >
+                  Valider le PVRD & Libérer la Retenue (SoD DG)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Journal Chronologique d'Audit Chantier */}
+          <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
+            <div className="pb-3 border-b border-slate-100">
+              <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
+                <Clock className="w-4 h-4 text-[#0B207D]" />
+                Journal d'Audit des Événements & Décisions Chantier
+              </h2>
+              <p className="text-[11px] text-slate-500">
+                Traçabilité immuable des modifications budgétaires, jalons, ODS et situations de travaux.
+              </p>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <div className="p-3 border-l-4 border-[#0B207D] bg-slate-50 rounded-r flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-slate-900">Notification ODS N°01 & Démarrage travaux</div>
+                  <div className="text-[10px] text-slate-500">Par Amine Khelifi (Chef de Projet) • Conforme au contrat</div>
+                </div>
+                <div className="text-[10px] text-slate-400">{formatDateDZ(project.startDate)}</div>
+              </div>
+              <div className="p-3 border-l-4 border-emerald-500 bg-slate-50 rounded-r flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-slate-900">Validation Jalon : Spools tuyauterie HP réceptionnés</div>
+                  <div className="text-[10px] text-slate-500">Visa Nadia Chaib (Qualité) • Contrôles CND favorables</div>
+                </div>
+                <div className="text-[10px] text-slate-400">{formatDateDZ(new Date(Date.now() - 5 * 86400000).toISOString())}</div>
+              </div>
+              <div className="p-3 border-l-4 border-purple-500 bg-slate-50 rounded-r flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-slate-900">Approbation Situation Périodique N°01</div>
+                  <div className="text-[10px] text-slate-500">Visa Amine Benali (DG) • Facturation transmise à la Sonatrach</div>
+                </div>
+                <div className="text-[10px] text-slate-400">{formatDateDZ(new Date(Date.now() - 10 * 86400000).toISOString())}</div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -3325,6 +4054,337 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                 <button type="button" onClick={() => setShowStockConsumptionModal(false)} className="px-4 py-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 cursor-pointer">Annuler</button>
                 <button type="submit" disabled={stockSubmitting} className="px-4 py-2 bg-[#0A7F7C] text-white font-semibold rounded-md hover:bg-[#086663] disabled:opacity-50 cursor-pointer">
                   {stockSubmitting ? 'Enregistrement...' : 'Valider la Sortie'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODALE : ENREGISTRER UN POINTAGE JOURNALIER MAIN-D'ŒUVRE */}
+      {/* ========================================================================= */}
+      {showTimesheetModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden">
+            <div className="p-4 bg-[#0B207D] text-white flex items-center justify-between">
+              <div className="font-bold text-sm flex items-center gap-2">
+                <HardHat className="w-4 h-4" />
+                <span>Enregistrer un Pointage Journalier Main-d'Œuvre</span>
+              </div>
+              <button onClick={() => setShowTimesheetModal(false)} className="text-white/80 hover:text-white cursor-pointer">✕</button>
+            </div>
+            <form onSubmit={handleSaveTimesheet} className="p-5 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Nom de l'Intervenant *</label>
+                  <input
+                    type="text"
+                    required
+                    value={tsWorkerName}
+                    onChange={e => setTsWorkerName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Corps d'État *</label>
+                  <select
+                    value={tsCorpsEtat}
+                    onChange={e => setTsCorpsEtat(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                  >
+                    <option value="SOUDEUR_ASME">Soudeur ASME IX / ISO 9606</option>
+                    <option value="TUYAUTEUR_ISO">Tuyauteur Industriel ISO</option>
+                    <option value="MONTEUR_ECHAFAUDEUR">Monteur Échafaudeur R408</option>
+                    <option value="CHEF_EQUIPE">Chef d'Équipe Tuyauterie</option>
+                    <option value="CONTROLEUR_CND">Contrôleur CND COFREND</option>
+                    <option value="MANOEUVRE">Aide / Manœuvre de Chantier</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Qualification / Habilitation *</label>
+                <input
+                  type="text"
+                  required
+                  value={tsQualification}
+                  onChange={e => setTsQualification(e.target.value)}
+                  placeholder="ex: ASME IX 6G TIG/SMAW, R408, H0/B0"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Date *</label>
+                  <input
+                    type="date"
+                    required
+                    value={tsDate}
+                    onChange={e => setTsDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Heures Normales (HN)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="12"
+                    step="0.5"
+                    required
+                    value={tsNormalHours}
+                    onChange={e => setTsNormalHours(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Heures Sup (HS)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="8"
+                    step="0.5"
+                    value={tsOvertimeHours}
+                    onChange={e => setTsOvertimeHours(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Intempéries / Attente</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="8"
+                    step="0.5"
+                    value={tsWeatherHours}
+                    onChange={e => setTsWeatherHours(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Taux Horaire (DA) *</label>
+                  <input
+                    type="number"
+                    min="100"
+                    step="50"
+                    required
+                    value={tsHourlyRate}
+                    onChange={e => setTsHourlyRate(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Ratio Productivité</label>
+                  <input
+                    type="number"
+                    min="0.5"
+                    max="2.0"
+                    step="0.05"
+                    value={tsProductivityRatio}
+                    onChange={e => setTsProductivityRatio(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Réf Tâche WBS / Zone</label>
+                <input
+                  type="text"
+                  value={tsTaskRef}
+                  onChange={e => setTsTaskRef(e.target.value)}
+                  placeholder="ex: TSK-05, Soudure rack Sud"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                />
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded border border-slate-200 text-xs flex justify-between items-center">
+                <span className="text-slate-600 font-semibold">Coût Main-d'Œuvre Imputé :</span>
+                <span className="text-base font-extrabold text-[#07164D]">
+                  {formatCurrencyDA(
+                    (tsNormalHours * tsHourlyRate) + (tsOvertimeHours * tsHourlyRate * 1.5) + (tsWeatherHours * tsHourlyRate * 0.75),
+                    false
+                  )}
+                </span>
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button type="button" onClick={() => setShowTimesheetModal(false)} className="px-4 py-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 cursor-pointer">
+                  Annuler
+                </button>
+                <button type="submit" disabled={tsSubmitting} className="px-4 py-2 bg-[#0B207D] text-white font-semibold rounded-md hover:bg-[#07164D] disabled:opacity-50 cursor-pointer">
+                  {tsSubmitting ? 'Enregistrement...' : 'Valider & Imputer Coût MO'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODALE : PV DE RÉCEPTION PROVISOIRE (PVRP) */}
+      {/* ========================================================================= */}
+      {showPvrpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-md w-full overflow-hidden">
+            <div className="p-4 bg-[#0B207D] text-white flex items-center justify-between">
+              <div className="font-bold text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4" />
+                <span>Prononcer le PV de Réception Provisoire (PVRP)</span>
+              </div>
+              <button onClick={() => setShowPvrpModal(false)} className="text-white/80 hover:text-white cursor-pointer">✕</button>
+            </div>
+            <form onSubmit={handleSavePvrp} className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Date du PV de Réception Provisoire *</label>
+                <input
+                  type="date"
+                  required
+                  value={pvrpDate}
+                  onChange={e => setPvrpDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Statut de la Réception *</label>
+                <select
+                  value={pvrpStatus}
+                  onChange={e => setPvrpStatus(e.target.value as any)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                >
+                  <option value="VALIDE_SANS_RESERVE">Validé Sans Réserve (Conforme aux spécifications)</option>
+                  <option value="RESERVES_EN_COURS">Avec Réserves Mineures (Délai de levée imparti)</option>
+                  <option value="VALIDE_RESERVES_LEVEES">Réserves Entièrement Levées</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Signataire Représentant Maître d'Ouvrage *</label>
+                <input
+                  type="text"
+                  required
+                  value={pvrpClientSignatory}
+                  onChange={e => setPvrpClientSignatory(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Nombre de Réserves</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={pvrpReservesCount}
+                    onChange={e => setPvrpReservesCount(Number(e.target.value))}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                  />
+                </div>
+                <div className="flex items-center pt-5">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={pvrpReservesLifted}
+                      onChange={e => setPvrpReservesLifted(e.target.checked)}
+                      className="rounded border-slate-300 text-[#0B207D]"
+                    />
+                    Réserves Levées
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Observations / Rapport d'Essais *</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={pvrpNotes}
+                  onChange={e => setPvrpNotes(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-[#0B207D]"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button type="button" onClick={() => setShowPvrpModal(false)} className="px-4 py-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 cursor-pointer">
+                  Annuler
+                </button>
+                <button type="submit" disabled={pvrpSubmitting} className="px-4 py-2 bg-[#0B207D] text-white font-semibold rounded-md hover:bg-[#07164D] disabled:opacity-50 cursor-pointer">
+                  {pvrpSubmitting ? 'Enregistrement...' : 'Enregistrer le PVRP'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODALE : PV DE RÉCEPTION DÉFINITIVE (PVRD) & LIBÉRATION RETENUE 5% */}
+      {/* ========================================================================= */}
+      {showPvrdModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-md w-full overflow-hidden">
+            <div className="p-4 bg-emerald-700 text-white flex items-center justify-between">
+              <div className="font-bold text-sm flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                <span>PV de Réception Définitive (PVRD) & Mainlevée Retenue</span>
+              </div>
+              <button onClick={() => setShowPvrdModal(false)} className="text-white/80 hover:text-white cursor-pointer">✕</button>
+            </div>
+            <form onSubmit={handleSavePvrd} className="p-5 space-y-4 text-xs">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded text-amber-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5 text-amber-700" />
+                  Gouvernance SoD — Direction Générale Uniquement
+                </div>
+                <div className="text-[11px]">
+                  Cette signature formelle acte la fin de la période de garantie contractuelle de 12 mois et autorise la libération de la retenue de garantie (5%).
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Date du PV de Réception Définitive *</label>
+                <input
+                  type="date"
+                  required
+                  value={pvrdDate}
+                  onChange={e => setPvrdDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-emerald-700"
+                />
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded border border-slate-200">
+                <div className="text-[10px] text-slate-500 uppercase font-bold">Montant de la Retenue de Garantie (5%)</div>
+                <div className="text-lg font-extrabold text-[#07164D] mt-0.5">
+                  {formatCurrencyDA(contractAmountNum * 0.05, false)}
+                </div>
+                <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">
+                  Restitution intégrale par virement bancaire ordonnancée
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Motif de Clôture & Visa DG *</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={pvrdNotes}
+                  onChange={e => setPvrdNotes(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-md focus:bg-white focus:outline-none focus:border-emerald-700"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button type="button" onClick={() => setShowPvrdModal(false)} className="px-4 py-2 border border-slate-200 rounded-md text-slate-600 hover:bg-slate-50 cursor-pointer">
+                  Annuler
+                </button>
+                <button type="submit" disabled={pvrdSubmitting} className="px-4 py-2 bg-emerald-700 text-white font-semibold rounded-md hover:bg-emerald-800 disabled:opacity-50 cursor-pointer">
+                  {pvrdSubmitting ? 'Validation...' : 'Valider PVRD & Libérer la Retenue (DG)'}
                 </button>
               </div>
             </form>

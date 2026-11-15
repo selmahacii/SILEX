@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SystemRole } from '@silex/shared';
 import { dbBridge } from '@/lib/db-bridge';
-import { generateAuthToken } from '@/lib/auth-server';
+import { generateAuthToken, parseUserFromToken } from '@/lib/auth-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +19,24 @@ export async function OPTIONS() {
 
 export async function POST(req: NextRequest) {
   try {
+    // 1. Règle de sécurité P0 : Interdiction formelle en production
+    const isProduction = process.env.NODE_ENV === 'production';
+    const isDemoMode = process.env.DEMO_MODE === 'true';
+
+    if (isProduction || !isDemoMode) {
+      return NextResponse.json(
+        {
+          error: 'Le basculement direct de profil est strictement désactivé sur cet environnement de production.',
+          code: 'SECURITY_DEMO_DISABLED',
+        },
+        { status: 403, headers: corsHeaders() }
+      );
+    }
+
+    // 2. Traçabilité de l'appelant
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const callingUser = await parseUserFromToken(authHeader);
+
     let body: any = {};
     try {
       body = await req.json();
@@ -27,36 +45,47 @@ export async function POST(req: NextRequest) {
     }
 
     const email = (body.email || '').toLowerCase().trim();
-    let role = (body.role || SystemRole.DIRECTEUR_GENERAL) as SystemRole;
+    const role = (body.role || SystemRole.DIRECTEUR_GENERAL) as SystemRole;
 
-    let user: any = null;
+    let targetUser: any = null;
     if (email) {
-      user = await dbBridge.getUserByEmail(email);
+      targetUser = await dbBridge.getUserByEmail(email);
     }
-    if (!user) {
-      user = await dbBridge.getUserByRole(role);
+    if (!targetUser) {
+      targetUser = await dbBridge.getUserByRole(role);
     }
 
-    if (!user) {
+    if (!targetUser) {
       return NextResponse.json(
-        { error: 'Rôle démo introuvable' },
+        { error: `Aucun compte de test configuré pour le rôle ${role}.`, code: 'USER_NOT_FOUND' },
         { status: 404, headers: corsHeaders() }
       );
     }
 
-    const token = generateAuthToken(user);
+    // Audit obligatoire de l'action de commutation en environnement de test
+    await dbBridge.logAudit(
+      'DEMO_ROLE_SWITCH',
+      'SECURITY',
+      targetUser.id,
+      `Commutation de profil démo vers ${targetUser.name} (${targetUser.role}) demandée par ${callingUser?.email || 'visiteur de test'}.`,
+      targetUser
+    );
+
+    const token = generateAuthToken(targetUser);
     const payload = {
       accessToken: token,
       user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        departmentCode: user.departmentCode,
-        title: user.title,
-        avatarUrl: user.avatarUrl || user.avatar || null,
-        assignedProjects: user.assignedProjects || [],
-        permissions: ['*'],
+        id: targetUser.id,
+        email: targetUser.email,
+        name: targetUser.name,
+        role: targetUser.role,
+        departmentCode: targetUser.departmentCode,
+        title: targetUser.title,
+        avatarUrl: targetUser.avatarUrl || targetUser.avatar || null,
+        assignedProjects: targetUser.assignedProjects || [],
+        permissions: targetUser.role === SystemRole.DIRECTEUR_GENERAL || targetUser.role === SystemRole.ADMINISTRATEUR
+          ? ['*']
+          : ['READ', 'WRITE'],
       },
     };
 

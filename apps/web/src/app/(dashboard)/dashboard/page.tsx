@@ -249,7 +249,7 @@ export default function ExecutiveDashboardPage() {
             </span>
           </div>
           <div className="text-lg font-bold text-[#E51A1A] mt-2 flex items-center gap-2">
-            <span>{kpis?.pendingApprovalsCount || 0}</span>
+            <span>{pendingWorkflows.filter((w: any) => w.status === 'PENDING' || w.status === 'PENDING_DG' || w.status === 'PENDING_APPROVAL' || w.status === 'SUBMITTED' || w.status === 'PRETE_POUR_VALIDATION').length || kpis?.pendingApprovalsCount || 0}</span>
             <span className="text-xs font-normal text-slate-500">arbitrages requis</span>
           </div>
           <Link
@@ -487,25 +487,31 @@ export default function ExecutiveDashboardPage() {
                           {w.reference}
                         </span>
                         <span className="font-bold text-slate-800 truncate">
-                          {w.type === 'PURCHASE_REQUEST' ? "Demande d'Achat (DA)" : "Situation de Travaux"}
+                          {w.type === 'PURCHASE_REQUEST' ? "Demande d'Achat (DA)" : w.type === 'COST_SHEET' ? "Fiche de Chiffrage (FC)" : "Situation de Travaux"}
                         </span>
                         <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                          w.urgencyLevel === 'HIGH' ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-slate-200 text-slate-700'
+                          w.urgencyLevel === 'HIGH' || w.priority === 'HIGH' ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-slate-200 text-slate-700'
                         }`}>
-                          {w.urgencyLevel || 'NORMAL'}
+                          {w.urgencyLevel || w.priority || 'NORMAL'}
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-600 mt-1 truncate">
-                        {w.title} • Chantier :{' '}
-                        <Link
-                          href={`/projects/${w.projectCode}`}
-                          className="font-semibold text-[#0B207D] hover:underline"
-                        >
-                          {w.projectCode}
-                        </Link>
+                        {w.title} • {w.projectCode ? (
+                          <>
+                            Chantier :{' '}
+                            <Link
+                              href={`/projects/${w.projectCode}`}
+                              className="font-semibold text-[#0B207D] hover:underline"
+                            >
+                              {w.projectCode}
+                            </Link>
+                          </>
+                        ) : (
+                          <>Client : <strong className="text-slate-800">{w.clientName || 'Sonatrach Raffinerie Skikda'}</strong></>
+                        )}
                       </div>
                       <div className="text-[10px] text-slate-400 mt-0.5">
-                        Demandeur : <strong>{w.requesterName}</strong> ({w.department}) • Montant : <strong className="text-slate-800">{formatCurrencyDA(Number(w.amountHT || 0), false)} HT</strong>
+                        Demandeur : <strong>{w.requesterName || w.initiatorName || 'Chef de Projets'}</strong> ({w.department || w.initiatorDepartment || 'Opérations & Projets'}) • Montant : <strong className="text-slate-800">{formatCurrencyDA(Number(w.amountHT || 0), false)} HT</strong>
                       </div>
                     </div>
                     <Link

@@ -686,7 +686,13 @@ export const dbBridge = {
 
         const marginDA = Math.max(0, totalContracted - totalBudget);
         const projectedMarginRate = totalContracted > 0 ? ((marginDA / totalContracted) * 100).toFixed(1) : '0.0';
-        const pendingWfs = (serverStore.workflows || []).filter((w: any) => w.status === 'PENDING').length;
+        const pendingWfs = (serverStore.workflows || []).filter((w: any) =>
+          w.status === 'PENDING' ||
+          w.status === 'PENDING_DG' ||
+          w.status === 'PENDING_APPROVAL' ||
+          w.status === 'SUBMITTED' ||
+          w.status === 'PRETE_POUR_VALIDATION'
+        ).length;
 
         return {
           totalProjects,
@@ -1956,7 +1962,7 @@ export const dbBridge = {
     let finalAccounts: any[] = [];
     if (list.length > 0) {
       if (includeDemo) {
-        const demoAccounts = serverStore.getFinancialAccounts().filter(a => a.isDemoAccount);
+        const demoAccounts = serverStore.getFinancialAccounts({ includeDemo: true }).filter(a => a.isDemoAccount);
         const combined = [...list];
         for (const demoAcc of demoAccounts) {
           if (!combined.some(a => a.code === demoAcc.code)) {
@@ -2842,6 +2848,10 @@ export const dbBridge = {
     return serverStore.updateOpportunity(id, data, user);
   },
 
+  async updateOpportunityStage(id: string, newStage: string, data: any, user?: any) {
+    return serverStore.updateOpportunityStage(id, newStage, data, user);
+  },
+
   async getCostSheets() {
     return serverStore.getCostSheets();
   },
@@ -2864,6 +2874,14 @@ export const dbBridge = {
 
   async arbitrateCostSheet(id: string, decision: 'APPROVED' | 'REJECTED' | 'REVISION_REQUESTED', notes: string, user?: any) {
     return serverStore.arbitrateCostSheet(id, decision, notes, user);
+  },
+
+  async createCostSheetRevision(id: string, reason: string, user?: any) {
+    return serverStore.createCostSheetRevision(id, reason, user);
+  },
+
+  async compareCostSheetVersions(id: string, vA: number, vB: number) {
+    return serverStore.compareCostSheetVersions(id, vA, vB);
   },
 
   async createCustomerQuote(costSheetId: string, user?: any) {
@@ -2996,6 +3014,18 @@ export const dbBridge = {
     return serverStore.recordProjectStockConsumption(code, data, user);
   },
 
+  async getProjectTimesheets(code: string) {
+    return serverStore.getProjectTimesheets(code);
+  },
+
+  async createProjectTimesheet(code: string, data: any, user?: any) {
+    return serverStore.createProjectTimesheet(code, data, user);
+  },
+
+  async updateProjectReception(code: string, data: any, user?: any) {
+    return serverStore.updateProjectReception(code, data, user);
+  },
+
   // ============================================================================
   // ============================================================================
   // PHASE 4 : ACHATS, APPROVISIONNEMENTS, TCO, CONTRATS, RECEPTIONS & INVENTAIRES
@@ -3049,6 +3079,24 @@ export const dbBridge = {
 
   async recordGoodsReceipt(data: any, user?: any) {
     return serverStore.recordGoodsReceipt(data, user);
+  },
+
+  async getBonsDeSortie(projectId?: string) {
+    return serverStore.getBonsDeSortie(projectId);
+  },
+
+  async getBonDeSortie(idOrNumber: string) {
+    return serverStore.getBonDeSortie(idOrNumber);
+  },
+
+  async createBonDeSortie(data: any, user?: any) {
+    const res = serverStore.createBonDeSortie(data, user);
+    await this.logAudit('CREATE_BON_DE_SORTIE', 'INVENTORY', res.bonNumber, `BSM ${res.bonNumber} émis (${res.totalAmountDA.toLocaleString()} DA PUMP)`, user);
+    return res;
+  },
+
+  async getMaterialTraceability(query: string) {
+    return serverStore.getMaterialTraceability(query);
   },
 
   async getSupplierContracts(supplierId?: string) {

@@ -33,6 +33,8 @@ import {
   ChevronRight,
   Phone,
   Tag,
+  Coins,
+  Calculator,
   ExternalLink,
 } from 'lucide-react';
 
@@ -43,7 +45,7 @@ export default function WorkflowsPage() {
   const [notification, setNotification] = useState<string | null>(null);
 
   // Filter
-  const [typeFilter, setTypeFilter] = useState<'ALL' | 'PURCHASE_REQUEST' | 'WORK_SITUATION'>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'ALL' | 'PURCHASE_REQUEST' | 'WORK_SITUATION' | 'COST_SHEET'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modal Examen Détaillé du Dossier (Visualisation Complète des Lignes, Justification, Offres & Décision)
@@ -60,9 +62,15 @@ export default function WorkflowsPage() {
     try {
       await api.post(`/workflows/${item.id}/approve`, {
         type: item.type,
-        notes: decisionNotes || 'Approbation DG avec émission de Bon de Commande / Situation validée.',
+        notes: decisionNotes || (item.type === 'COST_SHEET' ? 'Fiche de chiffrage validée par la Direction Générale. Devis autorisé.' : 'Approbation DG avec émission de Bon de Commande / Situation validée.'),
       });
-      setNotification(`Dossier ${item.reference} approuvé avec succès par la Direction Générale ! Bon de Commande émis (TVA 19%).`);
+      if (item.type === 'COST_SHEET') {
+        setNotification(`Fiche de chiffrage ${item.reference} validée avec succès par la Direction Générale ! L'émission du Devis Client officiel est autorisée.`);
+      } else if (item.type === 'PURCHASE_REQUEST') {
+        setNotification(`Dossier ${item.reference} approuvé avec succès par la Direction Générale ! Bon de Commande émis (TVA 19%).`);
+      } else {
+        setNotification(`Situation ${item.reference} validée avec succès par la Direction Générale !`);
+      }
       setSelectedItemForDetail(null);
       await loadInbox();
       setTimeout(() => setNotification(null), 5000);
@@ -77,7 +85,7 @@ export default function WorkflowsPage() {
         type: item.type,
         instructions: revisionInstructions || 'Demande de réexamen et renégociation tarifaire.',
       });
-      setNotification(`Dossier ${item.reference} renvoyé aux équipes Achats / Chantier pour réexamen.`);
+      setNotification(`Dossier ${item.reference} renvoyé aux équipes pour réexamen / renégociation.`);
       setSelectedItemForDetail(null);
       await loadInbox();
       setTimeout(() => setNotification(null), 5000);
@@ -163,7 +171,10 @@ export default function WorkflowsPage() {
       item.reference?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.projectCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.projectName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.title?.toLowerCase().includes(searchQuery.toLowerCase());
+      item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.clientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.requesterName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.initiatorName?.toLowerCase().includes(searchQuery.toLowerCase());
 
     if (!matchesSearch) return false;
     if (typeFilter === 'ALL') return true;
@@ -207,7 +218,7 @@ export default function WorkflowsPage() {
         <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-center gap-2 shadow-2xs">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
           <span>
-            Vous êtes connecté avec le profil <strong>{user?.name} ({activeRole})</strong>. Selon la règle SoD, seul le <strong>Directeur Général</strong> (ou Administrateur) peut engager financièrement l'entreprise. Utilisez le sélecteur en haut à droite pour basculer sur Directeur Général.
+            Vous êtes connecté avec le profil <strong>{user?.name} ({activeRole})</strong>. Selon la règle de Séparation des Tâches (SoD), les décisions formelles d'engagement financier sont réservées au <strong>Directeur Général</strong> ou à l'<strong>Administrateur</strong>.
           </span>
         </div>
       )}
@@ -308,6 +319,17 @@ export default function WorkflowsPage() {
               >
                 Situations Chantiers ({inbox.filter(i => i.type === 'WORK_SITUATION').length})
               </button>
+              <button
+                type="button"
+                onClick={() => setTypeFilter('COST_SHEET')}
+                className={`px-2.5 py-1 rounded-md font-bold transition-colors cursor-pointer ${
+                  typeFilter === 'COST_SHEET'
+                    ? 'bg-[#0B207D] text-white'
+                    : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                Fiches de Chiffrage ({inbox.filter(i => i.type === 'COST_SHEET').length})
+              </button>
             </div>
           </div>
         </div>
@@ -357,23 +379,29 @@ export default function WorkflowsPage() {
                     <div className="text-xs font-bold text-slate-900 mt-1">{item.title}</div>
 
                     <div className="text-[11px] text-slate-500 flex items-center gap-3 flex-wrap">
-                      <span>
-                        Chantier :{' '}
-                        {item.projectCode ? (
-                          <Link
-                            href={`/projects/${item.projectCode}`}
-                            onClick={(e) => e.stopPropagation()}
-                            className="font-bold text-[#0B207D] hover:underline inline-flex items-center gap-0.5"
-                            title={`Ouvrir la fiche du chantier ${item.projectCode}`}
-                          >
-                            {item.projectCode}
-                            <ExternalLink className="w-2.5 h-2.5 text-slate-400" />
-                          </Link>
-                        ) : null}{' '}
-                        — {item.projectName}
-                      </span>
+                      {item.type === 'COST_SHEET' ? (
+                        <span>
+                          Client : <strong>{item.clientName || 'Client Industriel'}</strong> • Fiche Commerciale : <span className="font-mono text-[#0B207D] font-bold">{item.targetCode || item.reference}</span>
+                        </span>
+                      ) : (
+                        <span>
+                          Chantier :{' '}
+                          {item.projectCode ? (
+                            <Link
+                              href={`/projects/${item.projectCode}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="font-bold text-[#0B207D] hover:underline inline-flex items-center gap-0.5"
+                              title={`Ouvrir la fiche du chantier ${item.projectCode}`}
+                            >
+                              {item.projectCode}
+                              <ExternalLink className="w-2.5 h-2.5 text-slate-400" />
+                            </Link>
+                          ) : null}{' '}
+                          — {item.projectName || item.clientName || '-'}
+                        </span>
+                      )}
                       <span>•</span>
-                      <span>Demandeur : <strong>{item.requesterName}</strong> ({item.department})</span>
+                      <span>Demandeur : <strong>{item.requesterName || item.initiatorName || 'Direction Opérations'}</strong> ({item.department || item.initiatorDepartment || 'Direction'})</span>
                       {item.recommendedSupplier && (
                         <>
                           <span>•</span>
@@ -447,7 +475,7 @@ export default function WorkflowsPage() {
                         </>
                       ) : (
                         <Link
-                          href={item.type === 'PURCHASE_REQUEST' ? '/procurement' : `/projects/${item.projectCode}`}
+                          href={item.type === 'PURCHASE_REQUEST' ? '/procurement' : item.type === 'COST_SHEET' ? '/commercial' : `/projects/${item.projectCode}`}
                           onClick={(e) => e.stopPropagation()}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded hover:bg-slate-200 transition-colors"
                         >
@@ -473,6 +501,8 @@ export default function WorkflowsPage() {
         const tva = Math.round(ht * 0.19);
         const ttc = ht + tva;
         const isPR = item.type === 'PURCHASE_REQUEST';
+        const isCS = item.type === 'COST_SHEET';
+        const isWS = item.type === 'WORK_SITUATION';
         const projBudget = Number(item.projectBudget || 120000000);
         const projCommitted = Number(item.projectCommitted || 34500000);
         const projRemaining = Math.max(0, projBudget - projCommitted);
@@ -486,6 +516,8 @@ export default function WorkflowsPage() {
                   <div className="w-10 h-10 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
                     {isPR ? (
                       <ShoppingCart className="w-5 h-5 text-[#0B207D]" />
+                    ) : isCS ? (
+                      <Coins className="w-5 h-5 text-[#0B207D]" />
                     ) : (
                       <FileText className="w-5 h-5 text-[#0B207D]" />
                     )}
@@ -493,7 +525,7 @@ export default function WorkflowsPage() {
                   <div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-base font-black text-[#07164D]">
-                        {isPR ? "Dossier Demande d'Achat Chantier" : "Dossier Situation Périodique de Travaux"}
+                        {isPR ? "Dossier Demande d'Achat Chantier" : isCS ? "Dossier Fiche de Chiffrage Collaboratif" : "Dossier Situation Périodique de Travaux"}
                       </h3>
                       <span className="font-mono text-xs font-bold text-[#0B207D] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                         {item.reference}
@@ -518,25 +550,34 @@ export default function WorkflowsPage() {
                 </button>
               </div>
 
-              {/* Fiche Synthétique Chantier / Projet Concerne */}
+              {/* Fiche Synthétique Chantier / Projet / Affaire Concerne */}
               <div className="p-3 bg-slate-50/80 rounded-lg border border-slate-200 space-y-2 text-xs">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-[#0B207D]" />
                     <div>
                       <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
-                        <Link
-                          href={`/projects/${item.projectCode}`}
-                          className="text-[#0B207D] hover:underline inline-flex items-center gap-1"
-                          title={`Accéder directement au chantier ${item.projectCode}`}
-                        >
-                          {item.projectCode}
-                          <ExternalLink className="w-3 h-3 text-[#0B207D]" />
-                        </Link>
-                        <span>— {item.projectName}</span>
+                        {item.projectCode ? (
+                          <>
+                            <Link
+                              href={`/projects/${item.projectCode}`}
+                              className="text-[#0B207D] hover:underline inline-flex items-center gap-1"
+                              title={`Accéder directement au chantier ${item.projectCode}`}
+                            >
+                              {item.projectCode}
+                              <ExternalLink className="w-3 h-3 text-[#0B207D]" />
+                            </Link>
+                            <span>— {item.projectName}</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-mono text-[#0B207D] font-bold">{item.targetCode || item.reference}</span>
+                            <span>— {item.title}</span>
+                          </>
+                        )}
                       </div>
                       <div className="text-[10px] text-slate-500">
-                        Client : <strong>{item.clientName || '-'}</strong> • Demandeur : <strong>{item.requesterName}</strong> ({item.department})
+                        Client : <strong>{item.clientName || '-'}</strong> • Demandeur : <strong>{item.requesterName || item.initiatorName || 'Direction'}</strong> ({item.department || item.initiatorDepartment || 'Opérations'})
                       </div>
                     </div>
                   </div>
@@ -677,8 +718,68 @@ export default function WorkflowsPage() {
                 </div>
               )}
 
+              {/* Pour une Fiche de Chiffrage Collaboratif Commerciale */}
+              {isCS && (
+                <div className="space-y-3 text-xs">
+                  <div className="p-3 bg-blue-50/60 rounded-lg border border-blue-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-[#07164D] text-xs uppercase tracking-wider flex items-center gap-1.5">
+                        <Calculator className="w-3.5 h-3.5 text-[#0B207D]" />
+                        Décomposition du Chiffrage Collaboratif Réconcilié
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-blue-100 text-[#0B207D] border-blue-300">
+                        Version 1 — Chiffrage Finalisé
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1 text-xs">
+                      <div className="bg-white p-2.5 rounded border border-slate-200 space-y-1">
+                        <div className="text-[10px] font-semibold text-slate-500 uppercase">1. Débours Matières (Achats)</div>
+                        <div className="font-mono font-bold text-slate-900 text-sm">15 200 000 DA</div>
+                        <div className="text-[10px] text-slate-400">Tubes Inox 316L, brides, gaz & grue 50T</div>
+                      </div>
+                      <div className="bg-white p-2.5 rounded border border-slate-200 space-y-1">
+                        <div className="text-[10px] font-semibold text-slate-500 uppercase">2. Main d'Œuvre (RH)</div>
+                        <div className="font-mono font-bold text-slate-900 text-sm">10 890 000 DA</div>
+                        <div className="text-[10px] text-slate-400">Soudeurs ASME IX, tuyauteurs & vie</div>
+                      </div>
+                      <div className="bg-white p-2.5 rounded border border-slate-200 space-y-1">
+                        <div className="text-[10px] font-semibold text-slate-500 uppercase">3. Frais Généraux (12%)</div>
+                        <div className="font-mono font-bold text-slate-900 text-sm">3 130 800 DA</div>
+                        <div className="text-[10px] text-slate-400">Structure, assurances, outillage</div>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-3 rounded-lg border border-slate-200 grid grid-cols-2 sm:grid-cols-4 gap-2 text-right">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Coûts Directs Totaux :</span>
+                        <span className="font-mono font-bold text-slate-800 text-xs">26 090 000 DA</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Coût Total de Revient :</span>
+                        <span className="font-mono font-bold text-slate-900 text-xs">29 220 800 DA</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Prix de Vente HT Proposé :</span>
+                        <span className="font-mono font-black text-[#0B207D] text-xs">{formatCurrencyDA(ht, false)}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-emerald-700 block font-semibold">Marge Prévue (24.49%) :</span>
+                        <span className="font-mono font-black text-emerald-700 text-xs">+9 479 200 DA</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-slate-600 bg-white/70 p-2 rounded border border-slate-200">
+                      <span>Marge sur coût (Markup) : <strong className="text-slate-900 font-mono">32.44%</strong></span>
+                      <span>Taux de marque commercial : <strong className="text-emerald-700 font-mono">24.49%</strong></span>
+                      <span>Périmètre : <strong className="text-slate-800">400 ml tuyauterie Inox, 45j arrêt</strong></span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Pour une Situation de Travaux Métrée */}
-              {!isPR && (
+              {isWS && (
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2 text-xs">
                   <div className="font-bold text-slate-800 text-xs uppercase tracking-wider">
                     Décompte Métré & Ventilation Financière de la Situation
@@ -795,7 +896,7 @@ export default function WorkflowsPage() {
                         className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                       >
                         <Check className="w-4 h-4" />
-                        {isPR ? 'Valider la DA & Émettre Bon de Commande (TVA 19%)' : 'Valider & Approuver la Situation'}
+                        {isPR ? 'Valider la DA & Émettre Bon de Commande (TVA 19%)' : isCS ? 'Valider la Fiche de Chiffrage (DG)' : 'Valider & Approuver la Situation'}
                       </button>
                     </div>
                   </div>
@@ -826,7 +927,7 @@ export default function WorkflowsPage() {
                   {decisionAction === 'REVISE' && 'Demande de Réexamen & Renégociation Achats'}
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Dossier : <strong className="font-mono text-[#0B207D]">{selectedItemForDecision.reference}</strong> — Chantier {selectedItemForDecision.projectCode}
+                  Dossier : <strong className="font-mono text-[#0B207D]">{selectedItemForDecision.reference}</strong> — {selectedItemForDecision.projectCode ? `Chantier ${selectedItemForDecision.projectCode}` : (selectedItemForDecision.clientName || 'Affaire Commerciale')}
                 </p>
               </div>
               <button
@@ -872,7 +973,7 @@ export default function WorkflowsPage() {
                     required
                   />
                   <p className="text-[10px] text-slate-400 mt-1">
-                    Génère automatiquement le Bon de Commande officiel (BC) avec engagement contractuel ferme.
+                    Enregistre la décision officielle DG : émission de BC pour une DA, autorisation de Devis pour un Chiffrage, ou validation de Situation.
                   </p>
                 </div>
               )}

@@ -288,6 +288,7 @@ async function run() {
     warehouseId: 'wh-001',
     deliveryNoteNumber: 'BL-BATIMETAL-99412',
     carrierName: 'Trans-Logistique Ouest',
+    ccpuVerified: true,
     lines: [
       {
         itemId: pipeItem.id,
@@ -297,6 +298,8 @@ async function run() {
         deliveredQuantity: 80,
         rejectedQuantity: 5, // 5 rebuts -> 75 acceptés
         rejectionReason: '5 tubes ovalisés hors tolérance API 5L rejetés en zone de quarantaine',
+        heatNumber: 'HEAT-A106-99412',
+        ccpuCertificateRef: 'CCPU-A106-3.1-99412',
         unit: pipeItem.unit,
         unitPriceHT: 18500,
       }
@@ -328,6 +331,7 @@ async function run() {
     warehouseId: 'wh-001',
     deliveryNoteNumber: 'BL-BATIMETAL-99580',
     carrierName: 'Trans-Logistique Ouest',
+    ccpuVerified: true,
     lines: [
       {
         itemId: pipeItem.id,
@@ -336,6 +340,8 @@ async function run() {
         orderedQuantity: orderedQty,
         deliveredQuantity: 45,
         rejectedQuantity: 0,
+        heatNumber: 'HEAT-A106-99580',
+        ccpuCertificateRef: 'CCPU-A106-3.1-99580',
         unit: pipeItem.unit,
         unitPriceHT: 18500,
       }

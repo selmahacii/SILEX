@@ -332,12 +332,19 @@ export interface StoredProject {
   clientName: string;
   sector: string;
   siteLocation: string;
+  wilaya?: string;
+  pole?: string;
+  contractType?: string;
   status: ProjectStatus | string;
   riskLevel: string;
   contractAmount: number;
   budgetAmount: number;
+  revisedBudget?: number;
   spentBudget: number;
   committedBudget: number;
+  actualCost?: number;
+  committedCost?: number;
+  eacCost?: number;
   physicalProgress: number;
   financialProgress: number;
   startDate: string;
@@ -368,8 +375,44 @@ export interface StoredProject {
   allocations: any[];
   purchaseOrders: any[];
   nonConformities: any[];
+  timesheets?: StoredProjectTimesheet[];
+  pvrp?: {
+    status: 'NON_EMIS' | 'RESERVES_EN_COURS' | 'VALIDE_SANS_RESERVE' | 'VALIDE_RESERVES_LEVEES';
+    pvDate: string;
+    signedByClient: boolean;
+    clientSignatory?: string;
+    reservesCount: number;
+    reservesLifted: boolean;
+    notes?: string;
+  };
+  pvrd?: {
+    status: 'NON_EMIS' | 'EN_GARANTIE_12M' | 'VALIDE_DEFINITIF';
+    pvDate?: string;
+    warrantyEndDate?: string;
+    signedByClient: boolean;
+    guaranteeReleased: boolean;
+    retentionRefundedDA: number;
+    notes?: string;
+  };
   createdAt: string;
   updatedAt: string;
+}
+
+export interface StoredProjectTimesheet {
+  id: string;
+  projectCode: string;
+  date: string;
+  workerName: string;
+  corpsEtat: 'SOUDEUR_ASME' | 'TUYAUTEUR_ISO' | 'MONTEUR_ECHAFAUDEUR' | 'CHEF_EQUIPE' | 'CONTROLEUR_CND' | 'MANOEUVRE';
+  workerQualification: string;
+  normalHours: number;
+  overtimeHours: number;
+  weatherHours: number;
+  hourlyRate: number;
+  totalCostDA: number;
+  taskRef?: string;
+  productivityRatio?: number;
+  status: 'VALIDE' | 'SOUMIS' | 'VISE_CHEF';
 }
 
 export interface StoredWorkflow {
@@ -377,8 +420,8 @@ export interface StoredWorkflow {
   code: string;
   reference: string;
   title: string;
-  type: 'PURCHASE_REQUEST' | 'WORK_SITUATION' | 'EXPENSE_REPORT' | 'CONTRACT_CHANGE';
-  status: 'PENDING_DG' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'REVISION_REQUESTED';
+  type: 'PURCHASE_REQUEST' | 'WORK_SITUATION' | 'EXPENSE_REPORT' | 'CONTRACT_CHANGE' | 'COST_SHEET';
+  status: 'PENDING' | 'PENDING_DG' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'REVISION_REQUESTED' | 'SUBMITTED' | 'PRETE_POUR_VALIDATION';
   priority: 'NORMAL' | 'HIGH' | 'CRITICAL';
   initiatorName: string;
   initiatorRole: string;
@@ -395,6 +438,10 @@ export interface StoredWorkflow {
   items: any[];
   supplierOffers: any[];
   selectedSupplierName?: string;
+  requiredApprovalRole?: string;
+  requiredApprovalLevel?: string;
+  budgetExceeded?: boolean;
+  stockAvailableWarning?: boolean;
   submittedAt: string;
   decidedAt?: string;
   decidedBy?: string;
@@ -422,13 +469,59 @@ export interface StoredOpportunity {
   receivedAt: string;
   submissionDeadline: string;
   priority: 'BASSE' | 'NORMALE' | 'HAUTE' | 'URGENTE';
-  status: 'BROUILLON' | 'EN_ETUDE' | 'DEVIS_ENVOYE' | 'GAGNEE' | 'PERDUE';
+  status:
+    | 'NOUVELLE'
+    | 'QUALIFIEE'
+    | 'VISITE_TECHNIQUE'
+    | 'CHIFFRAGE'
+    | 'VALIDATION_INTERNE'
+    | 'OFFRE_SOUMISE'
+    | 'NEGOCIATION'
+    | 'GAGNEE'
+    | 'PERDUE'
+    | 'ANNULEE'
+    | 'BROUILLON'
+    | 'EN_ETUDE'
+    | 'DEVIS_ENVOYE';
+  winProbability?: number;
   notes?: string;
   assignedCommercialId: string;
   assignedCommercialName: string;
   costSheetId?: string;
+  lossReason?: string;
+  cancellationReason?: string;
+  siteVisitDate?: string;
+  technicalReportNotes?: string;
+  stageHistory?: Array<{
+    fromStage: string;
+    toStage: string;
+    changedAt: string;
+    changedBy: string;
+    notes?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface StoredCostSheetRevisionSnapshot {
+  version: number;
+  createdAt: string;
+  author: string;
+  role: string;
+  reason: string;
+  totalDirectCost: number;
+  totalIndirectCost: number;
+  totalEstimatedCost: number;
+  proposedSellingPrice: number;
+  estimatedMarginValue: number;
+  targetMarginPercent: number;
+  marginRateOnCost: number;
+  markupRate: number;
+  status: string;
+  projectContribution: any;
+  procurementContribution: any;
+  hrContribution: any;
+  financeContribution: any;
 }
 
 export interface StoredCostSheetLine {
@@ -461,6 +554,7 @@ export interface StoredCostSheet {
     | 'VALIDEE'
     | 'REJETEE'
     | 'MODIFICATION_DEMANDEE'
+    | 'A_REVISER'
     | 'SOUMISE_CLIENT'
     | 'GAGNEE'
     | 'PERDUE';
@@ -527,12 +621,17 @@ export interface StoredCostSheet {
   dgDecidedAt?: string;
   dgDecidedBy?: string;
   dgVisaSignature?: string;
+  decision?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'REVISION_REQUESTED';
+  decisionNotes?: string;
+  decisionDate?: string;
 
   quoteCreated: boolean;
   quoteId?: string;
   quoteNumber?: string;
   projectCreated: boolean;
   projectCode?: string;
+
+  revisions?: StoredCostSheetRevisionSnapshot[];
 
   history: Array<{
     action: string;
@@ -744,7 +843,7 @@ export interface StoredGoodsReceipt {
   receiverName: string;
   projectId?: string;
   projectCode?: string;
-  status: 'PARTIEL' | 'COMPLET' | 'AVEC_RESERVES';
+  status: 'PARTIEL' | 'COMPLET' | 'AVEC_RESERVES' | 'CONFORME' | 'CONFORME_AVEC_RESERVES' | 'REJETE';
   qualityInspection: {
     inspectorName: string;
     inspectionDate: string;
@@ -767,8 +866,47 @@ export interface StoredGoodsReceipt {
     rejectionReason?: string;
     unit: string;
     unitPriceHT: number;
+    heatNumber?: string;
+    batchNumber?: string;
+    ccpuCertificateRef?: string;
+    storageLocation?: string;
   }>;
   totalAcceptedAmountHT: number;
+  warehouseLocation?: string;
+  isQuarantined?: boolean;
+  quarantineWarehouseLocation?: string;
+  rejectionReason?: string;
+  createdAt: string;
+}
+
+export interface StoredBonDeSortie {
+  id: string;
+  bonNumber: string;          // ex: BSM-2026-0001
+  date: string;
+  warehouseId: string;
+  warehouseName: string;
+  projectId: string;
+  projectCode: string;
+  projectName: string;
+  clientName: string;
+  siteLocation: string;
+  wbsCategory: string;
+  recipientName: string;
+  driverName?: string;
+  vehicleMatricule?: string;
+  items: Array<{
+    itemId: string;
+    code: string;
+    name: string;
+    quantity: number;
+    unit: string;
+    unitCost: number;
+    totalCost: number;
+    heatNumber?: string;
+    batchNumber?: string;
+  }>;
+  totalAmountDA: number;
+  status: 'EMIS' | 'EN_TRANSIT' | 'RECEPTIONNE_CONFORME' | 'RESERVES_SIGNALEES' | 'ANNULE';
   createdAt: string;
 }
 
@@ -1240,6 +1378,7 @@ class ServerStore {
   private tcoComparisons: StoredTcoComparison[] = [];
   private supplierContracts: StoredSupplierContract[] = [];
   private goodsReceipts: StoredGoodsReceipt[] = [];
+  private bonsDeSortie: StoredBonDeSortie[] = [];
   private physicalInventories: StoredPhysicalInventory[] = [];
   private supplierEvaluations: StoredSupplierEvaluation[] = [];
   private tcoConfig: TcoCriteriaConfig = {
@@ -1492,10 +1631,14 @@ class ServerStore {
       clientName: 'Sonatrach Raffinerie Skikda (RA1K)',
       sector: 'OIL_AND_GAS',
       siteLocation: 'Zone Industrielle Skikda RA1K',
+      wilaya: 'Skikda',
+      pole: 'Tuyauterie & Chaudronnerie',
+      contractType: 'FORFAITAIRE',
       status: ProjectStatus.IN_PROGRESS,
       riskLevel: 'LOW',
       contractAmount: 48500000,
       budgetAmount: 36800000,
+      revisedBudget: 36800000,
       spentBudget: 14200000,
       committedBudget: 22400000,
       physicalProgress: 44,
@@ -1618,12 +1761,575 @@ class ServerStore {
 
     this.ensureProjectDefaults(proj);
     this.projects.push(proj);
+
+    const proj2: StoredProject = {
+      id: 'prj-2026-002',
+      code: 'PRJ-2026-002',
+      name: 'Montage mécanique & tuyauterie circuits vapeur centrale 2x400MW',
+      clientName: 'Sonelgaz Production Électricité (SPE)',
+      sector: 'ENERGIE',
+      siteLocation: 'Centrale Thermique de Kais',
+      wilaya: 'Khenchela',
+      pole: 'Tuyauterie & Chaudronnerie',
+      contractType: 'BORDEREAU_PRIX',
+      status: ProjectStatus.IN_PROGRESS,
+      riskLevel: 'MEDIUM',
+      contractAmount: 125000000,
+      budgetAmount: 104000000,
+      revisedBudget: 104000000,
+      spentBudget: 65200000,
+      committedBudget: 78500000,
+      physicalProgress: 64,
+      financialProgress: 62.7,
+      startDate: '2025-09-01',
+      contractEndDate: '2026-11-30',
+      description: 'Montage des circuits eau d’alimentation, vapeur BP/MP, tuyauterie inox de refroidissement condenseur et calorifugeage.',
+      objectives: 'Épreuves hydrauliques 60 bar sans réserve, conformité DESP / CODAP.',
+      managerId: 'usr-rp-001',
+      managerName: 'Karim Mansouri (Chef de Projet)',
+      contractReference: 'CTR-SONELGAZ-SPE-2025-018',
+      clientPoNumber: 'BC-KAIS-2025-114',
+      tvaRate: 19,
+      retentionRate: 5,
+      milestones: [],
+      serviceOrders: [],
+      workSituations: [],
+      members: [],
+      costEntries: [],
+      documents: [],
+      contractItems: [],
+      tasks: [],
+      dailyReports: [],
+      situationReports: [],
+      constraints: [],
+      hseIncidents: [],
+      allocations: [],
+      purchaseOrders: [],
+      nonConformities: [],
+      createdAt: '2025-09-01T08:00:00Z',
+      updatedAt: '2026-11-10T14:30:00Z',
+    };
+    this.ensureProjectDefaults(proj2);
+    this.projects.push(proj2);
+
+    const proj3: StoredProject = {
+      id: 'prj-2026-003',
+      code: 'PRJ-2026-003',
+      name: 'Système HVAC, CTA 15000 m³/h et filtration surpressurisée salle de contrôle',
+      clientName: 'Fertial Algérie (Complexe Ammoniac & Engrais)',
+      sector: 'CHIMIE',
+      siteLocation: 'Zone Industrielle Arzew',
+      wilaya: 'Oran',
+      pole: 'HVAC & Climatisation Industrielle',
+      contractType: 'FORFAITAIRE',
+      status: ProjectStatus.IN_PROGRESS,
+      riskLevel: 'LOW',
+      contractAmount: 22000000,
+      budgetAmount: 18500000,
+      revisedBudget: 18500000,
+      spentBudget: 7800000,
+      committedBudget: 9200000,
+      physicalProgress: 42,
+      financialProgress: 42.1,
+      startDate: '2026-02-01',
+      contractEndDate: '2026-07-31',
+      description: 'Installation de 2 centrales CTA 15000 m3/h, réseau gaines spiralées acier galva, contrôle d’ambiance et climatisation salle serveurs.',
+      objectives: 'Garantir une surpression salle de contrôle de 50 Pa avec filtration chimique.',
+      managerId: 'usr-rp-001',
+      managerName: 'Karim Mansouri (Chef de Projet)',
+      contractReference: 'CTR-FERTIAL-2026-009',
+      clientPoNumber: 'BC-ARZEW-2026-44',
+      tvaRate: 19,
+      retentionRate: 5,
+      milestones: [],
+      serviceOrders: [],
+      workSituations: [],
+      members: [],
+      costEntries: [],
+      documents: [],
+      contractItems: [],
+      tasks: [],
+      dailyReports: [],
+      situationReports: [],
+      constraints: [],
+      hseIncidents: [],
+      allocations: [],
+      purchaseOrders: [],
+      nonConformities: [],
+      createdAt: '2026-02-01T08:00:00Z',
+      updatedAt: '2026-11-10T14:30:00Z',
+    };
+    this.ensureProjectDefaults(proj3);
+    this.projects.push(proj3);
+
+    const proj4: StoredProject = {
+      id: 'prj-2026-004',
+      code: 'PRJ-2026-004',
+      name: 'Préfabrication chaudronnerie 4 ballons séparateurs Inox 304L & collecteurs',
+      clientName: 'SIDER El Hadjar SPA',
+      sector: 'SIDERURGIE',
+      siteLocation: 'Complexe Sidérurgique El Hadjar',
+      wilaya: 'Annaba',
+      pole: 'Tuyauterie & Chaudronnerie',
+      contractType: 'FORFAITAIRE',
+      status: ProjectStatus.PLANNING,
+      riskLevel: 'LOW',
+      contractAmount: 38000000,
+      budgetAmount: 32000000,
+      revisedBudget: 32000000,
+      spentBudget: 1200000,
+      committedBudget: 4500000,
+      physicalProgress: 12,
+      financialProgress: 3.8,
+      startDate: '2026-04-01',
+      contractEndDate: '2026-09-15',
+      description: 'Fabrication en atelier Rouiba de 4 ballons séparateurs inox 304L diam 1600mm et 12 collecteurs de distribution vapeur.',
+      objectives: 'Contrôles CND 100% radio des soudures longitudinales et circulaires.',
+      managerId: 'usr-rp-001',
+      managerName: 'Amine Khelifi (Chef de Projet)',
+      contractReference: 'CTR-SIDER-2026-031',
+      clientPoNumber: 'BC-HADJAR-2026-12',
+      tvaRate: 19,
+      retentionRate: 5,
+      milestones: [],
+      serviceOrders: [],
+      workSituations: [],
+      members: [],
+      costEntries: [],
+      documents: [],
+      contractItems: [],
+      tasks: [],
+      dailyReports: [],
+      situationReports: [],
+      constraints: [],
+      hseIncidents: [],
+      allocations: [],
+      purchaseOrders: [],
+      nonConformities: [],
+      createdAt: '2026-04-01T08:00:00Z',
+      updatedAt: '2026-11-10T14:30:00Z',
+    };
+    this.ensureProjectDefaults(proj4);
+    this.projects.push(proj4);
+
+    const proj5: StoredProject = {
+      id: 'prj-2026-005',
+      code: 'PRJ-2026-005',
+      name: 'Réfection viroles blindées broyeur & tuyauteries dépoussiérage filtres',
+      clientName: 'GICA — Société des Ciments de Ain Touta (SCMAT)',
+      sector: 'CIMENTERIE',
+      siteLocation: 'Cimenterie Ain Touta',
+      wilaya: 'Batna',
+      pole: 'Maintenance Industrielle & Mécanique',
+      contractType: 'FORFAITAIRE',
+      status: ProjectStatus.COMPLETED,
+      riskLevel: 'LOW',
+      contractAmount: 18500000,
+      budgetAmount: 15800000,
+      revisedBudget: 15800000,
+      spentBudget: 15400000,
+      committedBudget: 15400000,
+      physicalProgress: 100,
+      financialProgress: 97.5,
+      startDate: '2025-06-01',
+      contractEndDate: '2025-12-15',
+      description: 'Changement des couronnes dentées, remplacement viroles blindées et tuyauteries de dépoussiérage filtre à manches.',
+      objectives: 'Réception définitive prononcée sans réserve technique.',
+      managerId: 'usr-rp-001',
+      managerName: 'Amine Khelifi (Chef de Projet)',
+      contractReference: 'CTR-GICA-SCMAT-2025-07',
+      clientPoNumber: 'BC-SCMAT-2025-83',
+      tvaRate: 19,
+      retentionRate: 5,
+      milestones: [],
+      serviceOrders: [],
+      workSituations: [],
+      members: [],
+      costEntries: [],
+      documents: [],
+      contractItems: [],
+      tasks: [],
+      dailyReports: [],
+      situationReports: [],
+      constraints: [],
+      hseIncidents: [],
+      allocations: [],
+      purchaseOrders: [],
+      nonConformities: [],
+      createdAt: '2025-06-01T08:00:00Z',
+      updatedAt: '2026-11-10T14:30:00Z',
+    };
+    this.ensureProjectDefaults(proj5);
+    this.projects.push(proj5);
   }
 
   private initCommercialBaseline() {
-    this.opportunities = [];
-    this.costSheets = [];
+    this.opportunities = [
+      {
+        id: 'opp-2026-001',
+        code: 'OPP-2026-001',
+        title: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+        clientName: 'Sonatrach Raffinerie Skikda (RA1K)',
+        sector: 'OIL_AND_GAS',
+        location: 'Zone Industrielle Skikda RA1K',
+        contactName: 'M. Mustapha Larbi (Chef Dép. Maintenance)',
+        contactEmail: 'm.larbi@sonatrach-skikda.dz',
+        contactPhone: '+213 (0) 38 75 22 10',
+        estimatedAmount: 38700000,
+        receivedAt: '2026-11-01',
+        submissionDeadline: '2026-11-25',
+        priority: 'HAUTE',
+        status: 'VALIDATION_INTERNE',
+        winProbability: 65,
+        notes: 'Arrêt technique annuel : Rénovation de 4 lignes tuyauteries HP vapeur 80 bar et échangeurs thermiques avec contrôles CND.',
+        assignedCommercialId: 'usr-rp-001',
+        assignedCommercialName: 'Karim Mansouri',
+        costSheetId: 'fc-2026-001',
+        createdAt: '2026-11-01T08:30:00Z',
+        updatedAt: '2026-11-08T10:00:00Z',
+      },
+      {
+        id: 'opp-2026-002',
+        code: 'OPP-2026-002',
+        title: 'Préfabrication et pose réseau HVAC salle blanche et compresseurs',
+        clientName: 'Fertial Algérie (Complexe Ammoniac & Engrais)',
+        sector: 'AGROALIMENTAIRE',
+        location: 'Zone Industrielle Arzew, Oran',
+        contactName: 'M. Djamel Belkacemi (Ingénieur Projets)',
+        contactEmail: 'd.belkacemi@fertial-dz.com',
+        contactPhone: '+213 (0) 41 48 30 15',
+        estimatedAmount: 26000000,
+        receivedAt: '2026-11-05',
+        submissionDeadline: '2026-11-30',
+        priority: 'NORMALE',
+        status: 'QUALIFIEE',
+        winProbability: 20,
+        notes: 'Installation de gaines acier galvanisé calorifugées et groupes frigorifiques 150 kW.',
+        assignedCommercialId: 'usr-rp-001',
+        assignedCommercialName: 'Karim Mansouri',
+        createdAt: '2026-11-05T09:00:00Z',
+        updatedAt: '2026-11-05T09:00:00Z',
+      },
+      {
+        id: 'opp-2026-003',
+        code: 'OPP-2026-003',
+        title: 'Inspection métallurgique et épreuves décennales ballons de séparation',
+        clientName: 'Sonelgaz Production Électricité (SPE)',
+        sector: 'ENERGIE',
+        location: 'Centrale Thermique de Kais, Wilaya de Khenchela',
+        contactName: 'M. Yacine Benmoussa (Directeur de Centrale)',
+        contactEmail: 'y.benmoussa@spe.sonelgaz.dz',
+        contactPhone: '+213 (0) 32 41 12 00',
+        estimatedAmount: 18500000,
+        receivedAt: '2026-11-08',
+        submissionDeadline: '2026-12-05',
+        priority: 'HAUTE',
+        status: 'NEGOCIATION',
+        winProbability: 85,
+        notes: 'Visite contradictoire effectuée. Négociation commerciale finale des conditions de garantie et d\'astreinte.',
+        assignedCommercialId: 'usr-rp-001',
+        assignedCommercialName: 'Karim Mansouri',
+        createdAt: '2026-11-08T11:00:00Z',
+        updatedAt: '2026-11-12T15:00:00Z',
+      },
+      {
+        id: 'opp-2026-004',
+        code: 'OPP-2026-004',
+        title: 'Liaison vapeur et manifold de distribution zone sucrière',
+        clientName: 'Cevital Agro-Industrie Béjaïa',
+        sector: 'AGROALIMENTAIRE',
+        location: 'Zone Portuaire Arrière-Port, Béjaïa',
+        contactName: 'M. Sofiane Guellil (Chef Service Énergie)',
+        contactEmail: 's.guellil@cevital.dz',
+        contactPhone: '+213 (0) 34 21 44 80',
+        estimatedAmount: 14500000,
+        receivedAt: '2026-11-12',
+        submissionDeadline: '2026-12-10',
+        priority: 'NORMALE',
+        status: 'NOUVELLE',
+        winProbability: 10,
+        notes: 'Opportunité identifiée suite à consultation directe client pour extension ligne process.',
+        assignedCommercialId: 'usr-rp-001',
+        assignedCommercialName: 'Karim Mansouri',
+        createdAt: '2026-11-12T09:00:00Z',
+        updatedAt: '2026-11-12T09:00:00Z',
+      },
+      {
+        id: 'opp-2026-005',
+        code: 'OPP-2026-005',
+        title: 'Chaudronnerie et réfection virole broyeur cru cimenterie',
+        clientName: 'Lafarge Holcim Cimenterie Oggaz',
+        sector: 'CIMENTERIE',
+        location: 'Usine d\'Oggaz, Wilaya de Mascara',
+        contactName: 'M. Abdelkrim Saidi (Resp. Arrêts)',
+        contactEmail: 'a.saidi@lafarge.dz',
+        contactPhone: '+213 (0) 45 80 12 34',
+        estimatedAmount: 22000000,
+        receivedAt: '2026-11-04',
+        submissionDeadline: '2026-12-02',
+        priority: 'HAUTE',
+        status: 'VISITE_TECHNIQUE',
+        winProbability: 35,
+        siteVisitDate: '2026-11-10',
+        technicalReportNotes: 'Relevé de cotes contradictoire effectué. Épaisseur résiduelle 18mm au lieu de 25mm requise.',
+        notes: 'Visite sur site effectuée le 10/11/2026. Cahier des charges technique en cours de finalisation.',
+        assignedCommercialId: 'usr-rp-001',
+        assignedCommercialName: 'Karim Mansouri',
+        createdAt: '2026-11-04T10:00:00Z',
+        updatedAt: '2026-11-10T17:00:00Z',
+      },
+      {
+        id: 'opp-2026-006',
+        code: 'OPP-2026-006',
+        title: 'Préfabrication spools tuyauterie collecteur gaz HP 120 bar',
+        clientName: 'GCB - Direction Régionale Sud',
+        sector: 'OIL_AND_GAS',
+        location: 'Base Industrielle Hassi Messaoud, Ouargla',
+        contactName: 'M. Khaled Boukhalfa (Dir. Projets)',
+        contactEmail: 'k.boukhalfa@gcb.dz',
+        contactPhone: '+213 (0) 29 73 11 22',
+        estimatedAmount: 31000000,
+        receivedAt: '2026-11-06',
+        submissionDeadline: '2026-12-15',
+        priority: 'HAUTE',
+        status: 'CHIFFRAGE',
+        winProbability: 50,
+        notes: 'Études et métrés en cours avec le bureau d\'études interne. Débours métallurgie Inox 316L demandés aux Achats.',
+        assignedCommercialId: 'usr-rp-001',
+        assignedCommercialName: 'Karim Mansouri',
+        createdAt: '2026-11-06T14:00:00Z',
+        updatedAt: '2026-11-09T16:00:00Z',
+      },
+      {
+        id: 'opp-2026-007',
+        code: 'OPP-2026-007',
+        title: 'Pose collecteur torche et canalisation gaz 16 pouces',
+        clientName: 'Cosider Canalisations',
+        sector: 'OIL_AND_GAS',
+        location: 'Zone Industrielle Oued Smar, Alger',
+        contactName: 'M. Mourad Cheniti (Chef de Projet)',
+        contactEmail: 'm.cheniti@cosider-canalisations.dz',
+        contactPhone: '+213 (0) 23 92 10 00',
+        estimatedAmount: 42000000,
+        receivedAt: '2026-10-25',
+        submissionDeadline: '2026-11-20',
+        priority: 'URGENTE',
+        status: 'OFFRE_SOUMISE',
+        winProbability: 75,
+        notes: 'Offre technico-commerciale complète déposée sous pli fermé le 12/11/2026.',
+        assignedCommercialId: 'usr-rp-001',
+        assignedCommercialName: 'Karim Mansouri',
+        createdAt: '2026-10-25T08:00:00Z',
+        updatedAt: '2026-11-12T14:00:00Z',
+      },
+      {
+        id: 'opp-2026-008',
+        code: 'OPP-2026-008',
+        title: 'Revamping système d\'injection eau sous pression',
+        clientName: 'Sonatrach DP Hassi Messaoud',
+        sector: 'OIL_AND_GAS',
+        location: 'Champ Pétrolier Hassi Messaoud',
+        contactName: 'M. Rachid Hamidi (Chef Dép. Travaux Neufs)',
+        contactEmail: 'r.hamidi@sonatrach-hmd.dz',
+        contactPhone: '+213 (0) 29 74 50 00',
+        estimatedAmount: 48500000,
+        receivedAt: '2026-09-15',
+        submissionDeadline: '2026-10-15',
+        priority: 'HAUTE',
+        status: 'GAGNEE',
+        winProbability: 100,
+        notes: 'Notification formelle d\'attribution de marché reçue. Conversion en projet PRJ-2026-001 effectuée.',
+        assignedCommercialId: 'usr-rp-001',
+        assignedCommercialName: 'Karim Mansouri',
+        createdAt: '2026-09-15T09:00:00Z',
+        updatedAt: '2026-10-20T11:00:00Z',
+      },
+      {
+        id: 'opp-2026-009',
+        code: 'OPP-2026-009',
+        title: 'Remplacement gaines dépoussiérage filtre à manches',
+        clientName: 'Société des Ciments de Biskra (SCB)',
+        sector: 'CIMENTERIE',
+        location: 'Branche Ciments, Biskra',
+        contactName: 'M. Ali Khedidja (Directeur d\'Usine)',
+        contactEmail: 'a.khedidja@scb-biskra.dz',
+        contactPhone: '+213 (0) 33 71 88 90',
+        estimatedAmount: 19000000,
+        receivedAt: '2026-10-01',
+        submissionDeadline: '2026-10-28',
+        priority: 'BASSE',
+        status: 'PERDUE',
+        winProbability: 0,
+        lossReason: 'CONCURRENT_MOINS_DISANT',
+        notes: 'Dossier non retenu par la commission. Concurrent local moins-disant de 14% sur le lot montage.',
+        assignedCommercialId: 'usr-rp-001',
+        assignedCommercialName: 'Karim Mansouri',
+        createdAt: '2026-10-01T10:00:00Z',
+        updatedAt: '2026-11-02T16:00:00Z',
+      },
+      {
+        id: 'opp-2026-010',
+        code: 'OPP-2026-010',
+        title: 'Rénovation circuit d\'eau glacée et CTA salles blanches',
+        clientName: 'ENIE Entreprise Nationale des Industries Électroniques',
+        sector: 'AUTRE_INDUSTRIE',
+        location: 'Complexe Électronique, Sidi Bel Abbès',
+        contactName: 'M. Nabil Taleb (Dir. Maintenance)',
+        contactEmail: 'n.taleb@enie-dz.com',
+        contactPhone: '+213 (0) 48 54 20 10',
+        estimatedAmount: 8500000,
+        receivedAt: '2026-10-10',
+        submissionDeadline: '2026-11-05',
+        priority: 'BASSE',
+        status: 'ANNULEE',
+        winProbability: 0,
+        cancellationReason: 'APPEL_OFFRES_INFRUCTUEUX',
+        notes: 'Consultation déclarée infructueuse et reportée au budget d\'investissement 2027.',
+        assignedCommercialId: 'usr-rp-001',
+        assignedCommercialName: 'Karim Mansouri',
+        createdAt: '2026-10-10T11:00:00Z',
+        updatedAt: '2026-11-06T15:00:00Z',
+      },
+    ];
+
+    const initialCostSheet: StoredCostSheet = {
+      id: 'fc-2026-001',
+      reference: 'FC-2026-001',
+      opportunityId: 'opp-2026-001',
+      opportunityCode: 'OPP-2026-001',
+      title: 'Fiche de Chiffrage Collaboratif — Rénovation tuyauteries HP vapeur 80 bar',
+      clientName: 'Sonatrach Raffinerie Skikda (RA1K)',
+      sector: 'OIL_AND_GAS',
+      siteLocation: 'Zone Industrielle Skikda RA1K',
+      currency: 'DZD',
+      status: 'PRETE_POUR_VALIDATION',
+      version: 1,
+
+      projectContribution: {
+        completed: true,
+        responsibleId: 'usr-rp-001',
+        responsibleName: 'Karim Mansouri (Chef de Projets)',
+        worksDescription: 'Dépose tuyauteries usagées, épreuves hydrostatiques 120 bar, préfabrication 400ml tuyauteries Inox 316L DN150/200, montage sur site et contrôles CND.',
+        durationDays: 45,
+        technicalMeans: '2 Postes TIG orbital, 1 grue mobile 50T, compresseurs d\'épreuve 200 bar, échafaudages agréés zone ATEX.',
+        constraints: 'Travaux en zone ATEX 1, arrêt programmé strict de 45 jours sans dépassement possible.',
+        lines: [
+          { id: 'csl-prj-1', category: 'PREPARATION', label: 'Échafaudages tubulaires et balisage zone ATEX (400 m²)', quantity: 400, unit: 'm²', unitPrice: 0, totalAmount: 0, notes: 'Montage et PV réception sécuritaire (débours valorisés par Achats & RH)' },
+          { id: 'csl-prj-2', category: 'TRAVAUX', label: 'Préfabrication atelier et pose tuyauterie Inox 316L DN150/200 (400 ml)', quantity: 400, unit: 'ml', unitPrice: 0, totalAmount: 0, notes: 'Soudage TIG passe de pénétration (débours valorisés par Achats & RH)' },
+          { id: 'csl-prj-3', category: 'CONTROLES', label: 'Épreuves hydrauliques 120 bar et contrôles CND (Radiographie 100% + Ressuage)', quantity: 1, unit: 'Forfait', unitPrice: 0, totalAmount: 0, notes: 'PV contradictoire avec bureau de contrôle' },
+        ],
+        updatedAt: '2026-11-06T14:30:00Z',
+      },
+
+      procurementContribution: {
+        completed: true,
+        responsibleId: 'usr-ach-001',
+        responsibleName: 'Farouk Brahimi (Responsable Achats)',
+        procurementNotes: 'Fournitures de tubes ASTM A312 TP316L sch40 et brides forgées ANSI 300# négociées avec certificat matière CCPU 3.1. Location grue 50T incluse.',
+        equipmentRentalAmount: 2400000,
+        subcontractingAmount: 0,
+        lines: [
+          { id: 'csl-ach-1', category: 'MATIERES', label: 'Tubes Inox sans soudure ASTM A312 TP316L DN150 sch40', quantity: 400, unit: 'ml', unitPrice: 21250, totalAmount: 8500000, notes: 'Fournisseur SIDERMET Tubing (Certificat 3.1)' },
+          { id: 'csl-ach-2', category: 'MATIERES', label: 'Coudes 90°, réductions et brides ANSI 300# RTJ', quantity: 60, unit: 'U', unitPrice: 53333.33, totalAmount: 3200000, notes: 'Fournisseur ALFORGE Industrie' },
+          { id: 'csl-ach-3', category: 'CONSOMMABLES', label: 'Métal d\'apport TIG ER316L et Gaz Argon haute pureté', quantity: 1, unit: 'Forfait', unitPrice: 1100000, totalAmount: 1100000, notes: 'Bouteilles LINDE Gas DZ' },
+          { id: 'csl-ach-4', category: 'LOCATION', label: 'Location grue mobile 50T avec grutier habilité (20 j)', quantity: 20, unit: 'Jour', unitPrice: 120000, totalAmount: 2400000, notes: 'Engin certifié contrôle annuel' },
+        ],
+        updatedAt: '2026-11-07T11:00:00Z',
+      },
+
+      hrContribution: {
+        completed: true,
+        responsibleId: 'usr-rh-001',
+        responsibleName: 'Sabrina Haddad (Responsable RH)',
+        headcount: 12,
+        mobilizationDays: 45,
+        teamExpensesAmount: 2160000,
+        lines: [
+          { id: 'csl-rh-1', category: 'MAIN_DOEUVRE', label: 'Soudeurs qualifiés TIG 6G ASME IX (4 pers x 45j)', quantity: 180, unit: 'H/J', unitPrice: 18000, totalAmount: 3240000, notes: 'Qualifications valides CQS' },
+          { id: 'csl-rh-2', category: 'MAIN_DOEUVRE', label: 'Tuyauteurs industriels chefs d\'équipe (6 pers x 45j)', quantity: 270, unit: 'H/J', unitPrice: 14000, totalAmount: 3780000, notes: 'Montage et traçage' },
+          { id: 'csl-rh-3', category: 'SUPERVISION', label: 'Superviseur Qualité / Inspecteur Soudage IWT (45j)', quantity: 45, unit: 'Jour', unitPrice: 22000, totalAmount: 990000, notes: 'Suivi cahier de soudage' },
+          { id: 'csl-rh-4', category: 'SUPERVISION', label: 'Superviseur HSE / Prévention des risques ATEX (45j)', quantity: 45, unit: 'Jour', unitPrice: 16000, totalAmount: 720000, notes: 'Permanence sécurité sur site' },
+          { id: 'csl-rh-5', category: 'FRAIS_DE_VIE', label: 'Frais de mission, hébergement et restauration équipe (12 pers x 45j)', quantity: 1, unit: 'Forfait', unitPrice: 2160000, totalAmount: 2160000, notes: 'Base de vie Skikda' },
+        ],
+        updatedAt: '2026-11-07T16:45:00Z',
+      },
+
+      financeContribution: {
+        completed: true,
+        responsibleId: 'usr-fin-001',
+        responsibleName: 'Réda Bouzid (Directeur Financier)',
+        financingNeedAmount: 12000000,
+        cashflowRequirement: 'Avance sur approvisionnements tubes inox à débloquer en S1 (12 000 000 DA). Couverture par acompte client 30%.',
+        paymentTermsEstimated: 'Acompte 30% commande, situations mensuelles à 45 jours fin de mois, retenue de garantie 5% sur 12 mois.',
+        financialRiskRating: 'MODERE',
+        financeNotes: 'Client solvable, historique de paiement régulier. Retenue de garantie provisionnée. Marge prévisionnelle solide (24.49%).',
+        feasibilityOpinion: 'FAVORABLE',
+        updatedAt: '2026-11-08T09:30:00Z',
+      },
+
+      totalDirectCost: 26090000,
+      totalIndirectCost: 3130800,
+      totalEstimatedCost: 29220800,
+      targetMarginPercent: 24.5,
+      proposedSellingPrice: 38700000,
+      estimatedMarginValue: 9479200,
+      marginRateOnCost: 32.44,
+      markupRate: 24.49,
+
+      dgDecision: 'PENDING',
+      quoteCreated: false,
+      projectCreated: false,
+
+      revisions: [],
+
+      history: [
+        { action: 'CREATION', actor: 'Karim Mansouri', role: 'RESPONSABLE_PROJET', timestamp: '2026-11-02T10:00:00Z', notes: 'Création de la fiche suite à l\'appel d\'offres OPP-2026-001' },
+        { action: 'CONTRIBUTION_PROJET', actor: 'Karim Mansouri', role: 'RESPONSABLE_PROJET', timestamp: '2026-11-06T14:30:00Z', notes: 'Métrés et durées techniques complétés (45 jours, 400 ml)' },
+        { action: 'CONTRIBUTION_ACHATS', actor: 'Farouk Brahimi', role: 'RESPONSABLE_ACHATS', timestamp: '2026-11-07T11:00:00Z', notes: 'Cotations matières Inox 316L et location grue validées (15.2M DA)' },
+        { action: 'CONTRIBUTION_RH', actor: 'Sabrina Haddad', role: 'RESPONSABLE_RH', timestamp: '2026-11-07T16:45:00Z', notes: 'Mobilisation équipe 12 personnes avec soudeurs 6G qualifiés (10.89M DA)' },
+        { action: 'CONTRIBUTION_FINANCE', actor: 'Réda Bouzid', role: 'RESPONSABLE_FINANCIER', timestamp: '2026-11-08T09:30:00Z', notes: 'Étude de trésorerie favorable, prix de vente cible 38.7M DA arrêté' },
+        { action: 'SUBMIT_TO_DG', actor: 'Karim Mansouri', role: 'RESPONSABLE_PROJET', timestamp: '2026-11-08T10:00:00Z', notes: 'Les 4 contributions sont finalisées. Fiche transmise à la Direction Générale pour arbitrage.' },
+      ],
+      createdAt: '2026-11-02T10:00:00Z',
+      updatedAt: '2026-11-08T10:00:00Z',
+    };
+
+    this.costSheets = [initialCostSheet];
     this.customerQuotes = [];
+
+    // Enregistrement du workflow correspondant dans le circuit d'arbitrage DG
+    const existingWf = this.workflows.find(w => w.targetId === 'fc-2026-001' || w.reference === 'FC-2026-001');
+    if (!existingWf) {
+      this.workflows.unshift({
+        id: 'wf-cs-001',
+        code: 'WF-CS-001',
+        reference: 'FC-2026-001',
+        title: 'Validation Chiffrage & Prix de Vente : Rénovation tuyauteries HP vapeur 80 bar',
+        type: 'COST_SHEET' as any,
+        status: 'PENDING_DG',
+        priority: 'HIGH',
+        initiatorName: 'Karim Mansouri',
+        initiatorRole: 'Chef de Projets',
+        initiatorDepartment: 'OPERATIONS_PROJETS',
+        targetId: 'fc-2026-001',
+        targetCode: 'FC-2026-001',
+        clientName: 'Sonatrach Raffinerie Skikda (RA1K)',
+        amountHT: 38700000,
+        amountTVA: 7353000,
+        amountTTC: 46053000,
+        justification: 'Chiffrage collaboratif réconcilié : Coûts directs 26.09M DA, Frais indirects 3.13M DA, Marge prévue 9.48M DA (24.49%). En attente arbitrage DG.',
+        items: [
+          { label: 'Débours Matières & Fournitures Achats', amount: 15200000 },
+          { label: 'Main d\'œuvre & Encadrement RH Chantier', amount: 10890000 },
+          { label: 'Frais Généraux & Indirects (12%)', amount: 3130800 },
+        ],
+        supplierOffers: [],
+        submittedAt: '2026-11-08T10:00:00Z',
+        history: [
+          { action: 'SUBMISSION', actor: 'Karim Mansouri', role: 'Chef de Projets', timestamp: '2026-11-08T10:00:00Z', notes: 'Transmission pour visa Direction Générale' },
+        ],
+      });
+    }
   }
 
   deleteUser(id: string) {
@@ -2023,10 +2729,24 @@ class ServerStore {
     const activeProjects = this.projects.filter(p => p.status === ProjectStatus.IN_PROGRESS).length;
     const totalContractValue = this.projects.reduce((acc, p) => acc + (p.contractAmount || 0), 0);
     const totalBudgetAllocated = this.projects.reduce((acc, p) => acc + (p.budgetAmount || 0), 0);
-    const totalSpent = this.projects.reduce((acc, p) => acc + (p.spentBudget || 0), 0);
+    const totalSpent = this.projects.reduce((acc, p) => acc + (p.spentBudget || p.actualCost || 0), 0);
+    const totalCommitted = this.projects.reduce((acc, p) => acc + (p.committedBudget || p.committedCost || 0), 0);
     const avgPhysicalProgress = totalProjects > 0
       ? Math.round(this.projects.reduce((acc, p) => acc + (p.physicalProgress || 0), 0) / totalProjects)
       : 0;
+
+    const marginDA = Math.max(0, totalContractValue - totalBudgetAllocated);
+    const projectedMarginRate = totalContractValue > 0
+      ? Number(((marginDA / totalContractValue) * 100).toFixed(1))
+      : 0;
+
+    const pendingApprovalsCount = (this.workflows || []).filter(w =>
+      w.status === 'PENDING' ||
+      w.status === 'PENDING_DG' ||
+      w.status === 'PENDING_APPROVAL' ||
+      w.status === 'SUBMITTED' ||
+      w.status === 'PRETE_POUR_VALIDATION'
+    ).length;
 
     return {
       totalProjects,
@@ -2034,10 +2754,17 @@ class ServerStore {
       totalContractValue,
       totalBudgetAllocated,
       totalSpent,
+      totalCommitted,
       avgPhysicalProgress,
       activeProjectsCount: activeProjects,
-      totalBudget: totalBudgetAllocated,
+      totalTurnover: totalContractValue,
       totalContracted: totalContractValue,
+      totalBudget: totalBudgetAllocated,
+      totalProjectBudgets: totalBudgetAllocated,
+      totalActualCosts: totalSpent,
+      totalCommittedCosts: totalCommitted,
+      projectedMarginRate,
+      pendingApprovalsCount,
       clientReceivables: this.calculateClientReceivables(),
       supplierPayables: this.calculateSupplierPayables(),
       monthlyExpenditure: totalSpent,
@@ -2141,6 +2868,24 @@ class ServerStore {
       }
     }
 
+    // INTERCONNEXION : Si le workflow est lié à une Fiche de Chiffrage Commerciale (FC)
+    if (wf.type === 'COST_SHEET') {
+      const sheet = this.costSheets.find(cs => cs.id === wf.targetId || cs.reference === wf.targetCode || cs.reference === wf.reference);
+      if (sheet) {
+        sheet.status = 'VALIDEE';
+        sheet.decision = 'APPROVED';
+        sheet.decisionNotes = notes || 'Approbation Direction Générale accordée.';
+        sheet.decisionDate = new Date().toISOString();
+        sheet.history.push({
+          action: 'ARBITRAGE_DG',
+          actor: wf.decidedBy || 'Direction Générale',
+          role: user?.role || 'DIRECTEUR_GENERAL',
+          timestamp: new Date().toISOString(),
+          notes: notes || 'Fiche de coût validée par la Direction Générale',
+        });
+      }
+    }
+
     this.addAuditLog('APPROVE_WORKFLOW', 'WORKFLOW', wf.code, `Dossier ${wf.reference} approuvé. ${notes}`, user);
     return wf;
   }
@@ -2164,6 +2909,22 @@ class ServerStore {
       const pr = this.purchaseRequests.find(p => p.id === wf.targetId || p.code === wf.targetCode);
       if (pr) pr.status = 'REJECTED';
     }
+
+    if (wf.type === 'COST_SHEET') {
+      const sheet = this.costSheets.find(cs => cs.id === wf.targetId || cs.reference === wf.targetCode || cs.reference === wf.reference);
+      if (sheet) {
+        sheet.status = 'REJETEE';
+        sheet.decision = 'REJECTED';
+        sheet.decisionNotes = reason;
+        sheet.history.push({
+          action: 'REJET_DG',
+          actor: wf.decidedBy || 'Direction Générale',
+          role: user?.role || 'DIRECTEUR_GENERAL',
+          timestamp: new Date().toISOString(),
+          notes: reason,
+        });
+      }
+    }
     this.addAuditLog('REJECT_WORKFLOW', 'WORKFLOW', wf.code, `Dossier ${wf.reference} rejeté. Motif: ${reason}`, user);
     return wf;
   }
@@ -2180,6 +2941,22 @@ class ServerStore {
       timestamp: new Date().toISOString(),
       notes: instructions,
     });
+
+    if (wf.type === 'COST_SHEET') {
+      const sheet = this.costSheets.find(cs => cs.id === wf.targetId || cs.reference === wf.targetCode || cs.reference === wf.reference);
+      if (sheet) {
+        sheet.status = 'A_REVISER';
+        sheet.decision = 'REVISION_REQUESTED';
+        sheet.decisionNotes = instructions;
+        sheet.history.push({
+          action: 'DEMANDE_REVISION_DG',
+          actor: user?.name || 'Amine Benali (DG)',
+          role: user?.role || 'DIRECTEUR_GENERAL',
+          timestamp: new Date().toISOString(),
+          notes: instructions,
+        });
+      }
+    }
     this.addAuditLog('REVISE_WORKFLOW', 'WORKFLOW', wf.code, `Dossier ${wf.reference} renvoyé pour réexamen. Notes: ${instructions}`, user);
     return wf;
   }
@@ -2193,39 +2970,115 @@ class ServerStore {
     return this.purchaseRequests.find(p => p.id === idOrCode || p.code === idOrCode || p.reference === idOrCode) || null;
   }
 
-  createPurchaseRequest(data: any) {
+  createPurchaseRequest(data: any, user?: any) {
+    const rawItems = Array.isArray(data.items) ? data.items : (Array.isArray(data.lines) ? data.lines : []);
+    if (!rawItems.length) {
+      throw new Error('Une demande d\'achat doit comporter au moins un article ou fourniture.');
+    }
+    for (const it of rawItems) {
+      const q = Number(it.quantity || 0);
+      if (q <= 0) {
+        throw new Error(`Quantité invalide (${q}) pour l'article ${it.name || it.description || 'demandé'}. La quantité doit être strictement positive.`);
+      }
+    }
+
+    // Association obligatoire : Projet ou Compte de Frais Généraux
+    if (!data.projectId && !data.projectCode && !data.generalExpenseAccount) {
+      throw new Error('Une demande d\'achat doit impérativement être rattachée à un chantier/projet ou à un compte de frais généraux.');
+    }
+
     const code = `DA-2026-${String(this.purchaseRequests.length + 1).padStart(4, '0')}`;
-    const project = this.getProject(data.projectId);
-    const amountHT = Number(data.totalHT || data.amountHT || data.estimatedAmount || 0);
-    const vatRate = Number(data.vatRate || 19);
+    const project = this.getProject(data.projectId) || (data.projectCode ? this.getProject(data.projectCode) : null);
+
+    let amountHT = Number(data.totalHT || data.amountHT || data.estimatedAmount || 0);
+    if (amountHT <= 0 && rawItems.length > 0) {
+      amountHT = rawItems.reduce((acc: number, l: any) => acc + (Number(l.quantity || 1) * Number(l.estimatedUnitPrice !== undefined ? l.estimatedUnitPrice : (l.unitPrice || 0))), 0);
+    }
+    if (amountHT <= 0) {
+      throw new Error('Le montant total HT estimé de la demande d\'achat doit être strictement positif.');
+    }
+
+    const vatRate = Number(data.vatRate !== undefined ? data.vatRate : 19);
     const vatAmount = amountHT * (vatRate / 100);
     const totalTTC = amountHT + vatAmount;
+
+    // Contrôle de la disponibilité budgétaire chantier
+    let budgetExceeded = false;
+    let budgetExceededAmount = 0;
+    let projectRemainingBudget = 0;
+    if (project) {
+      const budgetAmount = Number(project.revisedBudget || project.budgetAmount || 0);
+      const committed = Number(project.committedBudget || project.committedCost || 0);
+      const spent = Number(project.spentBudget || project.actualCost || 0);
+      projectRemainingBudget = Math.max(0, budgetAmount - (committed + spent));
+      if (budgetAmount > 0 && amountHT > projectRemainingBudget) {
+        budgetExceeded = true;
+        budgetExceededAmount = amountHT - projectRemainingBudget;
+      }
+    }
+
+    // Recherche automatique dans le stock magasin existant
+    const stockWarnings: Array<{ itemId: string; itemCode: string; itemName: string; requestedQty: number; availableStock: number }> = [];
+    for (const it of rawItems) {
+      const stockItem = this.inventoryItems.find(i =>
+        (it.itemId && i.id === it.itemId) ||
+        (it.itemCode && i.code === it.itemCode) ||
+        (it.name && i.name.toLowerCase().includes(String(it.name).toLowerCase())) ||
+        (it.description && i.name.toLowerCase().includes(String(it.description).toLowerCase()))
+      );
+      if (stockItem && (stockItem.currentStock || 0) >= Number(it.quantity || 0)) {
+        stockWarnings.push({
+          itemId: stockItem.id,
+          itemCode: stockItem.code,
+          itemName: stockItem.name,
+          requestedQty: Number(it.quantity || 0),
+          availableStock: stockItem.currentStock || 0,
+        });
+      }
+    }
+    const stockAvailableWarning = stockWarnings.length > 0;
+
+    // Matrice d'approbation à 3 seuils SoD
+    let requiredApprovalLevel: 'RESPONSABLE_ACHATS' | 'RESPONSABLE_PROJET_ET_ACHATS' | 'DIRECTEUR_GENERAL' = 'RESPONSABLE_ACHATS';
+    if (budgetExceeded || amountHT > 500000) {
+      requiredApprovalLevel = 'DIRECTEUR_GENERAL';
+    } else if (amountHT > 100000) {
+      requiredApprovalLevel = 'RESPONSABLE_PROJET_ET_ACHATS';
+    }
 
     const pr = {
       id: `pr-${Date.now()}`,
       code,
-      projectId: data.projectId,
-      projectCode: project?.code || data.projectCode || 'CH-GEN-01',
-      projectName: project?.name || 'Chantier Industriel',
-      requestedById: data.requestedById || this.users[1]?.id,
-      requestedByName: this.users.find(u => u.id === data.requestedById)?.name || 'Karim Mansouri',
+      projectId: project?.id || data.projectId || '',
+      projectCode: project?.code || data.projectCode || (data.generalExpenseAccount ? 'COMPTE-FRAIS-GEN' : 'CH-GEN-01'),
+      projectName: project?.name || (data.generalExpenseAccount ? `Frais Généraux (${data.generalExpenseAccount})` : 'Chantier Industriel'),
+      generalExpenseAccount: data.generalExpenseAccount,
+      requestedById: user?.id || data.requestedById || this.users[1]?.id,
+      requestedByName: user?.name || this.users.find(u => u.id === data.requestedById)?.name || 'Karim Mansouri',
       category: data.category || 'TUYAUTERIE',
-      urgency: data.urgency || 'NORMAL',
+      urgency: data.urgency || data.urgencyLevel || 'NORMAL',
       status: 'PENDING',
-      desiredDeliveryDate: data.desiredDeliveryDate || new Date(Date.now() + 7 * 86400000).toISOString(),
+      desiredDeliveryDate: data.desiredDeliveryDate || data.desiredDate || new Date(Date.now() + 7 * 86400000).toISOString(),
       deliveryLocation: data.deliveryLocation || 'Magasin Central Arzew',
       amountHT,
       vatRate,
       amountTVA: vatAmount,
       amountTTC: totalTTC,
+      budgetExceeded,
+      budgetExceededAmount,
+      projectRemainingBudget,
+      stockAvailableWarning,
+      stockAvailableItems: stockWarnings,
+      requiredApprovalLevel,
       justification: data.justification || '',
       certificationsRequired: {
-        ccpu31: !!data.reqCertCcpu31,
-        cndReport: !!data.reqCndReport,
-        coc: !!data.reqCoc,
-        atexFds: !!data.reqAtexFds,
+        ccpu31: !!data.reqCertCcpu31 || !!data.ccpu31,
+        cndReport: !!data.reqCndReport || !!data.cndReport,
+        coc: !!data.reqCoc || !!data.coc,
+        atexFds: !!data.reqAtexFds || !!data.atexFds,
       },
-      items: data.items || [],
+      items: rawItems,
+      lines: rawItems,
       selectedSupplierId: data.selectedSupplierId || '',
       selectedSupplierName: data.selectedSupplierName || '',
       createdAt: new Date().toISOString(),
@@ -2234,7 +3087,7 @@ class ServerStore {
 
     // INTERCONNEXION DIRECTE : Génère automatiquement le workflow dans /workflows (Inbox DG)
     this.createWorkflow({
-      title: `Demande d’Achat ${code} — ${pr.projectName}`,
+      title: `Demande d’Achat ${code} — ${pr.projectName} [Seuil: ${requiredApprovalLevel}]`,
       reference: code,
       type: 'PURCHASE_REQUEST',
       priority: pr.urgency as any,
@@ -2242,7 +3095,7 @@ class ServerStore {
       targetCode: pr.code,
       projectCode: pr.projectCode,
       projectName: pr.projectName,
-      clientName: project?.clientName || 'Sonatrach / Client',
+      clientName: project?.clientName || 'Sonatrach / Client Industriel',
       amountHT,
       amountTVA: vatAmount,
       amountTTC: totalTTC,
@@ -2251,9 +3104,10 @@ class ServerStore {
       initiatorName: pr.requestedByName,
       initiatorRole: 'RESPONSABLE_PROJET',
       initiatorDepartment: 'OPERATIONS_PROJETS',
+      requiredApprovalRole: requiredApprovalLevel === 'DIRECTEUR_GENERAL' ? SystemRole.DIRECTEUR_GENERAL : (requiredApprovalLevel === 'RESPONSABLE_PROJET_ET_ACHATS' ? SystemRole.RESPONSABLE_ACHATS : SystemRole.RESPONSABLE_ACHATS),
     });
 
-    this.addAuditLog('CREATE_PURCHASE_REQUEST', 'PROCUREMENT', pr.code, `DA ${pr.code} créée (${amountHT.toLocaleString()} DA HT)`);
+    this.addAuditLog('CREATE_PURCHASE_REQUEST', 'PROCUREMENT', pr.code, `DA ${pr.code} créée (${amountHT.toLocaleString()} DA HT, Seuil: ${requiredApprovalLevel})`, user);
     return pr;
   }
 
@@ -4886,8 +5740,13 @@ class ServerStore {
 
   getCommercialKpis() {
     const oppCount = this.opportunities.length;
-    const activeOpps = this.opportunities.filter(o => o.status !== 'PERDUE');
+    const activeOpps = this.opportunities.filter(o => o.status !== 'PERDUE' && o.status !== 'ANNULEE');
     const totalPipelineValue = activeOpps.reduce((sum, o) => sum + (o.estimatedAmount || 0), 0);
+    const inNegotiationOpps = this.opportunities.filter(o => o.status === 'NEGOCIATION');
+    const inNegotiationValue = inNegotiationOpps.reduce((sum, o) => sum + (o.estimatedAmount || 0), 0);
+    const inCostingOpps = this.opportunities.filter(o => o.status === 'CHIFFRAGE' || o.status === 'VALIDATION_INTERNE');
+    const inCostingValue = inCostingOpps.reduce((sum, o) => sum + (o.estimatedAmount || 0), 0);
+
     const pendingCostSheets = this.costSheets.filter(cs => cs.status === 'EN_ATTENTE_DG' || cs.status === 'PRETE_POUR_VALIDATION');
     const approvedCostSheets = this.costSheets.filter(cs => cs.status === 'VALIDEE' || cs.status === 'SOUMISE_CLIENT' || cs.status === 'GAGNEE');
     const quotesSent = this.customerQuotes.filter(q => q.status === 'ENVOYE');
@@ -4900,10 +5759,27 @@ class ServerStore {
       ? Number(((this.opportunities.filter(o => o.status === 'GAGNEE').length / oppCount) * 100).toFixed(1))
       : 0;
 
+    const weightedPipelineValue = Math.round(
+      activeOpps.reduce((sum, o) => {
+        const prob = o.winProbability
+          ? o.winProbability / 100
+          : o.status === 'NEGOCIATION' ? 0.75
+          : o.status === 'VALIDATION_INTERNE' || o.status === 'OFFRE_SOUMISE' ? 0.60
+          : o.status === 'QUALIFIEE' ? 0.40
+          : 0.20;
+        return sum + (o.estimatedAmount || 0) * prob;
+      }, 0)
+    );
+
     return {
       totalOpportunities: oppCount,
       activeOpportunities: activeOpps.length,
       pipelineValue: totalPipelineValue,
+      weightedPipelineValue,
+      inNegotiationCount: inNegotiationOpps.length,
+      inNegotiationValue,
+      inCostingCount: inCostingOpps.length,
+      inCostingValue,
       pendingCostSheetsCount: pendingCostSheets.length,
       approvedCostSheetsCount: approvedCostSheets.length,
       quotesSentCount: quotesSent.length,
@@ -4954,6 +5830,88 @@ class ServerStore {
     if (!opp) throw new Error('Opportunité introuvable');
     Object.assign(opp, data, { updatedAt: new Date().toISOString() });
     this.addAuditLog('UPDATE_OPPORTUNITY', 'COMMERCIAL', opp.code, `Mise à jour opportunité ${opp.code}`, user);
+    return opp;
+  }
+
+  updateOpportunityStage(id: string, newStage: string, data: any = {}, user?: any) {
+    const opp = this.opportunities.find(o => o.id === id || o.code === id);
+    if (!opp) throw new Error('Opportunité introuvable');
+
+    const validStages = [
+      'NOUVELLE',
+      'QUALIFIEE',
+      'VISITE_TECHNIQUE',
+      'CHIFFRAGE',
+      'VALIDATION_INTERNE',
+      'OFFRE_SOUMISE',
+      'NEGOCIATION',
+      'GAGNEE',
+      'PERDUE',
+      'ANNULEE',
+    ];
+    if (!validStages.includes(newStage)) {
+      throw new Error(`Étape invalide : "${newStage}". Étapes autorisées : ${validStages.join(', ')}`);
+    }
+
+    if (newStage === 'PERDUE') {
+      const reason = data.lossReason || data.reason || '';
+      if (!reason || reason.trim() === '') {
+        throw new Error('Un motif formel de perte de dossier (lossReason) est obligatoire pour classer une affaire en PERDUE.');
+      }
+      opp.lossReason = reason;
+    }
+
+    if (newStage === 'ANNULEE') {
+      const reason = data.cancellationReason || data.reason || '';
+      if (!reason || reason.trim() === '') {
+        throw new Error('Un motif d\'annulation ou d\'infructuosité (cancellationReason) est obligatoire pour classer une affaire en ANNULEE.');
+      }
+      opp.cancellationReason = reason;
+    }
+
+    if (newStage === 'VISITE_TECHNIQUE' && data.siteVisitDate) {
+      opp.siteVisitDate = data.siteVisitDate;
+    }
+    if (data.technicalReportNotes) {
+      opp.technicalReportNotes = data.technicalReportNotes;
+    }
+
+    const defaultProbabilities: Record<string, number> = {
+      NOUVELLE: 10,
+      QUALIFIEE: 20,
+      VISITE_TECHNIQUE: 35,
+      CHIFFRAGE: 50,
+      VALIDATION_INTERNE: 65,
+      OFFRE_SOUMISE: 75,
+      NEGOCIATION: 85,
+      GAGNEE: 100,
+      PERDUE: 0,
+      ANNULEE: 0,
+    };
+
+    const prevStage = opp.status;
+    opp.status = newStage as any;
+    opp.winProbability = typeof data.winProbability === 'number'
+      ? data.winProbability
+      : (defaultProbabilities[newStage] ?? opp.winProbability ?? 20);
+
+    opp.stageHistory = opp.stageHistory || [];
+    opp.stageHistory.push({
+      fromStage: prevStage,
+      toStage: newStage,
+      changedAt: new Date().toISOString(),
+      changedBy: user?.name || 'Commercial SILEX',
+      notes: data.notes || data.lossReason || data.cancellationReason || `Transition de l'étape ${prevStage} vers ${newStage}`,
+    });
+    opp.updatedAt = new Date().toISOString();
+
+    this.addAuditLog(
+      'UPDATE_OPPORTUNITY_STAGE',
+      'COMMERCIAL',
+      opp.code,
+      `Passage de l'opportunité ${opp.code} à l'étape ${newStage} (${opp.winProbability}%)`,
+      user
+    );
     return opp;
   }
 
@@ -5034,6 +5992,8 @@ class ServerStore {
       quoteCreated: false,
       projectCreated: false,
 
+      revisions: [],
+
       history: [
         {
           action: 'CREATION',
@@ -5069,8 +6029,8 @@ class ServerStore {
   ) {
     const sheet = this.costSheets.find(cs => cs.id === id || cs.reference === id);
     if (!sheet) throw new Error('Fiche de coût introuvable');
-    if (sheet.status === 'VALIDEE' && user?.role !== SystemRole.DIRECTEUR_GENERAL && user?.role !== SystemRole.ADMINISTRATEUR) {
-      throw new Error('Une fiche de coût validée ne peut être modifiée sans autorisation de la Direction Générale.');
+    if (sheet.status === 'VALIDEE') {
+      throw new Error(`Cette fiche de chiffrage (version V${sheet.version}.0) a été formellement approuvée par la Direction Générale et est verrouillée. Veuillez créer une révision (V${sheet.version + 1}.0) pour toute modification ou renégociation.`);
     }
 
     if (department === 'PROJECT') {
@@ -5303,6 +6263,123 @@ class ServerStore {
 
     this.addAuditLog('ARBITRATE_COST_SHEET', 'COMMERCIAL', sheet.reference, `Arbitrage DG ${decision} sur ${sheet.reference} (${notes})`, user);
     return sheet;
+  }
+
+  createCostSheetRevision(id: string, reason: string, user?: any) {
+    const sheet = this.costSheets.find(cs => cs.id === id || cs.reference === id);
+    if (!sheet) throw new Error('Fiche de coût introuvable');
+
+    const snapshot: StoredCostSheetRevisionSnapshot = {
+      version: sheet.version,
+      createdAt: sheet.updatedAt || sheet.createdAt,
+      author: user?.name || sheet.history[sheet.history.length - 1]?.actor || 'Chef de Projet',
+      role: user?.role || 'RESPONSABLE_PROJET',
+      reason: reason || `Révision version V${sheet.version}.0 suite aux négociations commerciales`,
+      totalDirectCost: sheet.totalDirectCost,
+      totalIndirectCost: sheet.totalIndirectCost,
+      totalEstimatedCost: sheet.totalEstimatedCost,
+      proposedSellingPrice: sheet.proposedSellingPrice,
+      estimatedMarginValue: sheet.estimatedMarginValue,
+      targetMarginPercent: sheet.targetMarginPercent,
+      marginRateOnCost: sheet.marginRateOnCost,
+      markupRate: sheet.markupRate,
+      status: sheet.status,
+      projectContribution: JSON.parse(JSON.stringify(sheet.projectContribution)),
+      procurementContribution: JSON.parse(JSON.stringify(sheet.procurementContribution)),
+      hrContribution: JSON.parse(JSON.stringify(sheet.hrContribution)),
+      financeContribution: JSON.parse(JSON.stringify(sheet.financeContribution)),
+    };
+
+    sheet.revisions = sheet.revisions || [];
+    sheet.revisions.push(snapshot);
+
+    sheet.version += 1;
+    sheet.status = 'A_REVISER';
+    sheet.dgDecision = 'PENDING';
+    delete sheet.dgDecisionNotes;
+    delete sheet.dgDecidedAt;
+    delete sheet.dgDecidedBy;
+    delete sheet.dgVisaSignature;
+
+    sheet.history.push({
+      action: 'CREATE_REVISION',
+      actor: user?.name || 'Chef de Projets',
+      role: user?.role || 'RESPONSABLE_PROJET',
+      timestamp: new Date().toISOString(),
+      notes: `Archivage version V${snapshot.version}.0 et création de la révision V${sheet.version}.0 : ${reason}`,
+    });
+
+    sheet.updatedAt = new Date().toISOString();
+    this.addAuditLog(
+      'CREATE_COST_SHEET_REVISION',
+      'COMMERCIAL',
+      sheet.reference,
+      `Création révision V${sheet.version}.0 pour la fiche ${sheet.reference} : ${reason}`,
+      user
+    );
+    return sheet;
+  }
+
+  compareCostSheetVersions(id: string, vA: number, vB: number) {
+    const sheet = this.costSheets.find(cs => cs.id === id || cs.reference === id);
+    if (!sheet) throw new Error('Fiche de coût introuvable');
+
+    const getVersionData = (v: number): StoredCostSheetRevisionSnapshot => {
+      if (v === sheet.version) {
+        return {
+          version: sheet.version,
+          createdAt: sheet.updatedAt,
+          author: sheet.history[sheet.history.length - 1]?.actor || 'Chef de Projet',
+          role: sheet.history[sheet.history.length - 1]?.role || 'RESPONSABLE_PROJET',
+          reason: 'Version active courante',
+          totalDirectCost: sheet.totalDirectCost,
+          totalIndirectCost: sheet.totalIndirectCost,
+          totalEstimatedCost: sheet.totalEstimatedCost,
+          proposedSellingPrice: sheet.proposedSellingPrice,
+          estimatedMarginValue: sheet.estimatedMarginValue,
+          targetMarginPercent: sheet.targetMarginPercent,
+          marginRateOnCost: sheet.marginRateOnCost,
+          markupRate: sheet.markupRate,
+          status: sheet.status,
+          projectContribution: sheet.projectContribution,
+          procurementContribution: sheet.procurementContribution,
+          hrContribution: sheet.hrContribution,
+          financeContribution: sheet.financeContribution,
+        };
+      }
+      const rev = (sheet.revisions || []).find(r => r.version === v);
+      if (!rev) throw new Error(`Version V${v} introuvable dans l'historique de la fiche ${sheet.reference}`);
+      return rev;
+    };
+
+    const dataA = getVersionData(vA);
+    const dataB = getVersionData(vB);
+
+    const deltas = {
+      deltaSellingPrice: dataB.proposedSellingPrice - dataA.proposedSellingPrice,
+      deltaSellingPricePct: dataA.proposedSellingPrice > 0
+        ? Number((((dataB.proposedSellingPrice - dataA.proposedSellingPrice) / dataA.proposedSellingPrice) * 100).toFixed(2))
+        : 0,
+      deltaDirectCost: dataB.totalDirectCost - dataA.totalDirectCost,
+      deltaIndirectCost: dataB.totalIndirectCost - dataA.totalIndirectCost,
+      deltaEstimatedCost: dataB.totalEstimatedCost - dataA.totalEstimatedCost,
+      deltaEstimatedCostPct: dataA.totalEstimatedCost > 0
+        ? Number((((dataB.totalEstimatedCost - dataA.totalEstimatedCost) / dataA.totalEstimatedCost) * 100).toFixed(2))
+        : 0,
+      deltaMarginValue: dataB.estimatedMarginValue - dataA.estimatedMarginValue,
+      deltaMarginRateOnCost: Number((dataB.marginRateOnCost - dataA.marginRateOnCost).toFixed(2)),
+      deltaMarkupRate: Number((dataB.markupRate - dataA.markupRate).toFixed(2)),
+      deltaTargetMarginPercent: Number((dataB.targetMarginPercent - dataA.targetMarginPercent).toFixed(2)),
+    };
+
+    return {
+      reference: sheet.reference,
+      title: sheet.title,
+      clientName: sheet.clientName,
+      versionA: dataA,
+      versionB: dataB,
+      deltas,
+    };
   }
 
   createCustomerQuoteFromCostSheet(costSheetId: string, overridesOrUser?: any, maybeUser?: any) {
@@ -5951,6 +7028,212 @@ class ServerStore {
         },
       ];
     }
+
+    if (!p.timesheets || p.timesheets.length === 0) {
+      p.timesheets = [
+        {
+          id: `ts-${p.id}-1`,
+          projectCode: p.code,
+          date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0],
+          workerName: 'Mourad Zitouni',
+          corpsEtat: 'SOUDEUR_ASME',
+          workerQualification: 'ASME IX 6G TIG/SMAW (Acier Carbone & Inox)',
+          normalHours: 8,
+          overtimeHours: 2,
+          weatherHours: 0,
+          hourlyRate: 1400,
+          totalCostDA: 8 * 1400 + 2 * (1400 * 1.5),
+          taskRef: 'TSK-05',
+          productivityRatio: 1.05,
+          status: 'VALIDE',
+        },
+        {
+          id: `ts-${p.id}-2`,
+          projectCode: p.code,
+          date: new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0],
+          workerName: 'Khaled Benyahia',
+          corpsEtat: 'TUYAUTEUR_ISO',
+          workerQualification: 'Tuyauteur Industriel Qualifié N3 (Iso & Traçage)',
+          normalHours: 8,
+          overtimeHours: 1,
+          weatherHours: 0,
+          hourlyRate: 1250,
+          totalCostDA: 8 * 1250 + 1 * (1250 * 1.5),
+          taskRef: 'TSK-04',
+          productivityRatio: 0.98,
+          status: 'VALIDE',
+        },
+        {
+          id: `ts-${p.id}-3`,
+          projectCode: p.code,
+          date: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0],
+          workerName: 'Abdelghani Touati',
+          corpsEtat: 'MONTEUR_ECHAFAUDEUR',
+          workerQualification: 'Monteur Échafaudeur Certifié R408',
+          normalHours: 8,
+          overtimeHours: 0,
+          weatherHours: 0,
+          hourlyRate: 950,
+          totalCostDA: 8 * 950,
+          taskRef: 'TSK-02',
+          productivityRatio: 1.00,
+          status: 'VALIDE',
+        },
+        {
+          id: `ts-${p.id}-4`,
+          projectCode: p.code,
+          date: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0],
+          workerName: 'Yacine Khelifi',
+          corpsEtat: 'CONTROLEUR_CND',
+          workerQualification: 'COFREND Niveau 2 RT / PT / UT',
+          normalHours: 8,
+          overtimeHours: 3,
+          weatherHours: 0,
+          hourlyRate: 1800,
+          totalCostDA: 8 * 1800 + 3 * (1800 * 1.5),
+          taskRef: 'TSK-06',
+          productivityRatio: 1.12,
+          status: 'VALIDE',
+        },
+      ];
+    }
+
+    if (!p.pvrp) {
+      if (p.status === ProjectStatus.COMPLETED) {
+        p.pvrp = {
+          status: 'VALIDE_RESERVES_LEVEES',
+          pvDate: p.contractEndDate || '2026-01-28',
+          signedByClient: true,
+          clientSignatory: 'Directeur des Opérations / Client',
+          reservesCount: 2,
+          reservesLifted: true,
+          notes: 'Réception provisoire prononcée avec succès suite aux épreuves réglementaires. 2 réserves mineures de retouche peinture levées.',
+        };
+      } else {
+        p.pvrp = {
+          status: 'NON_EMIS',
+          pvDate: '',
+          signedByClient: false,
+          reservesCount: 0,
+          reservesLifted: false,
+          notes: 'En cours d\'exécution - Réception provisoire à organiser après épreuve hydrostatique.',
+        };
+      }
+    }
+
+    if (!p.pvrd) {
+      if (p.status === ProjectStatus.COMPLETED) {
+        p.pvrd = {
+          status: 'EN_GARANTIE_12M',
+          warrantyEndDate: new Date(new Date(p.contractEndDate || '2026-01-28').getTime() + 365 * 86400000).toISOString().split('T')[0],
+          signedByClient: false,
+          guaranteeReleased: false,
+          retentionRefundedDA: 0,
+          notes: 'Période de garantie de 12 mois en cours. Libération de la retenue de 5% soumise à signature contradictoire PVRD sans réserve.',
+        };
+      } else {
+        p.pvrd = {
+          status: 'NON_EMIS',
+          signedByClient: false,
+          guaranteeReleased: false,
+          retentionRefundedDA: 0,
+          notes: 'Non applicable en phase travaux.',
+        };
+      }
+    }
+  }
+
+  getProjectTimesheets(codeOrId: string): StoredProjectTimesheet[] {
+    const project = this.getProject(codeOrId);
+    if (!project) return [];
+    this.ensureProjectDefaults(project);
+    return project.timesheets || [];
+  }
+
+  createProjectTimesheet(codeOrId: string, data: any, user?: any): StoredProjectTimesheet {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    const normalHours = Number(data.normalHours) || 0;
+    const overtimeHours = Number(data.overtimeHours) || 0;
+    const weatherHours = Number(data.weatherHours) || 0;
+    const hourlyRate = Number(data.hourlyRate) || 1200;
+    const totalCostDA = normalHours * hourlyRate + overtimeHours * (hourlyRate * 1.5) + weatherHours * (hourlyRate * 0.75);
+
+    const newTs: StoredProjectTimesheet = {
+      id: `ts-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      projectCode: project.code,
+      date: data.date || new Date().toISOString().split('T')[0],
+      workerName: data.workerName || 'Intervenant Chantier',
+      corpsEtat: data.corpsEtat || 'SOUDEUR_ASME',
+      workerQualification: data.workerQualification || 'Qualifié Chantier',
+      normalHours,
+      overtimeHours,
+      weatherHours,
+      hourlyRate,
+      totalCostDA,
+      taskRef: data.taskRef || 'TSK-01',
+      productivityRatio: Number(data.productivityRatio) || 1.0,
+      status: data.status || 'VALIDE',
+    };
+
+    if (!project.timesheets) project.timesheets = [];
+    project.timesheets.unshift(newTs);
+
+    project.spentBudget = (project.spentBudget || 0) + totalCostDA;
+    if (!project.costEntries) project.costEntries = [];
+    project.costEntries.push({
+      id: `cst-mo-${Date.now()}`,
+      category: 'MAIN_DOEUVRE',
+      amount: totalCostDA,
+      description: `Pointage MO: ${newTs.workerName} (${normalHours}h HN + ${overtimeHours}h HS)`,
+      sourceModule: 'HR',
+      date: newTs.date,
+    });
+
+    project.updatedAt = new Date().toISOString();
+    this.addAuditLog('RECORD_TIMESHEET', 'PROJECT', project.code, `Pointage ${newTs.workerName} (${newTs.normalHours + newTs.overtimeHours}h) enregistré (${totalCostDA.toLocaleString()} DA)`, user);
+    return newTs;
+  }
+
+  updateProjectReception(codeOrId: string, data: any, user?: any) {
+    const project = this.getProject(codeOrId);
+    if (!project) throw new Error('Projet introuvable');
+    this.ensureProjectDefaults(project);
+
+    if (data.type === 'PVRP') {
+      project.pvrp = {
+        status: data.status || 'VALIDE_SANS_RESERVE',
+        pvDate: data.pvDate || new Date().toISOString().split('T')[0],
+        signedByClient: data.signedByClient !== undefined ? data.signedByClient : true,
+        clientSignatory: data.clientSignatory || 'Direction Client',
+        reservesCount: Number(data.reservesCount) || 0,
+        reservesLifted: data.reservesLifted !== undefined ? data.reservesLifted : (Number(data.reservesCount) === 0),
+        notes: data.notes || 'PV de Réception Provisoire prononcé avec succès.',
+      };
+      project.updatedAt = new Date().toISOString();
+      this.addAuditLog('SIGN_PVRP', 'PROJECT', project.code, `PV de Réception Provisoire (PVRP) enregistré - Statut: ${project.pvrp.status}`, user);
+      return project.pvrp;
+    }
+
+    if (data.type === 'PVRD') {
+      const retentionAmount = Number(project.contractAmount || 0) * ((project.retentionRate || 5) / 100);
+      project.pvrd = {
+        status: data.status || 'VALIDE_DEFINITIF',
+        pvDate: data.pvDate || new Date().toISOString().split('T')[0],
+        warrantyEndDate: data.warrantyEndDate || new Date().toISOString().split('T')[0],
+        signedByClient: true,
+        guaranteeReleased: true,
+        retentionRefundedDA: retentionAmount,
+        notes: data.notes || `PV de Réception Définitive validé. Restitution ordonnancée de la retenue de garantie (${retentionAmount.toLocaleString()} DA).`,
+      };
+      project.updatedAt = new Date().toISOString();
+      this.addAuditLog('SIGN_PVRD', 'PROJECT', project.code, `PV de Réception Définitive (PVRD) validé avec libération de la retenue de garantie (${retentionAmount.toLocaleString()} DA)`, user);
+      return project.pvrd;
+    }
+
+    return null;
   }
 
   // --- TACHES DE CHANTIER (PLANNING OPERATIONNEL) ---
@@ -7203,6 +8486,10 @@ class ServerStore {
             remainingQuantity: 4,
             unit: 'U',
             unitPriceHT: 14000,
+            heatNumber: 'LOT-A234-WPB-44',
+            batchNumber: 'LOT-A234-WPB-44',
+            ccpuCertificateRef: 'CCPU-A234-3.1-102',
+            storageLocation: 'Dépôt Régional Skikda RA1K - Rack Tuyauterie B-02',
           },
           {
             id: 'brl-02',
@@ -7217,10 +8504,61 @@ class ServerStore {
             remainingQuantity: 0,
             unit: 'U',
             unitPriceHT: 22500,
+            heatNumber: 'LOT-WN300-2026-09',
+            batchNumber: 'LOT-WN300-2026-09',
+            ccpuCertificateRef: 'CCPU-WN300-3.1-014',
+            storageLocation: 'Dépôt Régional Skikda RA1K - Palette Brides C-01',
           },
         ],
         totalAcceptedAmountHT: 584000,
         createdAt: '2026-11-02T15:00:00.000Z',
+      },
+    ];
+
+    // 9.5 Bons de Sortie Magasin (BSM) & Imputation Analytique
+    this.bonsDeSortie = [
+      {
+        id: 'bsm-001',
+        bonNumber: 'BSM-2026-0001',
+        date: '2026-11-04',
+        warehouseId: 'wh-002',
+        warehouseName: 'Dépôt Régional Skikda RA1K',
+        projectId: 'prj-2026-001',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Revamping Unité 100 — Raffinerie Skikda RA1K',
+        clientName: 'Sonatrach Downstream',
+        siteLocation: 'Zone Industrielle Skikda',
+        wbsCategory: 'TUYAUTERIE',
+        recipientName: 'Tahar Benaissa (Chef d\'équipe Tuyauterie)',
+        driverName: 'Kamel Rezgui',
+        vehicleMatricule: '04592-126-21',
+        items: [
+          {
+            itemId: 'itm-002',
+            code: 'ART-TUY-002',
+            name: 'Coude 90° LR acier carbone DN150 ASTM A234 WPB',
+            quantity: 8,
+            unit: 'U',
+            unitCost: 14000,
+            totalCost: 112000,
+            heatNumber: 'LOT-A234-WPB-44',
+            batchNumber: 'LOT-A234-WPB-44',
+          },
+          {
+            itemId: 'itm-003',
+            code: 'ART-TUY-003',
+            name: 'Bride à collerette Welding Neck Class 300 DN150',
+            quantity: 8,
+            unit: 'U',
+            unitCost: 22500,
+            totalCost: 180000,
+            heatNumber: 'LOT-WN300-2026-09',
+            batchNumber: 'LOT-WN300-2026-09',
+          },
+        ],
+        totalAmountDA: 292000,
+        status: 'RECEPTIONNE_CONFORME',
+        createdAt: '2026-11-04T09:30:00.000Z',
       },
     ];
 
@@ -7733,6 +9071,13 @@ class ServerStore {
   }
 
   recordGoodsReceipt(data: any, user?: any): StoredGoodsReceipt {
+    if (!data.deliveryNoteNumber || !String(data.deliveryNoteNumber).trim()) {
+      throw new Error('Le numéro de BL (Bon de Livraison) fournisseur est obligatoire pour enregistrer une réception.');
+    }
+    if (!data.warehouseId && !data.warehouseLocation) {
+      throw new Error('Le magasin de destination ou emplacement de stockage est obligatoire.');
+    }
+
     const po = this.purchaseOrders.find(p => p.id === data.purchaseOrderId || p.id === data.orderId || p.code === data.purchaseOrderCode || p.code === data.orderCode || p.poNumber === data.purchaseOrderCode || p.poNumber === data.orderCode);
     if (!po) throw new Error('Bon de commande introuvable pour cette réception');
 
@@ -7740,22 +9085,53 @@ class ServerStore {
     const brRef = "BR-" + new Date().getFullYear() + "-" + brNum;
     const warehouse = this.warehouses.find(w => w.id === data.warehouseId || w.code === data.warehouseId) || this.warehouses[0];
 
+    const rawLines = data.lines || data.items || [];
+    if (!rawLines.length) {
+      throw new Error('La réception doit comporter au moins un article.');
+    }
+
+    const conformityStatus = data.conformityStatus || data.inspectionStatus || data.qualityInspection?.overallStatus || 'CONFORME';
+    const isGlobalReject = conformityStatus === 'REJETE' || conformityStatus === 'REFUSE' || conformityStatus === 'NON_CONFORME';
+
     let totalAcceptedAmountHT = 0;
     let hasRemainingLines = false;
+    let hasRejections = isGlobalReject;
 
-    const rawLines = data.lines || data.items || [];
     const processedLines = rawLines.map((line: any, idx: number) => {
       const poLine = (po.items || []).find((it: any) => it.itemId === line.itemId || it.itemCode === line.itemCode) || (po.items || [])[idx];
       const orderedQty = Number(poLine?.quantity || line.orderedQuantity || 0);
       const previouslyReceived = Number(poLine?.receivedQuantity || 0);
       const deliveredQty = Number(line.deliveredQuantity || line.receivedQuantity || 0);
-      const rejectedQty = Number(line.rejectedQuantity || 0);
-      const acceptedQty = Math.max(0, deliveredQty - rejectedQty);
-      const newRemaining = Math.max(0, orderedQty - (previouslyReceived + acceptedQty));
 
-      if (newRemaining > 0) hasRemainingLines = true;
+      const rejectedQty = isGlobalReject ? deliveredQty : Number(line.rejectedQuantity || 0);
+      const acceptedQty = isGlobalReject ? 0 : Math.max(0, deliveredQty - rejectedQty);
+
+      if (rejectedQty > 0) hasRejections = true;
+
+      // Traçabilité aciers industriels (ASTM, Inox, DN150, Brides, Tubes, Coudes, etc.)
+      const desc = (line.description || poLine?.description || line.name || '').toLowerCase();
+      const isCriticalSteel = /astm|a106|inox|316l|tuyauterie|acier|bride|coude|sch 40|dn150|dn\d+/i.test(desc);
+      const heatNum = line.heatNumber || line.batchNumber || data.heatNumber || data.batchNumber || '';
+      const ccpuRef = line.ccpuCertificateRef || data.ccpuCertificateRef || (data.ccpuVerified || data.qualityInspection?.ccpuVerified ? 'CCPU-3.1-VERIFIE' : '');
+
+      if (isCriticalSteel && acceptedQty > 0) {
+        if (!heatNum) {
+          throw new Error(`Traçabilité obligatoire : Le numéro de coulée (Heat Number) ou numéro de lot est obligatoire pour les aciers industriels (${line.description || poLine?.description}).`);
+        }
+        if (!ccpuRef && !data.ccpuVerified && !data.qualityInspection?.ccpuVerified) {
+          throw new Error(`Conformité CCPU 3.1 requise : Le certificat matière CCPU 3.1 EN 10204 est obligatoire pour (${line.description || poLine?.description}).`);
+        }
+      }
+
+      if (rejectedQty > 0 && !line.rejectionReason && !data.rejectionReason && !data.qualityInspection?.observations) {
+        throw new Error(`Un motif de rejet explicite est obligatoire pour les articles rejetés (${line.description || poLine?.description}).`);
+      }
+
       const unitPrice = Number(poLine?.unitPrice || line.unitPriceHT || 0);
       totalAcceptedAmountHT += acceptedQty * unitPrice;
+
+      const newRemaining = Math.max(0, orderedQty - (previouslyReceived + acceptedQty));
+      if (newRemaining > 0) hasRemainingLines = true;
 
       // Mise à jour de la ligne du bon de commande
       if (poLine) {
@@ -7763,20 +9139,20 @@ class ServerStore {
         poLine.remainingQuantity = newRemaining;
       }
 
-      // TRANSACTION DE STOCK : Incrémentation du stock physique UNIQUEMENT pour la quantité acceptée
-      if (acceptedQty > 0 && line.itemId) {
+      // Stock physique : SEULEMENT les quantités acceptées sont intégrées au stock disponible
+      if (acceptedQty > 0 && (line.itemId || line.itemCode)) {
         const item = this.inventoryItems.find(i => i.id === line.itemId || i.code === line.itemCode);
         if (item) {
           item.currentStock = (item.currentStock || 0) + acceptedQty;
+          if (heatNum) item.batchNumber = heatNum;
         }
 
-        // Création du mouvement de stock officiel
-        const mvtRef = "MVT-REC-" + Date.now() + "-" + idx;
+        const mvtRef = `MVT-REC-${Date.now()}-${idx}`;
         this.stockMovements.unshift({
-          id: "sm-" + Date.now() + "-" + idx,
+          id: `sm-${Date.now()}-${idx}`,
           movementNumber: mvtRef,
           type: 'PURCHASE_RECEIPT',
-          itemId: line.itemId,
+          itemId: line.itemId || item?.id || 'ART',
           itemCode: item?.code || line.itemCode || 'ART',
           itemName: item?.name || line.description || 'Article réceptionné',
           quantity: acceptedQty,
@@ -7786,14 +9162,14 @@ class ServerStore {
           projectId: po.projectId,
           projectCode: po.projectCode,
           documentRef: brRef,
-          batchNumber: line.batchNumber || data.deliveryNoteNumber || '',
-          performedByName: user?.name || 'Gestionnaire Magasin',
+          batchNumber: heatNum,
+          performedByName: user?.name || data.receiverName || 'Gestionnaire Magasin',
           timestamp: new Date().toISOString(),
         } as any);
       }
 
       return {
-        id: "brl-" + Date.now() + "-" + idx,
+        id: `brl-${Date.now()}-${idx}`,
         itemId: line.itemId,
         itemCode: line.itemCode,
         description: line.description || poLine?.description || 'Fourniture',
@@ -7803,46 +9179,334 @@ class ServerStore {
         acceptedQuantity: acceptedQty,
         rejectedQuantity: rejectedQty,
         remainingQuantity: newRemaining,
-        rejectionReason: rejectedQty > 0 ? (line.rejectionReason || 'Non-conformité visuelle/dimensionnelle') : undefined,
+        rejectionReason: rejectedQty > 0 ? (line.rejectionReason || data.rejectionReason || 'Non-conformité dimensionnelle / métallurgique') : undefined,
         unit: line.unit || poLine?.unit || 'U',
         unitPriceHT: unitPrice,
+        heatNumber: heatNum || undefined,
+        batchNumber: heatNum || undefined,
+        ccpuCertificateRef: ccpuRef || undefined,
+        storageLocation: line.storageLocation || (rejectedQty > 0 && acceptedQty === 0 ? 'Zone Quarantaine Litige Fournisseur' : (warehouse?.name || 'Magasin Central')),
       };
     });
 
-    const isComplete = !hasRemainingLines;
-    po.status = isComplete ? 'RECEIVED' : 'PARTIALLY_RECEIVED';
+    const isComplete = !hasRemainingLines && !hasRejections;
+    po.status = isComplete ? 'RECEIVED' : (hasRejections && totalAcceptedAmountHT === 0 ? 'PENDING' : 'PARTIALLY_RECEIVED');
+
+    const resolvedStatus = isGlobalReject ? 'REJETE' : (hasRejections ? 'CONFORME_AVEC_RESERVES' : (isComplete ? 'COMPLET' : 'PARTIEL'));
 
     const newBr: StoredGoodsReceipt = {
-      id: "br-" + Date.now() + "-" + Math.random().toString(36).substring(2, 6),
+      id: `br-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       receiptNumber: brRef,
       purchaseOrderId: po.id,
       purchaseOrderCode: po.code,
       supplierId: po.supplierId,
       supplierName: po.supplierName,
-      deliveryNoteNumber: data.deliveryNoteNumber || 'BL-FOURNISSEUR',
+      deliveryNoteNumber: String(data.deliveryNoteNumber).trim(),
       receiptDate: data.receiptDate || new Date().toISOString().split('T')[0],
       warehouseId: warehouse?.id || 'wh-001',
       warehouseName: warehouse?.name || 'Magasin Central',
       receiverName: user?.name || data.receiverName || 'Magasinier Réceptionnaire',
       projectId: po.projectId,
       projectCode: po.projectCode,
-      status: isComplete ? 'COMPLET' : 'PARTIEL',
+      status: resolvedStatus as any,
       qualityInspection: {
-        inspectorName: data.inspectorName || user?.name || 'Superviseur Contrôle Qualité',
+        inspectorName: data.inspectorName || data.qualityInspection?.inspectorName || user?.name || 'Superviseur Contrôle Qualité',
         inspectionDate: new Date().toISOString(),
-        overallStatus: data.inspectionStatus || 'CONFORME',
-        ccpuVerified: !!data.ccpuVerified,
-        cndReportAttached: !!data.cndReportAttached,
-        observations: data.qualityObservations || 'Contrôle réception conforme aux spécifications contractuelles.',
+        overallStatus: (isGlobalReject ? 'REFUSE' : (hasRejections ? 'ACCEPTE_SOUS_RESERVES' : 'CONFORME')) as any,
+        ccpuVerified: !!data.ccpuVerified || !!data.qualityInspection?.ccpuVerified,
+        cndReportAttached: !!data.cndReportAttached || !!data.qualityInspection?.cndReportAttached,
+        observations: data.qualityObservations || data.rejectionReason || (hasRejections ? 'Réception acceptée sous réserves / lots rejetés en quarantaine.' : 'Contrôle réception conforme aux spécifications contractuelles.'),
       },
       lines: processedLines,
       totalAcceptedAmountHT,
+      isQuarantined: hasRejections,
+      quarantineWarehouseLocation: hasRejections ? 'Zone Quarantaine - Litige Fournisseur' : undefined,
+      rejectionReason: hasRejections ? (data.rejectionReason || 'Articles rejetés placés en quarantaine magasin') : undefined,
       createdAt: new Date().toISOString(),
     };
 
     this.goodsReceipts.unshift(newBr);
-    this.addAuditLog('RECORD_GOODS_RECEIPT', 'INVENTORY', brRef, 'Bon de réception ' + brRef + ' enregistré pour la commande ' + po.code + ' (Statut: ' + newBr.status + ')', user);
+    this.addAuditLog('RECORD_GOODS_RECEIPT', 'INVENTORY', brRef, `Bon de réception ${brRef} enregistré pour la commande ${po.code} (Statut: ${newBr.status})`, user);
     return newBr;
+  }
+
+  // ============================================================================
+  // MÉTHODES BONS DE SORTIE MAGASIN (BSM) & IMPUTATION ANALYTIQUE CHANTIER
+  // ============================================================================
+
+  getBonsDeSortie(projectId?: string): StoredBonDeSortie[] {
+    if (projectId) {
+      return this.bonsDeSortie.filter(b => b.projectId === projectId || b.projectCode === projectId);
+    }
+    return this.bonsDeSortie;
+  }
+
+  getBonDeSortie(idOrNumber: string): StoredBonDeSortie | null {
+    return this.bonsDeSortie.find(b => b.id === idOrNumber || b.bonNumber === idOrNumber) || null;
+  }
+
+  createBonDeSortie(data: any, user?: any): StoredBonDeSortie {
+    if (!data.projectId && !data.projectCode) {
+      throw new Error('Le chantier ou projet destinataire est obligatoire pour émettre un bon de sortie.');
+    }
+    if (!data.recipientName || !String(data.recipientName).trim()) {
+      throw new Error('Le nom du destinataire (chef de chantier / superviseur) est obligatoire pour le bon de sortie.');
+    }
+    if (!data.wbsCategory || !String(data.wbsCategory).trim()) {
+      throw new Error('Le lot / catégorie WBS de travaux est obligatoire pour l\'imputation analytique.');
+    }
+
+    const project = this.getProject(data.projectId) || this.getProject(data.projectCode);
+    if (!project) {
+      throw new Error('Chantier destinataire introuvable.');
+    }
+
+    const warehouse = this.warehouses.find(w => w.id === data.warehouseId || w.code === data.warehouseId) || this.warehouses[0];
+    
+    // Support multi-articles ou article unique
+    let rawItems: any[] = [];
+    if (Array.isArray(data.items) && data.items.length > 0) {
+      rawItems = data.items;
+    } else if (Array.isArray(data.lines) && data.lines.length > 0) {
+      rawItems = data.lines;
+    } else if (data.itemId) {
+      rawItems = [{ itemId: data.itemId, quantity: data.quantity, batchNumber: data.batchNumber }];
+    }
+
+    if (!rawItems.length) {
+      throw new Error('Le bon de sortie doit comporter au moins un article à déstocker.');
+    }
+
+    const bonNumber = data.bonNumber || `BSM-2026-${String(this.bonsDeSortie.length + 1).padStart(4, '0')}`;
+    let totalAmountDA = 0;
+
+    const processedItems = rawItems.map((line: any, idx: number) => {
+      const itm = this.inventoryItems.find(i => i.id === line.itemId || i.code === line.code || i.code === line.itemCode);
+      const reqQty = Number(line.quantity || 0);
+      if (reqQty <= 0) {
+        throw new Error(`Quantité invalide (${reqQty}) pour l'article ${line.name || line.code || idx + 1}.`);
+      }
+      if (itm) {
+        if (Number(itm.currentStock || 0) < reqQty) {
+          throw new Error(`Stock physique insuffisant pour l'article ${itm.name} (${itm.code}). En stock: ${itm.currentStock}, Demandé: ${reqQty}`);
+        }
+      }
+
+      const unitCost = Number(itm?.unitCost || line.unitCost || 0);
+      const lineCost = reqQty * unitCost;
+      totalAmountDA += lineCost;
+
+      // Décrémenter le stock physique magasin
+      if (itm) {
+        itm.currentStock = Math.max(0, (itm.currentStock || 0) - reqQty);
+      }
+
+      // Enregistrer le mouvement de stock officiel (ISSUE)
+      const mvtRef = `MVT-BSM-${Date.now()}-${idx}`;
+      this.stockMovements.unshift({
+        id: `sm-bsm-${Date.now()}-${idx}`,
+        movementNumber: mvtRef,
+        type: 'ISSUE',
+        itemId: itm?.id || line.itemId || `itm-${idx}`,
+        itemCode: itm?.code || line.code || 'ART',
+        itemName: itm?.name || line.name || 'Article déstocké',
+        quantity: -reqQty,
+        unit: itm?.unit || line.unit || 'U',
+        warehouseId: warehouse?.id || 'wh-001',
+        warehouseName: warehouse?.name || 'Magasin Central',
+        projectId: project.id,
+        projectCode: project.code,
+        documentRef: bonNumber,
+        batchNumber: line.batchNumber || line.heatNumber || itm?.batchNumber || '',
+        performedByName: user?.name || data.recipientName || 'Magasinier',
+        timestamp: new Date().toISOString(),
+      } as any);
+
+      return {
+        itemId: itm?.id || line.itemId || `itm-${idx}`,
+        code: itm?.code || line.code || 'ART',
+        name: itm?.name || line.name || 'Article',
+        quantity: reqQty,
+        unit: itm?.unit || line.unit || 'U',
+        unitCost,
+        totalCost: lineCost,
+        heatNumber: line.heatNumber || itm?.batchNumber,
+        batchNumber: line.batchNumber || itm?.batchNumber,
+      };
+    });
+
+    // IMPUTATION ANALYTIQUE DIRECTE SUR LE CHANTIER
+    project.spentBudget = (project.spentBudget || 0) + totalAmountDA;
+    project.actualCost = (project.actualCost || 0) + totalAmountDA;
+    if (!project.costEntries) project.costEntries = [];
+    project.costEntries.push({
+      id: `cost-bsm-${Date.now()}`,
+      date: data.date || new Date().toISOString().split('T')[0],
+      category: 'FOURNITURES',
+      description: `Sortie Magasin ${bonNumber} — ${processedItems.map(i => `${i.quantity} ${i.unit} ${i.name}`).slice(0, 2).join(', ')} [Lot ${data.wbsCategory}]`,
+      amount: totalAmountDA,
+      reference: bonNumber,
+      approved: true,
+      createdAt: new Date().toISOString(),
+    });
+
+    const bsm: StoredBonDeSortie = {
+      id: `bsm-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      bonNumber,
+      date: data.date || new Date().toISOString().split('T')[0],
+      warehouseId: warehouse?.id || 'wh-001',
+      warehouseName: warehouse?.name || 'Magasin Central',
+      projectId: project.id,
+      projectCode: project.code,
+      projectName: project.name,
+      clientName: project.clientName || 'Client Industriel',
+      siteLocation: project.siteLocation || 'Site Chantier',
+      wbsCategory: data.wbsCategory,
+      recipientName: data.recipientName,
+      driverName: data.driverName || 'Chauffeur Expéditeur Silex',
+      vehicleMatricule: data.vehicleMatricule || 'Matricule Véhicule Logistique',
+      items: processedItems,
+      totalAmountDA,
+      status: (data.status as any) || 'EN_TRANSIT',
+      createdAt: new Date().toISOString(),
+    };
+
+    this.bonsDeSortie.unshift(bsm);
+    this.addAuditLog('CREATE_BON_DE_SORTIE', 'INVENTORY', bonNumber, `BSM ${bonNumber} émis pour ${project.code} (${totalAmountDA.toLocaleString()} DA PUMP)`, user);
+    return bsm;
+  }
+
+  // ============================================================================
+  // TRAÇABILITÉ MATIÈRE & ACIERS CRITIQUES (LIFECYCLE COMPLET)
+  // ============================================================================
+
+  getMaterialTraceability(query: string) {
+    if (!query || !query.trim()) {
+      return { query: '', found: false, receipts: [], issues: [], purchaseOrders: [], movements: [], timeline: [] };
+    }
+    const q = query.trim().toLowerCase();
+
+    // 1. Articles correspondants
+    const matchedItems = this.inventoryItems.filter(i =>
+      i.code.toLowerCase().includes(q) ||
+      i.name.toLowerCase().includes(q) ||
+      (i.batchNumber && i.batchNumber.toLowerCase().includes(q))
+    );
+
+    // 2. Bons de réception correspondants (Heat number, CCPU, BL, PO)
+    const matchedReceipts = this.goodsReceipts.filter(gr =>
+      gr.receiptNumber.toLowerCase().includes(q) ||
+      gr.deliveryNoteNumber.toLowerCase().includes(q) ||
+      gr.purchaseOrderCode.toLowerCase().includes(q) ||
+      gr.lines.some(l =>
+        l.description.toLowerCase().includes(q) ||
+        (l.itemCode && l.itemCode.toLowerCase().includes(q)) ||
+        (l.heatNumber && l.heatNumber.toLowerCase().includes(q)) ||
+        (l.batchNumber && l.batchNumber.toLowerCase().includes(q)) ||
+        (l.ccpuCertificateRef && l.ccpuCertificateRef.toLowerCase().includes(q))
+      )
+    );
+
+    // 3. Bons de sortie correspondants (BSM, Heat number, Lot, WBS, Project)
+    const matchedIssues = this.bonsDeSortie.filter(bsm =>
+      bsm.bonNumber.toLowerCase().includes(q) ||
+      bsm.projectCode.toLowerCase().includes(q) ||
+      bsm.projectName.toLowerCase().includes(q) ||
+      bsm.wbsCategory.toLowerCase().includes(q) ||
+      bsm.items.some(it =>
+        it.name.toLowerCase().includes(q) ||
+        it.code.toLowerCase().includes(q) ||
+        (it.heatNumber && it.heatNumber.toLowerCase().includes(q)) ||
+        (it.batchNumber && it.batchNumber.toLowerCase().includes(q))
+      )
+    );
+
+    // 4. Commandes fournisseurs
+    const matchedPOs = this.purchaseOrders.filter(po =>
+      po.code.toLowerCase().includes(q) ||
+      po.supplierName.toLowerCase().includes(q) ||
+      (po.items || []).some((it: any) =>
+        (it.name && it.name.toLowerCase().includes(q)) ||
+        (it.itemCode && it.itemCode.toLowerCase().includes(q))
+      )
+    );
+
+    // 5. Mouvements de stock
+    const matchedMovements = this.stockMovements.filter(sm =>
+      sm.movementNumber.toLowerCase().includes(q) ||
+      sm.documentRef.toLowerCase().includes(q) ||
+      sm.itemName.toLowerCase().includes(q) ||
+      (sm.batchNumber && sm.batchNumber.toLowerCase().includes(q))
+    );
+
+    // Timeline Chronologique Industrielle
+    const timeline: Array<{
+      step: 'COMMANDE' | 'RECEPTION_CCPU' | 'STOCK_MAGASIN' | 'BON_DE_SORTIE' | 'CHANTIER_IMPUTATION';
+      date: string;
+      title: string;
+      reference: string;
+      details: string;
+      actor: string;
+      badgeColor: string;
+    }> = [];
+
+    matchedPOs.forEach(po => {
+      timeline.push({
+        step: 'COMMANDE',
+        date: po.createdAt || po.issueDate || '2026-01-15',
+        title: `Commande Fournisseur ${po.code}`,
+        reference: po.code,
+        details: `Fournisseur : ${po.supplierName} • Total : ${(po.totalAmountHT || 0).toLocaleString()} DA HT`,
+        actor: po.issuedByName || 'Acheteur SILEX',
+        badgeColor: 'bg-blue-100 text-blue-800',
+      });
+    });
+
+    matchedReceipts.forEach(gr => {
+      const heatNums = gr.lines.map(l => l.heatNumber || l.batchNumber).filter(Boolean).join(', ');
+      const ccpu = gr.lines.map(l => l.ccpuCertificateRef).filter(Boolean).join(', ') || (gr.qualityInspection.ccpuVerified ? 'CCPU 3.1 Vérifié Conforme' : 'Non spécifié');
+      timeline.push({
+        step: 'RECEPTION_CCPU',
+        date: gr.receiptDate || gr.createdAt,
+        title: `Réception & Contrôle Qualité ${gr.receiptNumber}`,
+        reference: gr.receiptNumber,
+        details: `BL Fournisseur: ${gr.deliveryNoteNumber} • Coulée: ${heatNums || 'LOT-2026'} • Certificat: ${ccpu} • Inspecteur: ${gr.qualityInspection.inspectorName}`,
+        actor: gr.receiverName,
+        badgeColor: 'bg-emerald-100 text-emerald-800',
+      });
+    });
+
+    matchedIssues.forEach(bsm => {
+      timeline.push({
+        step: 'BON_DE_SORTIE',
+        date: bsm.date || bsm.createdAt,
+        title: `Bon de Sortie Magasin ${bsm.bonNumber}`,
+        reference: bsm.bonNumber,
+        details: `Destinataire: ${bsm.recipientName} • Chantier: ${bsm.projectCode} (${bsm.projectName}) • WBS: ${bsm.wbsCategory} • Valeur PUMP: ${bsm.totalAmountDA.toLocaleString()} DA`,
+        actor: bsm.driverName || 'Logistique SILEX',
+        badgeColor: 'bg-purple-100 text-purple-800',
+      });
+      timeline.push({
+        step: 'CHANTIER_IMPUTATION',
+        date: bsm.date || bsm.createdAt,
+        title: `Imputation Analytique Chantier ${bsm.projectCode}`,
+        reference: `IMP-${bsm.bonNumber}`,
+        details: `Coût réel projet incrémenté de +${bsm.totalAmountDA.toLocaleString()} DA HT sur le lot ${bsm.wbsCategory}`,
+        actor: 'Contrôle de Gestion Chantier',
+        badgeColor: 'bg-amber-100 text-amber-800',
+      });
+    });
+
+    return {
+      query,
+      found: matchedReceipts.length > 0 || matchedIssues.length > 0 || matchedPOs.length > 0 || matchedItems.length > 0,
+      matchedItems,
+      receipts: matchedReceipts,
+      issues: matchedIssues,
+      purchaseOrders: matchedPOs,
+      movements: matchedMovements,
+      timeline: timeline.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+    };
   }
 
   // ============================================================================
