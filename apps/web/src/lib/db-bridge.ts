@@ -1841,22 +1841,216 @@ export const dbBridge = {
 
   // --- WELD BOOK & SOUDURES INDUSTRIELLES (ASME IX / ISO 9606) ---
   async getWeldJoints(projectId?: string) {
+    if (hasDb) {
+      try {
+        const whereClause = projectId ? { OR: [{ projectId }, { projectCode: projectId }] } : {};
+        const welds = await (prisma as any).weldJoint.findMany({
+          where: whereClause,
+          include: {
+            repairs: true,
+            nonConformities: true,
+            welder: { include: { certifications: true } },
+          },
+          orderBy: { jointNumber: 'asc' },
+        });
+        if (welds && welds.length > 0) {
+          return welds.map((w: any) => ({
+            ...w,
+            thicknessMm: w.thicknessMm ? Number(w.thicknessMm) : undefined,
+            cndInspection: {
+              type: w.cndType,
+              requiredRatePercent: w.cndRatePercent,
+              status: w.cndStatus,
+              cndReportRef: w.cndReportRef,
+              filmRef: w.cndFilmRef,
+              controlDate: w.cndControlDate ? w.cndControlDate.toISOString().split('T')[0] : null,
+              controllingBody: w.cndControllingBody,
+            },
+            repairHistory: (w.repairs || []).map((r: any) => ({
+              repairIndex: r.repairIndex,
+              repairDate: r.repairDate ? r.repairDate.toISOString().split('T')[0] : null,
+              repairWelderStamp: r.repairWelderStamp,
+              repairDmosRef: r.repairDmosRef,
+              postRepairCndStatus: r.postRepairCndStatus,
+              postRepairCndReportRef: r.postRepairCndReportRef,
+            })),
+          }));
+        }
+      } catch (err) {
+        handleDbPersistenceError('getWeldJoints', err);
+      }
+    }
     return serverStore.getWeldJoints(projectId);
   },
 
   async getWeldJoint(idOrNumber: string) {
+    if (hasDb) {
+      try {
+        const weld = await (prisma as any).weldJoint.findFirst({
+          where: { OR: [{ id: idOrNumber }, { jointNumber: idOrNumber }] },
+          include: {
+            repairs: true,
+            nonConformities: true,
+            welder: { include: { certifications: true } },
+          },
+        });
+        if (weld) {
+          return {
+            ...weld,
+            thicknessMm: weld.thicknessMm ? Number(weld.thicknessMm) : undefined,
+            cndInspection: {
+              type: weld.cndType,
+              requiredRatePercent: weld.cndRatePercent,
+              status: weld.cndStatus,
+              cndReportRef: weld.cndReportRef,
+              filmRef: weld.cndFilmRef,
+              controlDate: weld.cndControlDate ? weld.cndControlDate.toISOString().split('T')[0] : null,
+              controllingBody: weld.cndControllingBody,
+            },
+            repairHistory: (weld.repairs || []).map((r: any) => ({
+              repairIndex: r.repairIndex,
+              repairDate: r.repairDate ? r.repairDate.toISOString().split('T')[0] : null,
+              repairWelderStamp: r.repairWelderStamp,
+              repairDmosRef: r.repairDmosRef,
+              postRepairCndStatus: r.postRepairCndStatus,
+              postRepairCndReportRef: r.postRepairCndReportRef,
+            })),
+          };
+        }
+      } catch (err) {
+        handleDbPersistenceError('getWeldJoint', err);
+      }
+    }
     return serverStore.getWeldJoint(idOrNumber);
   },
 
   async createWeldJoint(data: any, user?: any) {
+    if (hasDb) {
+      try {
+        const proj = await prisma.project.findFirst({
+          where: { OR: [{ id: data.projectId }, { code: data.projectCode }] },
+        });
+        const created = await (prisma as any).weldJoint.create({
+          data: {
+            jointNumber: data.jointNumber,
+            projectId: proj?.id || data.projectId,
+            projectCode: proj?.code || data.projectCode,
+            lineIso: data.lineIso,
+            spoolId: data.spoolId,
+            diameterNominal: data.diameterNominal,
+            thicknessMm: data.thicknessMm ? Number(data.thicknessMm) : undefined,
+            material: data.material,
+            heatNumberPipe: data.heatNumberPipe,
+            heatNumberFitting: data.heatNumberFitting,
+            welderName: data.welderName,
+            welderStamp: data.welderStamp,
+            welderCqsRef: data.welderCqsRef,
+            weldingProcess: data.weldingProcess,
+            dmosRef: data.dmosRef,
+            weldDate: data.weldDate ? new Date(data.weldDate) : new Date(),
+            visualInspection: data.visualInspection || 'CONFORME',
+            cndType: data.cndInspection?.type || data.cndType || 'RT',
+            cndRatePercent: data.cndInspection?.requiredRatePercent || 100,
+            cndStatus: data.cndInspection?.status || 'EN_ATTENTE_CND',
+            cndControllingBody: data.cndInspection?.controllingBody || 'CND Sud Contrôle (COFREND II)',
+            status: (data.status || 'EN_ATTENTE_CND') as any,
+            notes: data.notes || '',
+          },
+        });
+        serverStore.createWeldJoint(data, user);
+        await this.logAudit('CREATE_WELD_JOINT', 'QUALITY', created.jointNumber, `Joint consigné au Weld Book : ${created.jointNumber} (${created.lineIso})`, user);
+        return created;
+      } catch (err) {
+        handleFinancePersistenceError('createWeldJoint', err);
+      }
+    }
     return serverStore.createWeldJoint(data, user);
   },
 
   async recordWeldCndResult(idOrNumber: string, data: any, user?: any) {
+    if (hasDb) {
+      try {
+        const weld = await (prisma as any).weldJoint.findFirst({
+          where: { OR: [{ id: idOrNumber }, { jointNumber: idOrNumber }] },
+        });
+        if (weld) {
+          const cndStatus = data.status || 'CONFORME';
+          const updated = await (prisma as any).weldJoint.update({
+            where: { id: weld.id },
+            data: {
+              cndStatus,
+              cndType: data.type || weld.cndType,
+              cndReportRef: data.cndReportRef || weld.cndReportRef,
+              cndFilmRef: data.filmRef || weld.cndFilmRef,
+              cndControlDate: data.controlDate ? new Date(data.controlDate) : new Date(),
+              cndControllingBody: data.controllingBody || weld.cndControllingBody,
+              status: cndStatus === 'CONFORME' ? 'LIBERE_EPREUVE' : (cndStatus === 'A_REPARER' ? 'A_REPARER' : 'REJETE'),
+            },
+          });
+          if (data.autoCreateFnc && (cndStatus === 'A_REPARER' || cndStatus === 'COUPE')) {
+            await (prisma as any).nonConformity.create({
+              data: {
+                ncNumber: `FNC-2026-${Date.now().toString().slice(-3)}`,
+                title: `Défaut CND sur joint ${weld.jointNumber} (${data.defectType || 'Inclusion'})`,
+                description: `Contrôle CND non-conforme : ${data.defectType || 'Défaut de compacité'}. Rapport ${data.cndReportRef}.`,
+                severity: 'MAJEURE',
+                status: 'OPEN',
+                detectedBy: data.controllingBody || 'Organisme de Contrôle CND',
+                projectId: weld.projectId,
+                weldJointId: weld.id,
+                weldJointNumber: weld.jointNumber,
+              },
+            });
+          }
+          serverStore.recordWeldCndResult(idOrNumber, data, user);
+          await this.logAudit('RECORD_WELD_CND_RESULT', 'QUALITY', weld.jointNumber, `Contrôle CND enregistré sur ${weld.jointNumber} : ${cndStatus}`, user);
+          return updated;
+        }
+      } catch (err) {
+        handleFinancePersistenceError('recordWeldCndResult', err);
+      }
+    }
     return serverStore.recordWeldCndResult(idOrNumber, data, user);
   },
 
   async recordWeldRepair(idOrNumber: string, data: any, user?: any) {
+    if (hasDb) {
+      try {
+        const weld = await (prisma as any).weldJoint.findFirst({
+          where: { OR: [{ id: idOrNumber }, { jointNumber: idOrNumber }] },
+          include: { repairs: true },
+        });
+        if (weld) {
+          const nextIdx = (weld.repairs?.length || 0) + 1;
+          const postCnd = data.postRepairCndStatus || 'CONFORME';
+          await (prisma as any).weldRepair.create({
+            data: {
+              weldJointId: weld.id,
+              repairIndex: nextIdx,
+              repairDate: data.repairDate ? new Date(data.repairDate) : new Date(),
+              repairWelderStamp: data.repairWelderStamp || 'S-02',
+              repairWelderName: data.repairWelderName,
+              repairDmosRef: data.repairDmosRef || 'DMOS-REP-01',
+              postRepairCndStatus: postCnd,
+              postRepairCndReportRef: data.postRepairCndReportRef,
+              notes: data.notes || '',
+            },
+          });
+          await (prisma as any).weldJoint.update({
+            where: { id: weld.id },
+            data: {
+              status: postCnd === 'CONFORME' ? 'REPARE_CONFORME' : 'A_REPARER',
+              cndStatus: postCnd === 'CONFORME' ? 'CONFORME' : 'A_REPARER',
+            },
+          });
+          serverStore.recordWeldRepair(idOrNumber, data, user);
+          await this.logAudit('RECORD_WELD_REPAIR', 'QUALITY', weld.jointNumber, `Réparation enregistrée pour ${weld.jointNumber} (Index #${nextIdx}, DMOS: ${data.repairDmosRef || 'DMOS-REP-01'})`, user);
+          return this.getWeldJoint(weld.id);
+        }
+      } catch (err) {
+        handleFinancePersistenceError('recordWeldRepair', err);
+      }
+    }
     return serverStore.recordWeldRepair(idOrNumber, data, user);
   },
 
@@ -2941,34 +3135,246 @@ export const dbBridge = {
   },
 
   async getOpportunities() {
+    if (hasDb) {
+      try {
+        const dbOpps = await (prisma as any).opportunity.findMany({
+          orderBy: { createdAt: 'desc' },
+          include: { costSheets: true, convertedProject: true },
+        });
+        if (dbOpps && dbOpps.length > 0) {
+          return dbOpps.map((o: any) => ({
+            ...o,
+            estimatedAmount: Number(o.estimatedAmount || 0),
+            weightedValue: Number(o.weightedValue || 0),
+          }));
+        }
+      } catch (err) {
+        handleDbPersistenceError('getOpportunities', err);
+      }
+    }
     return serverStore.getOpportunities();
   },
 
   async getOpportunity(id: string) {
+    if (hasDb) {
+      try {
+        const opp = await (prisma as any).opportunity.findFirst({
+          where: {
+            OR: [{ id }, { code: id }],
+          },
+          include: { costSheets: true, convertedProject: true },
+        });
+        if (opp) {
+          return {
+            ...opp,
+            estimatedAmount: Number(opp.estimatedAmount || 0),
+            weightedValue: Number(opp.weightedValue || 0),
+          };
+        }
+      } catch (err) {
+        handleDbPersistenceError('getOpportunity', err);
+      }
+    }
     return serverStore.getOpportunity(id);
   },
 
   async createOpportunity(data: any, user?: any) {
+    const count = serverStore.getOpportunities().length;
+    const code = data.code || `OPP-2026-${String(count + 1).padStart(3, '0')}`;
+    const amount = Number(data.estimatedAmount || 0);
+    const prob = Number(data.winProbability ?? 50);
+    const weighted = Math.round((amount * prob) / 100);
+
+    if (hasDb) {
+      try {
+        const created = await (prisma as any).opportunity.create({
+          data: {
+            code,
+            title: data.title || 'Opportunité Industrielle',
+            clientName: data.clientName || 'Client Industriel',
+            sector: mapToSector(data.sector),
+            location: data.location || 'Site Algérie',
+            wilaya: data.wilaya || 'Alger',
+            contactName: data.contactName || '',
+            contactEmail: data.contactEmail || '',
+            contactPhone: data.contactPhone || '',
+            estimatedAmount: amount,
+            winProbability: prob,
+            weightedValue: weighted,
+            assignedCommercialId: user?.id || data.assignedCommercialId,
+            assignedCommercialName: user?.name || data.assignedCommercialName,
+            status: (data.status || 'NOUVELLE') as any,
+            priority: data.priority || 'NORMALE',
+            notes: data.notes || '',
+            sourceOrigin: data.sourceOrigin || 'DIRECT',
+            isDemo: Boolean(data.isDemo),
+          },
+        });
+        serverStore.createOpportunity({ ...data, code }, user);
+        await this.logAudit('CREATE_OPPORTUNITY', 'COMMERCIAL', created.code, `Opportunité commerciale créée : ${created.title} (${created.code})`, user);
+        return {
+          ...created,
+          estimatedAmount: Number(created.estimatedAmount || 0),
+          weightedValue: Number(created.weightedValue || 0),
+        };
+      } catch (err) {
+        handleFinancePersistenceError('createOpportunity', err);
+      }
+    }
     return serverStore.createOpportunity(data, user);
   },
 
   async updateOpportunity(id: string, data: any, user?: any) {
+    if (hasDb) {
+      try {
+        const opp = await (prisma as any).opportunity.findFirst({
+          where: { OR: [{ id }, { code: id }] },
+        });
+        if (opp) {
+          const updated = await (prisma as any).opportunity.update({
+            where: { id: opp.id },
+            data: {
+              ...(data.title ? { title: data.title } : {}),
+              ...(data.clientName ? { clientName: data.clientName } : {}),
+              ...(data.status ? { status: data.status as any } : {}),
+              ...(data.winProbability !== undefined ? { winProbability: data.winProbability } : {}),
+              ...(data.notes ? { notes: data.notes } : {}),
+            },
+          });
+          serverStore.updateOpportunity(id, data, user);
+          return updated;
+        }
+      } catch (err) {
+        handleFinancePersistenceError('updateOpportunity', err);
+      }
+    }
     return serverStore.updateOpportunity(id, data, user);
   },
 
   async updateOpportunityStage(id: string, newStage: string, data: any, user?: any) {
+    if (hasDb) {
+      try {
+        const opp = await (prisma as any).opportunity.findFirst({
+          where: { OR: [{ id }, { code: id }] },
+        });
+        if (opp) {
+          const updated = await (prisma as any).opportunity.update({
+            where: { id: opp.id },
+            data: {
+              status: newStage as any,
+              ...(data?.winProbability !== undefined ? { winProbability: data.winProbability } : {}),
+              ...(data?.notes ? { notes: data.notes } : {}),
+            },
+          });
+          serverStore.updateOpportunityStage(id, newStage, data, user);
+          await this.logAudit('UPDATE_OPPORTUNITY_STAGE', 'COMMERCIAL', opp.code, `Étape d'opportunité modifiée : ${opp.status} -> ${newStage}`, user);
+          return updated;
+        }
+      } catch (err) {
+        handleFinancePersistenceError('updateOpportunityStage', err);
+      }
+    }
     return serverStore.updateOpportunityStage(id, newStage, data, user);
   },
 
   async getCostSheets() {
+    if (hasDb) {
+      try {
+        const sheets = await (prisma as any).costSheet.findMany({
+          orderBy: { createdAt: 'desc' },
+          include: {
+            opportunity: true,
+            contributions: true,
+            lines: true,
+            revisions: true,
+          },
+        });
+        if (sheets && sheets.length > 0) {
+          return sheets.map((cs: any) => ({
+            ...cs,
+            totalDirectCost: Number(cs.totalDirectCost || 0),
+            totalIndirectCost: Number(cs.totalIndirectCost || 0),
+            totalEstimatedCost: Number(cs.totalEstimatedCost || 0),
+            proposedSellingPrice: Number(cs.proposedSellingPrice || 0),
+            estimatedMarginValue: Number(cs.estimatedMarginValue || 0),
+            targetMarginPercent: Number(cs.targetMarginPercent || 0),
+            marginRateOnCost: Number(cs.marginRateOnCost || 0),
+            markupRate: Number(cs.markupRate || 0),
+          }));
+        }
+      } catch (err) {
+        handleDbPersistenceError('getCostSheets', err);
+      }
+    }
     return serverStore.getCostSheets();
   },
 
   async getCostSheet(id: string) {
+    if (hasDb) {
+      try {
+        const cs = await (prisma as any).costSheet.findFirst({
+          where: { OR: [{ id }, { reference: id }] },
+          include: {
+            opportunity: true,
+            contributions: true,
+            lines: true,
+            revisions: true,
+          },
+        });
+        if (cs) {
+          return {
+            ...cs,
+            totalDirectCost: Number(cs.totalDirectCost || 0),
+            totalIndirectCost: Number(cs.totalIndirectCost || 0),
+            totalEstimatedCost: Number(cs.totalEstimatedCost || 0),
+            proposedSellingPrice: Number(cs.proposedSellingPrice || 0),
+            estimatedMarginValue: Number(cs.estimatedMarginValue || 0),
+            targetMarginPercent: Number(cs.targetMarginPercent || 0),
+            marginRateOnCost: Number(cs.marginRateOnCost || 0),
+            markupRate: Number(cs.markupRate || 0),
+          };
+        }
+      } catch (err) {
+        handleDbPersistenceError('getCostSheet', err);
+      }
+    }
     return serverStore.getCostSheet(id);
   },
 
   async createCostSheet(data: any, user?: any) {
+    if (hasDb) {
+      try {
+        const count = await (prisma as any).costSheet.count();
+        const reference = data.reference || `FC-2026-${String(count + 1).padStart(3, '0')}`;
+        const opp = await (prisma as any).opportunity.findFirst({
+          where: { OR: [{ id: data.opportunityId }, { code: data.opportunityCode }] },
+        });
+        if (opp) {
+          const created = await (prisma as any).costSheet.create({
+            data: {
+              reference,
+              opportunityId: opp.id,
+              title: data.title || `Fiche de Chiffrage ${reference}`,
+              clientName: data.clientName || opp.clientName,
+              sector: data.sector || opp.sector,
+              siteLocation: data.siteLocation || opp.location,
+              status: 'BROUILLON',
+              version: 1,
+              totalDirectCost: 0,
+              totalIndirectCost: 0,
+              totalEstimatedCost: 0,
+              proposedSellingPrice: 0,
+              estimatedMarginValue: 0,
+            },
+          });
+          serverStore.createCostSheet({ ...data, reference }, user);
+          await this.logAudit('CREATE_COST_SHEET', 'COMMERCIAL', created.reference, `Fiche de chiffrage créée : ${created.reference}`, user);
+          return created;
+        }
+      } catch (err) {
+        handleFinancePersistenceError('createCostSheet', err);
+      }
+    }
     return serverStore.createCostSheet(data, user);
   },
 
@@ -3005,6 +3411,20 @@ export const dbBridge = {
   },
 
   async convertCostSheetToProject(costSheetId: string, user?: any) {
+    if (hasDb) {
+      try {
+        const sheet = await (prisma as any).costSheet.findFirst({
+          where: { OR: [{ id: costSheetId }, { reference: costSheetId }] },
+          include: { opportunity: { include: { convertedProject: true } } },
+        });
+        if (sheet?.opportunity?.convertedProject) {
+          // Idempotence stricte : renvoie le projet déjà créé sans créer de doublon
+          return sheet.opportunity.convertedProject;
+        }
+      } catch (err) {
+        handleDbPersistenceError('convertCostSheetToProject', err);
+      }
+    }
     return serverStore.convertCostSheetToProject(costSheetId, user);
   },
 

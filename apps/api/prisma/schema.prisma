@@ -175,26 +175,26 @@ enum NonConformityStatus {
 // ==========================================
 
 model User {
-  id              String         @id @default(cuid())
-  email           String         @unique
-  passwordHash    String
-  name            String
-  title           String
-  role            SystemRole
-  departmentCode  DepartmentCode
-  departmentId    String?
-  department      Department?    @relation(fields: [departmentId], references: [id])
-  avatarUrl       String?
-  active          Boolean        @default(true)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id             String         @id @default(cuid())
+  email          String         @unique
+  passwordHash   String
+  name           String
+  title          String
+  role           SystemRole
+  departmentCode DepartmentCode
+  departmentId   String?
+  department     Department?    @relation(fields: [departmentId], references: [id])
+  avatarUrl      String?
+  active         Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
-  assignedProjects  UserProjectAssignment[]
-  purchaseRequests  PurchaseRequest[]       @relation("CreatedPurchaseRequests")
-  managedProjects   Project[]               @relation("ProjectManager")
-  auditLogs         AuditLog[]              @relation("PerformerAuditLogs")
-  notifications     Notification[]
-  refreshSessions   RefreshSession[]
+  assignedProjects UserProjectAssignment[]
+  purchaseRequests PurchaseRequest[]       @relation("CreatedPurchaseRequests")
+  managedProjects  Project[]               @relation("ProjectManager")
+  auditLogs        AuditLog[]              @relation("PerformerAuditLogs")
+  notifications    Notification[]
+  refreshSessions  RefreshSession[]
 
   @@index([email])
   @@index([role])
@@ -239,43 +239,46 @@ model RefreshSession {
 // ==========================================
 
 model Project {
-  id                 String           @id @default(cuid())
-  code               String           @unique
-  name               String
-  description        String
-  clientName         String
-  sector             IndustrialSector
-  managerId          String
-  manager            User             @relation("ProjectManager", fields: [managerId], references: [id])
-  siteLocation       String
-  startDate          DateTime
-  contractEndDate    DateTime
-  contractAmount     Decimal          @default(0) @db.Decimal(15, 2)
-  budgetAmount       Decimal          @default(0) @db.Decimal(15, 2)
-  committedCost      Decimal          @default(0) @db.Decimal(15, 2)
-  actualCost         Decimal          @default(0) @db.Decimal(15, 2)
-  physicalProgress   Float            @default(0)
-  financialProgress  Float            @default(0)
-  status             ProjectStatus    @default(PLANNING)
-  riskLevel          ProjectRiskLevel @default(LOW)
-  priority           String           @default("NORMAL")
-  objectives         String?
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  id                String           @id @default(cuid())
+  code              String           @unique
+  name              String
+  description       String
+  clientName        String
+  sector            IndustrialSector
+  managerId         String
+  manager           User             @relation("ProjectManager", fields: [managerId], references: [id])
+  siteLocation      String
+  startDate         DateTime
+  contractEndDate   DateTime
+  contractAmount    Decimal          @default(0) @db.Decimal(15, 2)
+  budgetAmount      Decimal          @default(0) @db.Decimal(15, 2)
+  committedCost     Decimal          @default(0) @db.Decimal(15, 2)
+  actualCost        Decimal          @default(0) @db.Decimal(15, 2)
+  physicalProgress  Float            @default(0)
+  financialProgress Float            @default(0)
+  status            ProjectStatus    @default(PLANNING)
+  riskLevel         ProjectRiskLevel @default(LOW)
+  priority          String           @default("NORMAL")
+  objectives        String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
-  assignedUsers      UserProjectAssignment[]
-  milestones         ProjectMilestone[]
-  tasks              ProjectTask[]
-  serviceOrders      ServiceOrder[]
-  workSituations     WorkSituation[]
-  purchaseRequests   PurchaseRequest[]
-  purchaseOrders     PurchaseOrder[]
-  allocations        ProjectMaterialAllocation[]
-  costEntries        ProjectCostEntry[]
-  documents          Document[]
-  nonConformities    NonConformity[]
-  assets             Asset[]
-  attendances        Attendance[]
+  assignedUsers    UserProjectAssignment[]
+  milestones       ProjectMilestone[]
+  tasks            ProjectTask[]
+  serviceOrders    ServiceOrder[]
+  workSituations   WorkSituation[]
+  purchaseRequests PurchaseRequest[]
+  purchaseOrders   PurchaseOrder[]
+  allocations      ProjectMaterialAllocation[]
+  costEntries      ProjectCostEntry[]
+  documents        Document[]
+  nonConformities  NonConformity[]
+  assets           Asset[]
+  attendances      Attendance[]
+  opportunityId    String?                     @unique
+  opportunity      Opportunity?                @relation("OpportunityProject", fields: [opportunityId], references: [id])
+  weldJoints       WeldJoint[]
 
   @@index([code])
   @@index([status])
@@ -389,9 +392,9 @@ model PurchaseRequest {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
-  lines                PurchaseRequestLine[]
-  quotes               SupplierQuote[]
-  purchaseOrders       PurchaseOrder[]
+  lines          PurchaseRequestLine[]
+  quotes         SupplierQuote[]
+  purchaseOrders PurchaseOrder[]
 
   @@index([reference])
   @@index([projectId])
@@ -472,9 +475,9 @@ model PurchaseOrder {
   createdAt            DateTime            @default(now())
   updatedAt            DateTime            @updatedAt
 
-  lines                PurchaseOrderLine[]
-  goodsReceipts        GoodsReceipt[]
-  stockMovements       StockMovement[]
+  lines          PurchaseOrderLine[]
+  goodsReceipts  GoodsReceipt[]
+  stockMovements StockMovement[]
 
   @@index([orderNumber])
   @@index([projectId])
@@ -482,17 +485,17 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderLine {
-  id               String             @id @default(cuid())
+  id               String                @id @default(cuid())
   purchaseOrderId  String
-  purchaseOrder    PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  purchaseOrder    PurchaseOrder         @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   itemId           String
-  item             Item               @relation(fields: [itemId], references: [id])
+  item             Item                  @relation(fields: [itemId], references: [id])
   description      String
-  quantity         Decimal            @db.Decimal(12, 2)
+  quantity         Decimal               @db.Decimal(12, 2)
   unit             String
-  unitPrice        Decimal            @db.Decimal(15, 2)
-  subtotal         Decimal            @db.Decimal(15, 2)
-  quantityReceived Decimal            @default(0) @db.Decimal(12, 2)
+  unitPrice        Decimal               @db.Decimal(15, 2)
+  subtotal         Decimal               @db.Decimal(15, 2)
+  quantityReceived Decimal               @default(0) @db.Decimal(12, 2)
   receiptLines     GoodsReceiptLine[]
   invoiceMatchings InvoiceLineMatching[]
 
@@ -501,33 +504,33 @@ model PurchaseOrderLine {
 }
 
 model GoodsReceipt {
-  id                String             @id @default(cuid())
-  receiptNumber     String             @unique
-  purchaseOrderId   String
-  purchaseOrder     PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
-  warehouseId       String
-  warehouse         Warehouse          @relation(fields: [warehouseId], references: [id])
-  receivedById      String
+  id                 String             @id @default(cuid())
+  receiptNumber      String             @unique
+  purchaseOrderId    String
+  purchaseOrder      PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
+  warehouseId        String
+  warehouse          Warehouse          @relation(fields: [warehouseId], references: [id])
+  receivedById       String
   deliveryNoteNumber String
-  receiptDate       DateTime           @default(now())
-  status            String             @default("VALIDATED")
-  notes             String?
-  createdAt         DateTime           @default(now())
-  lines             GoodsReceiptLine[]
+  receiptDate        DateTime           @default(now())
+  status             String             @default("VALIDATED")
+  notes              String?
+  createdAt          DateTime           @default(now())
+  lines              GoodsReceiptLine[]
 
   @@index([purchaseOrderId])
   @@index([warehouseId])
 }
 
 model GoodsReceiptLine {
-  id                  String            @id @default(cuid())
+  id                  String                @id @default(cuid())
   goodsReceiptId      String
-  goodsReceipt        GoodsReceipt      @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  goodsReceipt        GoodsReceipt          @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
   purchaseOrderLineId String
-  purchaseOrderLine   PurchaseOrderLine @relation(fields: [purchaseOrderLineId], references: [id])
+  purchaseOrderLine   PurchaseOrderLine     @relation(fields: [purchaseOrderLineId], references: [id])
   itemId              String
-  item                Item              @relation(fields: [itemId], references: [id])
-  quantityReceived    Decimal           @db.Decimal(12, 2)
+  item                Item                  @relation(fields: [itemId], references: [id])
+  quantityReceived    Decimal               @db.Decimal(12, 2)
   notes               String?
   invoiceMatchings    InvoiceLineMatching[]
 
@@ -539,47 +542,47 @@ model GoodsReceiptLine {
 // ==========================================
 
 model ItemCategory {
-  id          String   @id @default(cuid())
-  code        String   @unique
+  id          String  @id @default(cuid())
+  code        String  @unique
   name        String
   description String?
   items       Item[]
 }
 
 model Item {
-  id            String         @id @default(cuid())
-  code          String         @unique
+  id            String       @id @default(cuid())
+  code          String       @unique
   name          String
   description   String
   categoryId    String
-  category      ItemCategory   @relation(fields: [categoryId], references: [id])
+  category      ItemCategory @relation(fields: [categoryId], references: [id])
   unit          String
-  minStockLevel Decimal        @default(10) @db.Decimal(12, 2)
-  currentStock  Decimal        @default(0) @db.Decimal(12, 2)
-  reservedStock Decimal        @default(0) @db.Decimal(12, 2)
-  unitCost      Decimal        @default(0) @db.Decimal(15, 2)
-  active        Boolean        @default(true)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  minStockLevel Decimal      @default(10) @db.Decimal(12, 2)
+  currentStock  Decimal      @default(0) @db.Decimal(12, 2)
+  reservedStock Decimal      @default(0) @db.Decimal(12, 2)
+  unitCost      Decimal      @default(0) @db.Decimal(15, 2)
+  active        Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 
-  movements     StockMovement[]
-  prLines       PurchaseRequestLine[]
-  poLines       PurchaseOrderLine[]
-  receiptLines  GoodsReceiptLine[]
-  allocations   ProjectMaterialAllocation[]
+  movements    StockMovement[]
+  prLines      PurchaseRequestLine[]
+  poLines      PurchaseOrderLine[]
+  receiptLines GoodsReceiptLine[]
+  allocations  ProjectMaterialAllocation[]
 
   @@index([code])
   @@index([categoryId])
 }
 
 model Warehouse {
-  id             String          @id @default(cuid())
-  code           String          @unique
-  name           String
-  location       String
-  managerName    String
-  active         Boolean         @default(true)
-  createdAt      DateTime        @default(now())
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  location    String
+  managerName String
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
 
   stockMovements StockMovement[]
   goodsReceipts  GoodsReceipt[]
@@ -640,9 +643,9 @@ model ProjectCostEntry {
   id                String   @id @default(cuid())
   projectId         String
   project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  category          String   // MATERIEL, MAIN_OEUVRE, SOUS_TRAITANCE, MATERIEL_LOCATIF, AUTRE
+  category          String // MATERIEL, MAIN_OEUVRE, SOUS_TRAITANCE, MATERIEL_LOCATIF, AUTRE
   amount            Decimal  @db.Decimal(15, 2)
-  sourceModule      String   // INVENTORY, HR, PROCUREMENT, MANUAL
+  sourceModule      String // INVENTORY, HR, PROCUREMENT, MANUAL
   sourceReferenceId String?
   recordedAt        DateTime @default(now())
   description       String
@@ -671,34 +674,35 @@ model Employee {
   status             String                  @default("ACTIF")
   certifications     EmployeeCertification[]
   attendances        Attendance[]
+  weldJoints         WeldJoint[]
 
   @@index([registrationNumber])
   @@index([departmentId])
 }
 
 model EmployeeCertification {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   employeeId  String
-  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   certName    String
   issuingBody String
   issueDate   DateTime
   expiryDate  DateTime
-  status      String    @default("VALIDE")
+  status      String   @default("VALIDE")
 
   @@index([employeeId])
 }
 
 model Attendance {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   employeeId    String
-  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   projectId     String?
-  project       Project?  @relation(fields: [projectId], references: [id])
+  project       Project? @relation(fields: [projectId], references: [id])
   date          DateTime
-  regularHours  Float     @default(8)
-  overtimeHours Float     @default(0)
-  isAbsent      Boolean   @default(false)
+  regularHours  Float    @default(8)
+  overtimeHours Float    @default(0)
+  isAbsent      Boolean  @default(false)
   absenceReason String?
 
   @@index([employeeId])
@@ -766,19 +770,20 @@ model FuelRecord {
 // ==========================================
 
 model Document {
-  id          String           @id @default(cuid())
-  docNumber   String           @unique
-  title       String
-  category    DocumentCategory
-  projectId   String?
-  project     Project?         @relation(fields: [projectId], references: [id])
-  version     String           @default("1.0")
-  author      String
-  issueDate   DateTime         @default(now())
-  expiryDate  DateTime?
-  status      String           @default("VALIDE")
-  fileUrl     String?
-  fileSize    String?
+  id         String             @id @default(cuid())
+  docNumber  String             @unique
+  title      String
+  category   DocumentCategory
+  projectId  String?
+  project    Project?           @relation(fields: [projectId], references: [id])
+  version    String             @default("1.0")
+  author     String
+  issueDate  DateTime           @default(now())
+  expiryDate DateTime?
+  status     String             @default("VALIDE")
+  fileUrl    String?
+  fileSize   String?
+  revisions  DocumentRevision[]
 
   @@index([docNumber])
   @@index([category])
@@ -786,18 +791,21 @@ model Document {
 }
 
 model NonConformity {
-  id           String                @id @default(cuid())
-  ncNumber     String                @unique
-  title        String
-  description  String
-  severity     NonConformitySeverity
-  status       NonConformityStatus   @default(OPEN)
-  projectId    String?
-  project      Project?              @relation(fields: [projectId], references: [id])
-  detectedBy   String
-  detectedDate DateTime              @default(now())
-  rootCause    String?
-  actions      CorrectiveAction[]
+  id              String                @id @default(cuid())
+  ncNumber        String                @unique
+  title           String
+  description     String
+  severity        NonConformitySeverity
+  status          NonConformityStatus   @default(OPEN)
+  projectId       String?
+  project         Project?              @relation(fields: [projectId], references: [id])
+  detectedBy      String
+  detectedDate    DateTime              @default(now())
+  rootCause       String?
+  weldJointId     String?
+  weldJoint       WeldJoint?            @relation(fields: [weldJointId], references: [id], onDelete: SetNull)
+  weldJointNumber String?
+  actions         CorrectiveAction[]
 
   @@index([ncNumber])
   @@index([status])
@@ -821,19 +829,19 @@ model CorrectiveAction {
 // ==========================================
 
 model AuditLog {
-  id            String   @id @default(cuid())
+  id            String     @id @default(cuid())
   entityName    String
   entityId      String
   action        String
   performerId   String
-  performer     User     @relation("PerformerAuditLogs", fields: [performerId], references: [id])
+  performer     User       @relation("PerformerAuditLogs", fields: [performerId], references: [id])
   performerName String
   performerRole SystemRole
   ipAddress     String?
-  beforeState   String?  @db.Text
-  afterState    String?  @db.Text
+  beforeState   String?    @db.Text
+  afterState    String?    @db.Text
   description   String
-  createdAt     DateTime @default(now())
+  createdAt     DateTime   @default(now())
 
   @@index([entityName, entityId])
   @@index([performerId])
@@ -852,7 +860,6 @@ model Notification {
 
   @@index([userId, read])
 }
-
 
 // ==========================================
 // 10. MODULE FINANCE, TRÉSORERIE & COMPTABILITÉ (PHASE 6B.2)
@@ -1026,8 +1033,8 @@ model SupplierInvoice {
   createdAt               DateTime                      @default(now())
   updatedAt               DateTime                      @updatedAt
 
-  lines                   SupplierInvoiceLine[]
-  matchings               InvoiceLineMatching[]
+  lines     SupplierInvoiceLine[]
+  matchings InvoiceLineMatching[]
 
   @@index([internalReference])
   @@index([purchaseOrderId])
@@ -1052,17 +1059,17 @@ model FinancialConfig {
 }
 
 model SupplierInvoiceLine {
-  id                String              @id @default(cuid())
+  id                String          @id @default(cuid())
   supplierInvoiceId String
-  supplierInvoice   SupplierInvoice     @relation(fields: [supplierInvoiceId], references: [id], onDelete: Cascade)
-  lineNumber        Int                 @default(1)
+  supplierInvoice   SupplierInvoice @relation(fields: [supplierInvoiceId], references: [id], onDelete: Cascade)
+  lineNumber        Int             @default(1)
   description       String
-  quantity          Decimal             @db.Decimal(12, 2)
-  unitPrice         Decimal             @db.Decimal(15, 2)
-  subtotalHT        Decimal             @db.Decimal(18, 2)
-  createdAt         DateTime            @default(now())
+  quantity          Decimal         @db.Decimal(12, 2)
+  unitPrice         Decimal         @db.Decimal(15, 2)
+  subtotalHT        Decimal         @db.Decimal(18, 2)
+  createdAt         DateTime        @default(now())
 
-  matchings         InvoiceLineMatching[]
+  matchings InvoiceLineMatching[]
 
   @@index([supplierInvoiceId])
 }
@@ -1098,4 +1105,254 @@ model InvoiceLineMatching {
   @@index([purchaseOrderLineId])
   @@index([goodsReceiptLineId])
   @@index([status])
+}
+
+// ==========================================
+// 12. COMMERCIAL, CHIFFRAGE & GED INDUSTRIELLE (PHASE I)
+// ==========================================
+
+enum OpportunityStatus {
+  NOUVELLE
+  QUALIFIEE
+  VISITE_TECHNIQUE
+  CHIFFRAGE
+  VALIDATION_INTERNE
+  OFFRE_SOUMISE
+  NEGOCIATION
+  GAGNEE
+  PERDUE
+  ANNULEE
+}
+
+enum CostSheetStatus {
+  BROUILLON
+  PRETE_POUR_VALIDATION
+  EN_ATTENTE_DG
+  VALIDEE
+  REFUSEE
+  GAGNEE
+}
+
+enum CostSheetContributionDept {
+  PROJET
+  ACHATS
+  RH
+  FINANCE
+}
+
+enum WeldJointStatus {
+  EN_ATTENTE_CND
+  LIBERE_EPREUVE
+  REJETE
+  A_REPARER
+  REPARE_CONFORME
+}
+
+model Opportunity {
+  id                     String            @id @default(cuid())
+  code                   String            @unique
+  title                  String
+  clientName             String
+  sector                 IndustrialSector  @default(OIL_AND_GAS)
+  location               String?
+  wilaya                 String?
+  contactName            String?
+  contactEmail           String?
+  contactPhone           String?
+  estimatedAmount        Decimal           @default(0) @db.Decimal(15, 2)
+  winProbability         Int               @default(50)
+  weightedValue          Decimal           @default(0) @db.Decimal(15, 2)
+  assignedCommercialId   String?
+  assignedCommercialName String?
+  status                 OpportunityStatus @default(NOUVELLE)
+  priority               String            @default("NORMALE")
+  receivedAt             DateTime          @default(now())
+  submissionDeadline     DateTime?
+  nextAction             String?
+  nextActionDate         DateTime?
+  sourceOrigin           String?           @default("DIRECT")
+  isDemo                 Boolean           @default(false)
+  notes                  String?           @db.Text
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+
+  convertedProject Project?    @relation("OpportunityProject")
+  costSheets       CostSheet[]
+
+  @@index([code])
+  @@index([status])
+  @@index([clientName])
+}
+
+model CostSheet {
+  id            String          @id @default(cuid())
+  reference     String          @unique
+  opportunityId String
+  opportunity   Opportunity     @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  title         String
+  clientName    String
+  sector        String          @default("OIL_AND_GAS")
+  siteLocation  String?
+  currency      String          @default("DZD")
+  status        CostSheetStatus @default(BROUILLON)
+  version       Int             @default(1)
+
+  totalDirectCost      Decimal @default(0) @db.Decimal(15, 2)
+  totalIndirectCost    Decimal @default(0) @db.Decimal(15, 2)
+  totalEstimatedCost   Decimal @default(0) @db.Decimal(15, 2)
+  targetMarginPercent  Decimal @default(0) @db.Decimal(5, 2)
+  proposedSellingPrice Decimal @default(0) @db.Decimal(15, 2)
+  estimatedMarginValue Decimal @default(0) @db.Decimal(15, 2)
+  marginRateOnCost     Decimal @default(0) @db.Decimal(5, 2)
+  markupRate           Decimal @default(0) @db.Decimal(5, 2)
+
+  dgDecision      String?
+  dgDecisionNotes String?   @db.Text
+  dgDecisionDate  DateTime?
+  dgDecisionBy    String?
+  isImmutable     Boolean   @default(false)
+  isDemo          Boolean   @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contributions CostSheetContribution[]
+  lines         CostSheetLine[]
+  revisions     CostSheetRevision[]
+
+  @@index([reference])
+  @@index([opportunityId])
+  @@index([status])
+}
+
+model CostSheetContribution {
+  id              String                    @id @default(cuid())
+  costSheetId     String
+  costSheet       CostSheet                 @relation(fields: [costSheetId], references: [id], onDelete: Cascade)
+  department      CostSheetContributionDept
+  responsibleId   String?
+  responsibleName String?
+  completed       Boolean                   @default(false)
+  completedAt     DateTime?
+  summaryNotes    String?                   @db.Text
+  dataPayload     Json?
+  updatedAt       DateTime                  @updatedAt
+
+  @@unique([costSheetId, department])
+  @@index([costSheetId])
+}
+
+model CostSheetLine {
+  id          String                    @id @default(cuid())
+  costSheetId String
+  costSheet   CostSheet                 @relation(fields: [costSheetId], references: [id], onDelete: Cascade)
+  department  CostSheetContributionDept
+  category    String
+  label       String
+  quantity    Decimal                   @default(0) @db.Decimal(12, 3)
+  unit        String
+  unitPrice   Decimal                   @default(0) @db.Decimal(15, 2)
+  totalAmount Decimal                   @default(0) @db.Decimal(15, 2)
+  notes       String?
+  orderIndex  Int                       @default(0)
+
+  @@index([costSheetId])
+  @@index([department])
+}
+
+model CostSheetRevision {
+  id                   String    @id @default(cuid())
+  costSheetId          String
+  costSheet            CostSheet @relation(fields: [costSheetId], references: [id], onDelete: Cascade)
+  revisionNumber       String
+  authorId             String?
+  authorName           String
+  authorRole           String?
+  reason               String    @db.Text
+  totalDirectCost      Decimal   @db.Decimal(15, 2)
+  totalEstimatedCost   Decimal   @db.Decimal(15, 2)
+  proposedSellingPrice Decimal   @db.Decimal(15, 2)
+  marginValue          Decimal   @db.Decimal(15, 2)
+  deltaMarginDA        Decimal?  @db.Decimal(15, 2)
+  snapshotData         Json
+  createdAt            DateTime  @default(now())
+
+  @@index([costSheetId])
+}
+
+model WeldJoint {
+  id                String    @id @default(cuid())
+  jointNumber       String    @unique
+  projectId         String
+  project           Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectCode       String
+  lineIso           String
+  spoolId           String?
+  diameterNominal   String
+  thicknessMm       Decimal?  @db.Decimal(6, 2)
+  material          String
+  heatNumberPipe    String?
+  heatNumberFitting String?
+  welderId          String?
+  welder            Employee? @relation(fields: [welderId], references: [id], onDelete: SetNull)
+  welderName        String
+  welderStamp       String
+  welderCqsRef      String?
+  weldingProcess    String
+  dmosRef           String
+  weldDate          DateTime  @default(now())
+
+  visualInspection String    @default("CONFORME")
+  visualDate       DateTime?
+  visualInspector  String?
+
+  cndType            String?
+  cndRatePercent     Int       @default(100)
+  cndStatus          String    @default("EN_ATTENTE_CND")
+  cndReportRef       String?
+  cndFilmRef         String?
+  cndControlDate     DateTime?
+  cndControllingBody String?
+
+  status    WeldJointStatus @default(EN_ATTENTE_CND)
+  notes     String?         @db.Text
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  repairs         WeldRepair[]
+  nonConformities NonConformity[]
+
+  @@index([jointNumber])
+  @@index([projectId])
+  @@index([welderStamp])
+  @@index([status])
+}
+
+model WeldRepair {
+  id                     String    @id @default(cuid())
+  weldJointId            String
+  weldJoint              WeldJoint @relation(fields: [weldJointId], references: [id], onDelete: Cascade)
+  repairIndex            Int       @default(1)
+  repairDate             DateTime  @default(now())
+  repairWelderStamp      String
+  repairWelderName       String?
+  repairDmosRef          String    @default("DMOS-REP-01")
+  postRepairCndStatus    String    @default("CONFORME")
+  postRepairCndReportRef String?
+  notes                  String?   @db.Text
+  createdAt              DateTime  @default(now())
+
+  @@index([weldJointId])
+}
+
+model DocumentRevision {
+  id          String   @id @default(cuid())
+  documentId  String
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  revision    String
+  author      String
+  changeNotes String   @db.Text
+  date        DateTime @default(now())
+
+  @@index([documentId])
 }

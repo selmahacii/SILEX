@@ -47,6 +47,24 @@ export async function POST(req: NextRequest) {
     const email = (body.email || '').toLowerCase().trim();
     const role = (body.role || SystemRole.DIRECTEUR_GENERAL) as SystemRole;
 
+    // Règle de sécurité SoD : Seul un ADMINISTRATEUR authentifié est habilité à utiliser l'impersonation en environnement de test
+    if (!callingUser || callingUser.role !== SystemRole.ADMINISTRATEUR) {
+      await dbBridge.logAudit(
+        'UNAUTHORIZED_ROLE_SWITCH_ATTEMPT',
+        'SECURITY_ALERT',
+        callingUser?.id || 'anonymous',
+        `Tentative non autorisée de basculement de profil vers ${role} par l'utilisateur ${callingUser?.email || 'visiteur non authentifié'} (rôle actuel: ${callingUser?.role || 'aucun'}). Action bloquée.`,
+        callingUser
+      );
+      return NextResponse.json(
+        {
+          error: 'Accès refusé : Seul un Administrateur Système authentifié est habilité à basculer de profil en environnement de qualification.',
+          code: 'FORBIDDEN_ROLE_SWITCH',
+        },
+        { status: 403, headers: corsHeaders() }
+      );
+    }
+
     let targetUser: any = null;
     if (email) {
       targetUser = await dbBridge.getUserByEmail(email);

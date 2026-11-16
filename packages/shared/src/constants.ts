@@ -179,3 +179,78 @@ export const DEMO_PROFILES: Record<SystemRole, DemoProfile> = {
     description: 'Gestion des rôles, journal d’audit de sécurité et configuration plateforme.',
   },
 };
+
+// ==========================================
+// MATRICE CENTRALISÉE DES SEUILS SoD (PHASE I)
+// ==========================================
+
+export interface SoDRuleDefinition {
+  type: string;
+  sourceConfig: string;
+  lowerThresholdDA: number;
+  upperThresholdDA: number;
+  baseAmount: 'HT' | 'TTC';
+  pmLevel: string;
+  procurementLevel: string;
+  dafLevel: string;
+  dgLevel: string;
+  budgetExceededRule: string;
+  selfApprovalForbidden: boolean;
+  dualValidationRequired: boolean;
+}
+
+export const SILEX_SOD_RULES = {
+  // 1. Demandes d'Achat (DA) et Engagements Fournisseurs
+  PURCHASE_REQUEST: {
+    TIER_1_MAX_DA: 100000,
+    TIER_2_MAX_DA: 500000,
+    DG_MANDATORY_THRESHOLD_DA: 500000,
+    budgetExceededForcesDG: true,
+    selfApprovalAllowed: false,
+  },
+  // 2. Factures Fournisseurs et 3-Way Matching
+  SUPPLIER_INVOICE: {
+    AUTO_APPROVE_MAX_DA: 500000,
+    PM_APPROVAL_MAX_DA: 2000000,
+    DG_APPROVAL_THRESHOLD_DA: 2000000,
+    priceTolerancePct: 0.5,
+    priceToleranceAbsoluteDA: 100,
+    selfApprovalAllowed: false,
+  },
+  // 3. Situations de Travaux et Retenues de Garantie
+  WORK_SITUATION: {
+    RETENTION_GUARANTEE_PCT: 5.0,
+    WARRANTY_RELEASE_ROLE: SystemRole.DIRECTEUR_GENERAL,
+    selfApprovalAllowed: false,
+  },
+  // 4. Chiffrage Commercial
+  COST_SHEET: {
+    DG_APPROVAL_MANDATORY: true,
+    selfApprovalAllowed: false,
+  },
+} as const;
+
+export function getRequiredPrApprovalLevel(amountHT: number, budgetExceeded: boolean = false): 'RESPONSABLE_ACHATS' | 'RESPONSABLE_PROJET_ET_ACHATS' | 'DIRECTEUR_GENERAL' {
+  if (budgetExceeded || amountHT > SILEX_SOD_RULES.PURCHASE_REQUEST.DG_MANDATORY_THRESHOLD_DA) {
+    return 'DIRECTEUR_GENERAL';
+  }
+  if (amountHT > SILEX_SOD_RULES.PURCHASE_REQUEST.TIER_1_MAX_DA) {
+    return 'RESPONSABLE_PROJET_ET_ACHATS';
+  }
+  return 'RESPONSABLE_ACHATS';
+}
+
+export function getRequiredSupplierInvoiceApprovalLevel(amountHT: number, isMatched: boolean = true): 'AUTO_APPROVED' | 'PENDING_PM' | 'PENDING_DG' {
+  if (amountHT > SILEX_SOD_RULES.SUPPLIER_INVOICE.DG_APPROVAL_THRESHOLD_DA) {
+    return 'PENDING_DG';
+  }
+  if (amountHT > SILEX_SOD_RULES.SUPPLIER_INVOICE.AUTO_APPROVE_MAX_DA || !isMatched) {
+    return 'PENDING_PM';
+  }
+  return 'AUTO_APPROVED';
+}
+
+export function isSelfApprovalForbidden(initiatorId?: string, approverId?: string): boolean {
+  if (!initiatorId || !approverId) return false;
+  return initiatorId === approverId;
+}

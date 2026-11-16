@@ -451,8 +451,8 @@ export async function POST(
     // ignore
   }
 
-  // 1. Auth (Demo Switch & Login)
-  if (clean.includes('/auth/login') || clean.includes('/auth/demo-switch')) {
+  // 1. Auth (Login only - Demo switch is restricted to dedicated secured route)
+  if (clean.includes('/auth/login')) {
     const email = (body.email || '').toLowerCase().trim();
     let role = (body.role || SystemRole.DIRECTEUR_GENERAL) as SystemRole;
 

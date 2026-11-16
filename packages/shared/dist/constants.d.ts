@@ -73,4 +73,47 @@ export interface DemoProfile {
     description: string;
 }
 export declare const DEMO_PROFILES: Record<SystemRole, DemoProfile>;
+export interface SoDRuleDefinition {
+    type: string;
+    sourceConfig: string;
+    lowerThresholdDA: number;
+    upperThresholdDA: number;
+    baseAmount: 'HT' | 'TTC';
+    pmLevel: string;
+    procurementLevel: string;
+    dafLevel: string;
+    dgLevel: string;
+    budgetExceededRule: string;
+    selfApprovalForbidden: boolean;
+    dualValidationRequired: boolean;
+}
+export declare const SILEX_SOD_RULES: {
+    readonly PURCHASE_REQUEST: {
+        readonly TIER_1_MAX_DA: 100000;
+        readonly TIER_2_MAX_DA: 500000;
+        readonly DG_MANDATORY_THRESHOLD_DA: 500000;
+        readonly budgetExceededForcesDG: true;
+        readonly selfApprovalAllowed: false;
+    };
+    readonly SUPPLIER_INVOICE: {
+        readonly AUTO_APPROVE_MAX_DA: 500000;
+        readonly PM_APPROVAL_MAX_DA: 2000000;
+        readonly DG_APPROVAL_THRESHOLD_DA: 2000000;
+        readonly priceTolerancePct: 0.5;
+        readonly priceToleranceAbsoluteDA: 100;
+        readonly selfApprovalAllowed: false;
+    };
+    readonly WORK_SITUATION: {
+        readonly RETENTION_GUARANTEE_PCT: 5;
+        readonly WARRANTY_RELEASE_ROLE: SystemRole.DIRECTEUR_GENERAL;
+        readonly selfApprovalAllowed: false;
+    };
+    readonly COST_SHEET: {
+        readonly DG_APPROVAL_MANDATORY: true;
+        readonly selfApprovalAllowed: false;
+    };
+};
+export declare function getRequiredPrApprovalLevel(amountHT: number, budgetExceeded?: boolean): 'RESPONSABLE_ACHATS' | 'RESPONSABLE_PROJET_ET_ACHATS' | 'DIRECTEUR_GENERAL';
+export declare function getRequiredSupplierInvoiceApprovalLevel(amountHT: number, isMatched?: boolean): 'AUTO_APPROVED' | 'PENDING_PM' | 'PENDING_DG';
+export declare function isSelfApprovalForbidden(initiatorId?: string, approverId?: string): boolean;
 //# sourceMappingURL=constants.d.ts.map

@@ -119,7 +119,7 @@ const DEFAULT_RBAC_MATRIX: Record<string, Record<string, { read: boolean; create
   },
 };
 
-import { SystemRole, DepartmentCode, ProjectStatus } from '@silex/shared';
+import { SystemRole, DepartmentCode, ProjectStatus, getRequiredPrApprovalLevel, getRequiredSupplierInvoiceApprovalLevel, isSelfApprovalForbidden } from '@silex/shared';
 
 export interface ServerUser {
   id: string;
@@ -423,6 +423,7 @@ export interface StoredWorkflow {
   type: 'PURCHASE_REQUEST' | 'WORK_SITUATION' | 'EXPENSE_REPORT' | 'CONTRACT_CHANGE' | 'COST_SHEET';
   status: 'PENDING' | 'PENDING_DG' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'REVISION_REQUESTED' | 'SUBMITTED' | 'PRETE_POUR_VALIDATION';
   priority: 'NORMAL' | 'HIGH' | 'CRITICAL';
+  initiatorId?: string;
   initiatorName: string;
   initiatorRole: string;
   initiatorDepartment: string;
@@ -3309,6 +3310,12 @@ class ServerStore {
   approveWorkflow(id: string, notes: string = '', user?: any) {
     const wf = this.getWorkflow(id);
     if (!wf) return null;
+
+    // Règle SoD : Interdiction stricte de l'auto-approbation
+    if (user?.id && wf.initiatorId && isSelfApprovalForbidden(wf.initiatorId, user.id)) {
+      throw new Error(`[SoD Violation] L'initiateur ${wf.initiatorName || wf.initiatorId} ne peut pas approuver son propre dossier (${wf.reference}).`);
+    }
+
     wf.status = 'APPROVED';
     wf.decidedAt = new Date().toISOString();
     wf.decidedBy = user?.name || 'Amine Benali (DG)';
@@ -3524,13 +3531,8 @@ class ServerStore {
     }
     const stockAvailableWarning = stockWarnings.length > 0;
 
-    // Matrice d'approbation à 3 seuils SoD
-    let requiredApprovalLevel: 'RESPONSABLE_ACHATS' | 'RESPONSABLE_PROJET_ET_ACHATS' | 'DIRECTEUR_GENERAL' = 'RESPONSABLE_ACHATS';
-    if (budgetExceeded || amountHT > 500000) {
-      requiredApprovalLevel = 'DIRECTEUR_GENERAL';
-    } else if (amountHT > 100000) {
-      requiredApprovalLevel = 'RESPONSABLE_PROJET_ET_ACHATS';
-    }
+    // Matrice d'approbation à 3 seuils SoD centralisée (@silex/shared)
+    const requiredApprovalLevel = getRequiredPrApprovalLevel(amountHT, budgetExceeded);
 
     const pr = {
       id: `pr-${Date.now()}`,
@@ -6221,13 +6223,8 @@ class ServerStore {
     const poTotalOrderedQty = po ? (po.lines || po.items || []).reduce((sum: number, l: any) => sum + Number(l.quantity || 0), 0) : 0;
     const remainingQuantityToInvoice = Math.max(0, poTotalOrderedQty - invoicedQuantityTotal);
 
-    // Seuil d'approbation SoD
-    let approvalThresholdStatus: 'AUTO_APPROVED' | 'PENDING_PM' | 'PENDING_DG' | 'APPROVED' = 'AUTO_APPROVED';
-    if (amountHT > this.financialConfig.dgApprovalThresholdDA) {
-      approvalThresholdStatus = 'PENDING_DG';
-    } else if (amountHT > this.financialConfig.pmApprovalThresholdDA) {
-      approvalThresholdStatus = 'PENDING_PM';
-    }
+    // Seuil d'approbation SoD centralisé (@silex/shared)
+    let approvalThresholdStatus: 'AUTO_APPROVED' | 'PENDING_PM' | 'PENDING_DG' | 'APPROVED' = getRequiredSupplierInvoiceApprovalLevel(amountHT, true);
 
     const newInvoice: StoredSupplierInvoice = {
       id: invoiceId,
