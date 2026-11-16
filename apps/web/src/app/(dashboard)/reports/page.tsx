@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
+import { downloadXLSX, XlsxColumn } from '@/lib/xlsx-export';
 import {
   formatCurrencyDA,
   formatDateDZ,
@@ -432,6 +433,62 @@ export default function ReportsPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportXLSX = () => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    const columns: XlsxColumn[] = [
+      { key: 'code', label: 'Code Marché' },
+      { key: 'name', label: 'Intitulé Chantier' },
+      { key: 'clientName', label: 'Client Contractuel' },
+      { key: 'siteLocation', label: 'Site d\'Exécution' },
+      { key: 'wilaya', label: 'Wilaya' },
+      { key: 'sector', label: 'Secteur Industriel' },
+      { key: 'managerName', label: 'Responsable Projet' },
+      { key: 'status', label: 'Statut' },
+      { key: 'contractAmount', label: 'Marché HT', type: 'currency' },
+      { key: 'revisedBudget', label: 'Budget Révisé', type: 'currency' },
+      { key: 'committedCost', label: 'Engagements BC', type: 'currency' },
+      { key: 'actualCost', label: 'Coûts Réels', type: 'currency' },
+      { key: 'eacCost', label: 'EAC Final', type: 'currency' },
+      { key: 'physicalProgress', label: 'Avancement (%)', type: 'percent' },
+      { key: 'forecastMargin', label: 'Marge Prév.', type: 'currency' },
+    ];
+
+    const rows = filteredProjects.map(p => {
+      const contract = Number(p.contractAmount || 0);
+      const bRev = Number(p.revisedBudget || p.budgetAmount || 0);
+      const comm = Number(p.committedCost || p.committedBudget || 0);
+      const act = Number(p.actualCost || p.spentBudget || 0);
+      const eac = p.eacCost || Math.max(bRev, act + Math.max(0, comm - act));
+      const margin = contract - eac;
+      const progress = Number(p.physicalProgress || 0) / 100;
+
+      return {
+        code: p.code,
+        name: p.name,
+        clientName: p.clientName,
+        siteLocation: p.siteLocation,
+        wilaya: p.wilaya || 'Alger',
+        sector: p.sector,
+        managerName: p.managerName || 'Amine Khelifi',
+        status: p.status,
+        contractAmount: contract,
+        revisedBudget: bRev,
+        committedCost: comm,
+        actualCost: act,
+        eacCost: eac,
+        physicalProgress: progress,
+        forecastMargin: margin,
+      };
+    });
+
+    downloadXLSX(`SILEX_RAPPORT_CHANTIERS_${dateStr}.xlsx`, {
+      sheetName: 'Chantiers SILEX',
+      columns,
+      rows,
+      companyName: COMPANY_NAME,
+    });
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -461,11 +518,19 @@ export default function ReportsPage() {
           </button>
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-[#E1E6ED] text-slate-700 text-xs font-semibold rounded-md hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-[#E1E6ED] text-slate-700 text-xs font-semibold rounded-md hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
             title="Export CSV structuré avec BOM UTF-8 conforme Excel"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-            <span>Exporter CSV (Excel)</span>
+            <span>CSV</span>
+          </button>
+          <button
+            onClick={handleExportXLSX}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-md transition-colors shadow-2xs cursor-pointer"
+            title="Export classeur natif Excel (.xlsx) avec styles et formats monétaires DZD"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-white" />
+            <span>Excel (.xlsx)</span>
           </button>
           <button
             onClick={handlePrint}
