@@ -42,7 +42,7 @@ import {
   FileSpreadsheet,
   AlertTriangle,
   RotateCcw,
-  Sparkles,
+  RefreshCw,
   ChevronRight,
   SlidersHorizontal,
   Info,
@@ -3166,7 +3166,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
 
               <div className="p-3 bg-blue-50/50 rounded-lg border border-blue-200 text-[11px] text-slate-700 space-y-1">
                 <div className="flex items-center gap-1.5 font-bold text-[#0B207D]">
-                  <Sparkles className="w-3.5 h-3.5" />
+                  <RefreshCw className="w-3.5 h-3.5 text-[#0B207D]" />
                   Interconnexion Automatique :
                 </div>
                 <div>

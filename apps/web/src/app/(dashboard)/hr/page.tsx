@@ -22,7 +22,7 @@ import {
   DollarSign,
   Briefcase,
   X,
-  Sparkles,
+  Info,
   CheckCircle2,
   Eye,
   ChevronRight,
@@ -598,7 +598,7 @@ export default function HrPage() {
 
           <div className="p-2.5 bg-blue-50/60 border-b border-blue-100 flex items-center justify-between px-4 text-[11px] text-[#0B207D]">
             <span className="flex items-center gap-1.5 font-medium">
-              <Sparkles className="w-3.5 h-3.5 text-[#E51A1A]" />
+              <Info className="w-3.5 h-3.5 text-[#0B207D]" />
               Cliquez sur une ligne pour ouvrir le <strong>Dossier Collaborateur</strong> (habilitations CQS, pointages chantiers, débours et actions rapides).
             </span>
             <span className="text-[10px] text-slate-500 hidden sm:inline">

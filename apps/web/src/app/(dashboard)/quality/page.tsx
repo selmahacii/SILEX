@@ -17,7 +17,7 @@ import {
   Search,
   Filter,
   Check,
-  Sparkles,
+  Wrench,
   Flame,
   FileSpreadsheet,
   Layers,
@@ -869,7 +869,7 @@ export default function QualityPage() {
                           <tr className="bg-orange-50/30">
                             <td colSpan={9} className="p-2 pl-6 text-[11px] text-slate-700 border-b border-orange-100">
                               <div className="flex items-center gap-2 text-orange-950 font-semibold">
-                                <Sparkles className="w-3.5 h-3.5 text-orange-600 shrink-0" />
+                                <Wrench className="w-3.5 h-3.5 text-orange-600 shrink-0" />
                                 <span>Historique des réparations consignées :</span>
                               </div>
                               <div className="space-y-1 mt-1 pl-5">
@@ -1109,7 +1109,7 @@ export default function QualityPage() {
           <div className="bg-white rounded-lg max-w-md w-full p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-[#142B45] flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-[#0A7F7C]" />
+                <ShieldCheck className="w-4 h-4 text-[#0A7F7C]" />
                 Action Corrective pour {selectedNcForAction.ncNumber}
               </h3>
               <button onClick={() => setShowActionModal(false)} className="text-slate-400 hover:text-slate-600 p-1">

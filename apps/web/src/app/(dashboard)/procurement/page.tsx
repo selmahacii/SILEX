@@ -31,7 +31,7 @@ import {
   Package,
   Layers,
   X,
-  Sparkles,
+  Send,
   CheckCircle2,
   Edit,
   RotateCcw,
@@ -1864,7 +1864,7 @@ export default function ProcurementPage() {
               <div className="flex items-start justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
-                    <Sparkles className="w-5 h-5 text-[#0B207D]" />
+                    <ShoppingCart className="w-5 h-5 text-[#0B207D]" />
                   </div>
                   <div>
                     <h3 className="text-sm sm:text-base font-bold text-[#07164D] flex items-center gap-2">
@@ -2485,7 +2485,7 @@ export default function ProcurementPage() {
                       type="submit"
                       className="px-4 py-1.5 bg-[#0B207D] hover:bg-[#07164D] text-white font-bold rounded shadow-xs transition-colors cursor-pointer text-xs flex items-center gap-1.5"
                     >
-                      <Sparkles className="w-3.5 h-3.5" />
+                      <Send className="w-3.5 h-3.5" />
                       Soumettre la Demande d'Achat (DA)
                     </button>
                   </div>

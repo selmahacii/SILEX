@@ -22,7 +22,7 @@ import {
   TrendingUp,
   AlertCircle,
   Clock,
-  Sparkles,
+  FolderPlus,
   CheckCircle2,
 } from 'lucide-react';
 
@@ -519,7 +519,7 @@ export default function ProjectsListPage() {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-[#142B45] flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#0A7F7C]" />
+                  <FolderPlus className="w-4 h-4 text-[#0A7F7C]" />
                   Nouveau Marché Industriel — Saisie Contractuelle & Technique
                 </h3>
                 <p className="text-[11px] text-slate-500">

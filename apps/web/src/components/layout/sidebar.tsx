@@ -19,7 +19,7 @@ import {
   ShieldAlert,
   Settings,
   ChevronRight,
-  Sparkles,
+  Award,
   Lock,
   X,
 } from 'lucide-react';
@@ -324,7 +324,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
         >
           <div className="flex items-center justify-between text-[11px] font-bold text-white mb-1">
             <span className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#E51A1A]" />
+              <Award className="w-3.5 h-3.5 text-[#E51A1A]" />
               5 Domaines d&apos;Activité
             </span>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />

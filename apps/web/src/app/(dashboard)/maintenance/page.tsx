@@ -20,7 +20,6 @@ import {
   Search,
   Filter,
   X,
-  Sparkles,
   CheckCircle2,
   ShieldAlert,
   FileText,

@@ -22,7 +22,7 @@ import {
   Coins,
   ChevronRight,
   Printer,
-  Sparkles,
+  Calculator,
   X,
   FileCheck,
   AlertCircle,
@@ -564,7 +564,7 @@ export default function CommercialModulePage() {
               : 'text-slate-500 hover:text-slate-800'
           }`}
         >
-          <Sparkles className="w-4 h-4 text-amber-500" />
+          <Calculator className="w-4 h-4 text-amber-600" />
           <span>Fiches de Coût Collaboratives</span>
           <span className="px-1.5 py-0.2 rounded-full bg-blue-100 text-[#07164D] text-[10px]">
             {costSheets.length}

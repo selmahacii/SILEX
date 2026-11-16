@@ -14,7 +14,7 @@ import {
   Building2,
   Coins,
   RefreshCw,
-  Sparkles,
+  Award,
   Zap,
   Flame,
   Snowflake,
@@ -146,7 +146,7 @@ export default function ExecutiveDashboardPage() {
       <div className="bg-white p-5 rounded-xl border border-[#E1E6ED] shadow-2xs">
         <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2.5">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#0B207D]" />
+            <Award className="w-4 h-4 text-[#0B207D]" />
             <h2 className="text-sm font-bold text-[#07164D] uppercase tracking-wide">
               5 Domaines d&apos;Activité Officiels — Compétences Clés
             </h2>

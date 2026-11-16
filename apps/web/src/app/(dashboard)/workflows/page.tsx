@@ -19,7 +19,6 @@ import {
   DollarSign,
   Filter,
   Search,
-  Sparkles,
   FileText,
   Percent,
   Eye,
