@@ -1169,6 +1169,7 @@ export const dbBridge = {
           vatAmount,
         };
 
+        (serverStore as any).purchaseOrders.push(enriched as any);
         await this.logAudit('CREATE_PURCHASE_ORDER', 'PURCHASE_ORDER', code, `Bon de Commande ${code} émis (${totalHT.toLocaleString()} DA HT)`, data.user);
         return enriched;
       } catch (err) {
@@ -1376,10 +1377,14 @@ export const dbBridge = {
           },
         });
 
+        const newStock = isEntry
+          ? Number(itm.currentStock || 0) + qty
+          : Math.max(0, Number(itm.currentStock || 0) - qty);
+
         await prisma.item.update({
           where: { id: itm.id },
           data: {
-            currentStock: isEntry ? { increment: qty } : { decrement: qty },
+            currentStock: newStock,
           },
         });
 
@@ -1957,7 +1962,7 @@ export const dbBridge = {
             notes: data.notes || '',
           },
         });
-        serverStore.createWeldJoint(data, user);
+        serverStore.createWeldJoint({ ...data, id: created.id }, user);
         await this.logAudit('CREATE_WELD_JOINT', 'QUALITY', created.jointNumber, `Joint consigné au Weld Book : ${created.jointNumber} (${created.lineIso})`, user);
         return created;
       } catch (err) {
@@ -2002,7 +2007,7 @@ export const dbBridge = {
               },
             });
           }
-          serverStore.recordWeldCndResult(idOrNumber, data, user);
+          serverStore.recordWeldCndResult(weld.jointNumber, data, user);
           await this.logAudit('RECORD_WELD_CND_RESULT', 'QUALITY', weld.jointNumber, `Contrôle CND enregistré sur ${weld.jointNumber} : ${cndStatus}`, user);
           return updated;
         }
@@ -2043,7 +2048,7 @@ export const dbBridge = {
               cndStatus: postCnd === 'CONFORME' ? 'CONFORME' : 'A_REPARER',
             },
           });
-          serverStore.recordWeldRepair(idOrNumber, data, user);
+          serverStore.recordWeldRepair(weld.jointNumber, data, user);
           await this.logAudit('RECORD_WELD_REPAIR', 'QUALITY', weld.jointNumber, `Réparation enregistrée pour ${weld.jointNumber} (Index #${nextIdx}, DMOS: ${data.repairDmosRef || 'DMOS-REP-01'})`, user);
           return this.getWeldJoint(weld.id);
         }
@@ -2900,26 +2905,46 @@ export const dbBridge = {
           // Persister les lignes de matching
           if (storeInv.lineMatchings && storeInv.lineMatchings.length > 0) {
             for (const m of storeInv.lineMatchings) {
-              await txPrisma.invoiceLineMatching.create({
-                data: {
-                  id: m.id,
-                  supplierInvoiceId: created.id,
-                  purchaseOrderId: m.purchaseOrderId,
-                  purchaseOrderLineId: m.purchaseOrderLineId,
-                  goodsReceiptId: m.goodsReceiptId,
-                  goodsReceiptLineId: m.goodsReceiptLineId,
-                  quantityMatched: m.quantityMatched,
-                  unitPriceMatched: m.unitPriceMatched,
-                  amountMatchedHT: m.amountMatchedHT,
-                  priceVarianceDA: m.priceVarianceDA,
-                  status: m.status,
-                  derogationReason: m.derogationReason,
-                  matchedAt: new Date(m.matchedAt),
-                  matchedById: m.matchedById,
-                  matchedByName: m.matchedByName,
-                  notes: m.notes,
-                },
-              });
+              let validPoLineId: string | undefined = m.purchaseOrderLineId;
+              if (validPoLineId) {
+                const lineExists = await txPrisma.purchaseOrderLine.findUnique({ where: { id: validPoLineId } }).catch(() => null);
+                if (!lineExists) validPoLineId = undefined;
+              }
+
+              let validGrId: string | undefined = m.goodsReceiptId;
+              if (validGrId) {
+                const grExists = await txPrisma.goodsReceipt.findUnique({ where: { id: validGrId } }).catch(() => null);
+                if (!grExists) validGrId = undefined;
+              }
+
+              let validGrLineId: string | undefined = m.goodsReceiptLineId;
+              if (validGrLineId) {
+                const grLineExists = await txPrisma.goodsReceiptLine.findUnique({ where: { id: validGrLineId } }).catch(() => null);
+                if (!grLineExists) validGrLineId = undefined;
+              }
+
+              if (validPoLineId) {
+                await txPrisma.invoiceLineMatching.create({
+                  data: {
+                    id: m.id,
+                    supplierInvoiceId: created.id,
+                    purchaseOrderId: m.purchaseOrderId,
+                    purchaseOrderLineId: validPoLineId,
+                    goodsReceiptId: validGrId,
+                    goodsReceiptLineId: validGrLineId,
+                    quantityMatched: m.quantityMatched,
+                    unitPriceMatched: m.unitPriceMatched,
+                    amountMatchedHT: m.amountMatchedHT,
+                    priceVarianceDA: m.priceVarianceDA,
+                    status: m.status,
+                    derogationReason: m.derogationReason,
+                    matchedAt: new Date(m.matchedAt),
+                    matchedById: m.matchedById,
+                    matchedByName: m.matchedByName,
+                    notes: m.notes,
+                  },
+                });
+              }
             }
           }
 
@@ -3367,7 +3392,7 @@ export const dbBridge = {
               estimatedMarginValue: 0,
             },
           });
-          serverStore.createCostSheet({ ...data, reference }, user);
+          serverStore.createCostSheet({ ...data, id: created.id, reference: created.reference }, user);
           await this.logAudit('CREATE_COST_SHEET', 'COMMERCIAL', created.reference, `Fiche de chiffrage créée : ${created.reference}`, user);
           return created;
         }
@@ -3379,19 +3404,173 @@ export const dbBridge = {
   },
 
   async updateCostSheetContribution(id: string, department: 'PROJECT' | 'PROCUREMENT' | 'HR' | 'FINANCE', data: any, user?: any) {
-    return serverStore.updateCostSheetContribution(id, department, data, user);
+    const updatedStoreSheet = serverStore.updateCostSheetContribution(id, department, data, user);
+    if (hasDb) {
+      try {
+        const dbSheet = await (prisma as any).costSheet.findFirst({
+          where: { OR: [{ id }, { reference: id }] },
+        });
+        if (dbSheet) {
+          const deptEnum = department === 'PROJECT' ? 'PROJET' : (department === 'PROCUREMENT' ? 'ACHATS' : (department === 'HR' ? 'RH' : department));
+          await (prisma as any).costSheetContribution.upsert({
+            where: {
+              costSheetId_department: {
+                costSheetId: dbSheet.id,
+                department: deptEnum,
+              },
+            },
+            update: {
+              completed: data.completed !== undefined ? Boolean(data.completed) : true,
+              completedAt: new Date(),
+              summaryNotes: data.summaryNotes || data.notes || '',
+              responsibleId: user?.id || null,
+              responsibleName: user?.name || null,
+              dataPayload: data,
+            },
+            create: {
+              costSheetId: dbSheet.id,
+              department: deptEnum,
+              completed: data.completed !== undefined ? Boolean(data.completed) : true,
+              completedAt: new Date(),
+              summaryNotes: data.summaryNotes || data.notes || '',
+              responsibleId: user?.id || null,
+              responsibleName: user?.name || null,
+              dataPayload: data,
+            },
+          });
+
+          if (Array.isArray(data.lines) && data.lines.length > 0) {
+            await (prisma as any).costSheetLine.deleteMany({
+              where: {
+                costSheetId: dbSheet.id,
+                department: deptEnum,
+              },
+            });
+            await (prisma as any).costSheetLine.createMany({
+              data: data.lines.map((l: any, idx: number) => ({
+                costSheetId: dbSheet.id,
+                department: deptEnum,
+                category: l.category || 'DIRECT',
+                label: l.designation || l.label || 'Ligne de coût',
+                quantity: Number(l.quantity || 1),
+                unit: l.unit || 'U',
+                unitPrice: Number(l.unitPrice || l.unitCost || 0),
+                totalAmount: Number(l.totalAmount || (Number(l.quantity || 1) * Number(l.unitPrice || l.unitCost || 0))),
+                notes: l.notes || '',
+                orderIndex: idx + 1,
+              })),
+            });
+          }
+
+          await (prisma as any).costSheet.update({
+            where: { id: dbSheet.id },
+            data: {
+              totalDirectCost: updatedStoreSheet?.totalDirectCost ?? 0,
+              totalIndirectCost: updatedStoreSheet?.totalIndirectCost ?? 0,
+              totalEstimatedCost: updatedStoreSheet?.totalEstimatedCost ?? 0,
+              proposedSellingPrice: updatedStoreSheet?.proposedSellingPrice ?? 0,
+              estimatedMarginValue: updatedStoreSheet?.estimatedMarginValue ?? 0,
+              targetMarginPercent: updatedStoreSheet?.targetMarginPercent ?? 0,
+              marginRateOnCost: updatedStoreSheet?.marginRateOnCost ?? 0,
+              markupRate: updatedStoreSheet?.markupRate ?? 0,
+            },
+          });
+        }
+      } catch (err) {
+        handleDbPersistenceError('updateCostSheetContribution', err);
+      }
+    }
+    return updatedStoreSheet;
   },
 
   async submitCostSheetToDG(id: string, user?: any) {
-    return serverStore.submitCostSheetToDG(id, user);
+    const updatedStoreSheet = serverStore.submitCostSheetToDG(id, user);
+    if (hasDb) {
+      try {
+        const dbSheet = await (prisma as any).costSheet.findFirst({
+          where: { OR: [{ id }, { reference: id }] },
+        });
+        if (dbSheet) {
+          await (prisma as any).costSheet.update({
+            where: { id: dbSheet.id },
+            data: { status: 'EN_ATTENTE_DG' },
+          });
+          await this.logAudit('SUBMIT_COST_SHEET_DG', 'COMMERCIAL', dbSheet.reference, `Fiche de coût soumise à la DG : ${dbSheet.reference}`, user);
+        }
+      } catch (err) {
+        handleDbPersistenceError('submitCostSheetToDG', err);
+      }
+    }
+    return updatedStoreSheet;
   },
 
   async arbitrateCostSheet(id: string, decision: 'APPROVED' | 'REJECTED' | 'REVISION_REQUESTED', notes: string, user?: any) {
-    return serverStore.arbitrateCostSheet(id, decision, notes, user);
+    const updatedStoreSheet = serverStore.arbitrateCostSheet(id, decision, notes, user);
+    if (hasDb) {
+      try {
+        const dbSheet = await (prisma as any).costSheet.findFirst({
+          where: { OR: [{ id }, { reference: id }] },
+        });
+        if (dbSheet) {
+          const dbStatus = decision === 'APPROVED' ? 'VALIDEE' : (decision === 'REJECTED' ? 'REFUSEE' : 'BROUILLON');
+          await (prisma as any).costSheet.update({
+            where: { id: dbSheet.id },
+            data: {
+              status: dbStatus,
+              dgDecision: decision,
+              dgDecisionNotes: notes,
+              dgDecisionDate: new Date(),
+              dgDecisionBy: user?.name || 'Direction Générale',
+              isImmutable: decision === 'APPROVED',
+            },
+          });
+          await this.logAudit('ARBITRATE_COST_SHEET', 'COMMERCIAL', dbSheet.reference, `Arbitrage DG : ${decision} (${notes})`, user);
+        }
+      } catch (err) {
+        handleDbPersistenceError('arbitrateCostSheet', err);
+      }
+    }
+    return updatedStoreSheet;
   },
 
   async createCostSheetRevision(id: string, reason: string, user?: any) {
-    return serverStore.createCostSheetRevision(id, reason, user);
+    const updatedStoreSheet = serverStore.createCostSheetRevision(id, reason, user);
+    if (hasDb) {
+      try {
+        const dbSheet = await (prisma as any).costSheet.findFirst({
+          where: { OR: [{ id }, { reference: id }] },
+        });
+        if (dbSheet) {
+          await (prisma as any).costSheetRevision.create({
+            data: {
+              costSheetId: dbSheet.id,
+              revisionNumber: `REV-${dbSheet.version}`,
+              authorId: user?.id || null,
+              authorName: user?.name || 'Direction Commerciale',
+              authorRole: user?.role || 'RESPONSABLE_COMMERCIAL',
+              reason,
+              totalDirectCost: dbSheet.totalDirectCost,
+              totalEstimatedCost: dbSheet.totalEstimatedCost,
+              proposedSellingPrice: dbSheet.proposedSellingPrice,
+              marginValue: dbSheet.estimatedMarginValue,
+              snapshotData: updatedStoreSheet || {},
+            },
+          });
+          await (prisma as any).costSheet.update({
+            where: { id: dbSheet.id },
+            data: {
+              version: { increment: 1 },
+              status: 'BROUILLON',
+              isImmutable: false,
+            },
+          });
+          await this.logAudit('REVISE_COST_SHEET', 'COMMERCIAL', dbSheet.reference, `Nouvelle révision créée : REV-${dbSheet.version + 1} (${reason})`, user);
+        }
+      } catch (err) {
+        handleDbPersistenceError('createCostSheetRevision', err);
+      }
+    }
+    return updatedStoreSheet;
   },
 
   async compareCostSheetVersions(id: string, vA: number, vB: number) {
@@ -3421,6 +3600,85 @@ export const dbBridge = {
           // Idempotence stricte : renvoie le projet déjà créé sans créer de doublon
           return sheet.opportunity.convertedProject;
         }
+
+        const storeProj = serverStore.convertCostSheetToProject(costSheetId, user);
+
+        const pmUser = await prisma.user.findFirst({
+          where: { role: 'RESPONSABLE_PROJET' },
+        });
+        const managerId = pmUser?.id || user?.id || 'usr-rp-002';
+
+        let projCode = storeProj.code;
+        const existingCode = await prisma.project.findUnique({ where: { code: projCode } });
+        if (existingCode) {
+          const count = await prisma.project.count();
+          projCode = `PRJ-${new Date().getFullYear()}-${String(count + 1).padStart(3, '0')}`;
+        }
+
+        const createdProject = await prisma.project.create({
+          data: {
+            code: projCode,
+            name: storeProj.name,
+            description: storeProj.description || storeProj.name,
+            clientName: storeProj.clientName,
+            sector: (storeProj.sector as any) || 'OIL_AND_GAS',
+            siteLocation: storeProj.siteLocation || 'Skikda',
+            managerId,
+            contractAmount: storeProj.contractAmount || 0,
+            budgetAmount: storeProj.budgetAmount || 0,
+            committedCost: 0,
+            actualCost: 0,
+            startDate: new Date(storeProj.startDate || new Date()),
+            contractEndDate: new Date(storeProj.contractEndDate || (Date.now() + 60 * 86400000)),
+            status: 'PLANNING',
+            riskLevel: storeProj.riskLevel === 'HIGH' ? 'HIGH' : 'LOW',
+            opportunityId: sheet?.opportunityId || undefined,
+            milestones: {
+              create: [
+                {
+                  title: 'Ordre de Service (ODS) & Mobilisation Chantier',
+                  targetDate: new Date(Date.now() + 7 * 86400000),
+                  orderIndex: 1,
+                  status: 'PENDING',
+                },
+                {
+                  title: 'Exécution Travaux Tuyauterie & Contrôles CND',
+                  targetDate: new Date(Date.now() + 30 * 86400000),
+                  orderIndex: 2,
+                  status: 'PENDING',
+                },
+                {
+                  title: 'Épreuves Hydrauliques & Dossier Constructeur',
+                  targetDate: new Date(Date.now() + 45 * 86400000),
+                  orderIndex: 3,
+                  status: 'PENDING',
+                },
+                {
+                  title: 'Réception Provisoire (PVRP) & Clôture',
+                  targetDate: new Date(Date.now() + 60 * 86400000),
+                  orderIndex: 4,
+                  status: 'PENDING',
+                },
+              ],
+            },
+          },
+        });
+
+        if (sheet) {
+          await (prisma as any).costSheet.update({
+            where: { id: sheet.id },
+            data: { status: 'GAGNEE' },
+          });
+          if (sheet.opportunityId) {
+            await (prisma as any).opportunity.update({
+              where: { id: sheet.opportunityId },
+              data: { status: 'GAGNEE' },
+            });
+          }
+        }
+
+        await this.logAudit('CONVERT_COST_SHEET_TO_PROJECT', 'COMMERCIAL', createdProject.code, `Projet créé depuis chiffrage ${sheet?.reference} : ${createdProject.code}`, user);
+        return createdProject;
       } catch (err) {
         handleDbPersistenceError('convertCostSheetToProject', err);
       }
@@ -3607,6 +3865,18 @@ export const dbBridge = {
 
   async recordGoodsReceipt(data: any, user?: any) {
     return serverStore.recordGoodsReceipt(data, user);
+  },
+
+  async createGoodsReceipt(data: any, user?: any) {
+    return this.recordGoodsReceipt(data, user);
+  },
+
+  async createStockMovement(data: any) {
+    return this.recordStockMovement(data);
+  },
+
+  async createAttendance(data: any) {
+    return this.recordAttendance(data);
   },
 
   async getBonsDeSortie(projectId?: string) {

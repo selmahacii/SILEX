@@ -5131,7 +5131,7 @@ class ServerStore {
     const cndStatus = data.cndInspection?.status || (data.status === 'EN_ATTENTE_CND' ? 'EN_ATTENTE_CND' : 'CONFORME');
 
     const weld: StoredWeldJoint = {
-      id: `weld-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: data.id || `weld-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       jointNumber,
       projectId: projId,
       projectCode: projCode,
@@ -6742,9 +6742,9 @@ class ServerStore {
 
   createCostSheet(data: any, user?: any) {
     const num = String(this.costSheets.length + 1).padStart(3, '0');
-    const ref = `FC-${new Date().getFullYear()}-${num}`;
+    const ref = data.reference || `FC-${new Date().getFullYear()}-${num}`;
     const newSheet: StoredCostSheet = {
-      id: `fc-${Date.now()}`,
+      id: data.id || `fc-${Date.now()}`,
       reference: ref,
       opportunityId: data.opportunityId,
       opportunityCode: data.opportunityCode,
