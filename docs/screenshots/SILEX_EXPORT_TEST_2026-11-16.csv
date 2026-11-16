@@ -1,0 +1,6 @@
+﻿# SARL SILEX SERVICES — EXPORT OFFICIEL CONTRÔLE DE GESTION
+# Date d'extraction : 2026-11-16 | Système : SILEX ERP v1.0
+# Devise contractuelle : DZD (Dinar Algérien) | Encodage : UTF-8 BOM
+# Instance Source : PostgreSQL 16 (Port 5433 / silex_erp)
+Code Marché;Client;Intitulé Chantier;Montant HT (DA);Réalisé (DA);Marge Prévisionnelle (%);Statut
+PRJ-2026-001;SONATRACH DP Hassi Messaoud;Rénovation Collecteur Vapeur HP;48500000;1100000;28.5%;EN_COURS
