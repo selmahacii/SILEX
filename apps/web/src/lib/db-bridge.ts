@@ -124,7 +124,10 @@ export const dbBridge = {
   async getUsers() {
     if (hasDb) {
       try {
-        const users = await prisma.user.findMany({ orderBy: { createdAt: 'asc' } });
+        const users = await (prisma.user.findMany as any)({
+          orderBy: { createdAt: 'asc' },
+          omit: { passwordHash: true },
+        });
         if (users && users.length > 0) return users;
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getUsers:', err);
@@ -140,7 +143,7 @@ export const dbBridge = {
     const passwordHash = await argon2.hash(String(data.password));
     if (hasDb) {
       try {
-        const created = await prisma.user.create({
+        const created = await (prisma.user.create as any)({
           data: {
             name: data.name,
             email: data.email.toLowerCase(),
@@ -150,6 +153,7 @@ export const dbBridge = {
             departmentCode: data.departmentCode || 'OPERATIONS_PROJETS',
             active: data.active ?? true,
           },
+          omit: { passwordHash: true },
         });
         await this.logAudit('CREATE_USER', 'USER', created.id, `Création utilisateur : ${created.name} (${created.email})`, data.user);
         return created;
@@ -178,9 +182,10 @@ export const dbBridge = {
           updateData.passwordHash = await argon2.hash(String(data.password));
         }
 
-        const updated = await prisma.user.update({
+        const updated = await (prisma.user.update as any)({
           where: { id },
           data: updateData,
+          omit: { passwordHash: true },
         });
         await this.logAudit('UPDATE_USER', 'USER', updated.id, `Mise à jour collaborateur ${updated.name} (Rôle: ${updated.role})`, operator);
         return updated;

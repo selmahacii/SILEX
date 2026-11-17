@@ -13,6 +13,23 @@ function corsHeaders() {
   };
 }
 
+// Vérifie que l'utilisateur authentifié dispose d'un des rôles autorisés pour une
+// ressource donnée (PERMISSIONS_MATRIX.md). Retourne une réponse 403 si non autorisé,
+// ou null si l'accès est permis.
+function requireRole(user: { role: string } | null | undefined, allowedRoles: string[]): NextResponse | null {
+  if (!user || !allowedRoles.includes(user.role)) {
+    return NextResponse.json(
+      { error: 'Accès refusé : rôle non autorisé pour cette ressource.' },
+      { status: 403, headers: corsHeaders() }
+    );
+  }
+  return null;
+}
+
+const ADMIN_SYSTEM_ROLES = [SystemRole.ADMINISTRATEUR, SystemRole.DIRECTEUR_GENERAL];
+const AUDIT_READ_ROLES = [SystemRole.ADMINISTRATEUR, SystemRole.DIRECTEUR_GENERAL, SystemRole.RESPONSABLE_QUALITE];
+const USER_MANAGEMENT_ROLES = [SystemRole.ADMINISTRATEUR, SystemRole.DIRECTEUR_GENERAL, SystemRole.RESPONSABLE_RH];
+
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders() });
 }
@@ -44,14 +61,21 @@ export async function GET(
 
   // 2. Users & Audit
   if (clean === '/users') {
+    // Lecture ouverte à tout authentifié (annuaire collaborateurs pour affectations
+    // projet, etc.) — passwordHash est strictement exclu par dbBridge.getUsers().
+    // La création/suppression de comptes reste réservée (voir POST/DELETE).
     const users = await dbBridge.getUsers();
     return NextResponse.json(users, { headers: corsHeaders() });
   }
   if (clean.includes('/audit')) {
+    const denied = requireRole(gateUser, AUDIT_READ_ROLES);
+    if (denied) return denied;
     const logs = await dbBridge.getAuditLogs();
     return NextResponse.json(logs, { headers: corsHeaders() });
   }
   if (clean === '/admin/rbac') {
+    const denied = requireRole(gateUser, ADMIN_SYSTEM_ROLES);
+    if (denied) return denied;
     const rbac = await dbBridge.getRolePermissions();
     return NextResponse.json(rbac, { headers: corsHeaders() });
   }
@@ -505,10 +529,14 @@ export async function POST(
 
   // 2. Users
   if (clean === '/users') {
+    const denied = requireRole(gateUser, USER_MANAGEMENT_ROLES);
+    if (denied) return denied;
     const newUser = await dbBridge.createUser(body);
     return NextResponse.json(newUser, { status: 201, headers: corsHeaders() });
   }
   if (clean === '/admin/rbac') {
+    const denied = requireRole(gateUser, ADMIN_SYSTEM_ROLES);
+    if (denied) return denied;
     const updated = await dbBridge.updateRolePermissions(body.role, body.permissions);
     return NextResponse.json(updated, { status: 200, headers: corsHeaders() });
   }
@@ -1219,7 +1247,13 @@ export async function PATCH(
   // 3. User Update
   if (clean.startsWith('/users/')) {
     const userId = resolvedParams.path[1];
-    const updated = await dbBridge.updateUser(userId, body);
+    const isSelf = gateUser?.id === userId;
+    const attemptsPrivilegeChange = 'role' in body || 'active' in body || 'departmentCode' in body;
+    if (!isSelf || attemptsPrivilegeChange) {
+      const denied = requireRole(gateUser, USER_MANAGEMENT_ROLES);
+      if (denied) return denied;
+    }
+    const updated = await dbBridge.updateUser(userId, body, gateUser);
     return NextResponse.json(updated, { headers: corsHeaders() });
   }
 
@@ -1252,6 +1286,8 @@ export async function DELETE(
   }
 
   if (clean.startsWith('/users/')) {
+    const denied = requireRole(gateUser, USER_MANAGEMENT_ROLES);
+    if (denied) return denied;
     const userId = resolvedParams.path[1];
     await dbBridge.deleteUser(userId);
     return NextResponse.json({ success: true }, { headers: corsHeaders() });
