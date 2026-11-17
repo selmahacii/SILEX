@@ -3276,7 +3276,7 @@ export const dbBridge = {
   },
 
   async createOpportunity(data: any, user?: any) {
-    const count = serverStore.getOpportunities().length;
+    const count = hasDb ? await (prisma as any).opportunity.count() : serverStore.getOpportunities().length;
     const code = data.code || `OPP-2026-${String(count + 1).padStart(3, '0')}`;
     const amount = Number(data.estimatedAmount || 0);
     const prob = Number(data.winProbability ?? 50);
@@ -3653,10 +3653,33 @@ export const dbBridge = {
   },
 
   async getCustomerQuotes() {
+    if (hasDb) {
+      try {
+        const quotes = await (prisma as any).customerQuote.findMany({
+          orderBy: { createdAt: 'desc' },
+          include: { opportunity: true, costSheet: true, lines: true },
+        });
+        return quotes || [];
+      } catch (err) {
+        handleDbPersistenceError('getCustomerQuotes', err);
+      }
+    }
     return serverStore.getCustomerQuotes();
   },
 
   async getCustomerQuote(id: string) {
+    if (hasDb) {
+      try {
+        const quote = await (prisma as any).customerQuote.findFirst({
+          where: { OR: [{ id }, { reference: id }, { quoteNumber: id }] },
+          include: { opportunity: true, costSheet: true, lines: true },
+        });
+        if (quote) return quote;
+        return null;
+      } catch (err) {
+        handleDbPersistenceError('getCustomerQuote', err);
+      }
+    }
     return serverStore.getCustomerQuote(id);
   },
 

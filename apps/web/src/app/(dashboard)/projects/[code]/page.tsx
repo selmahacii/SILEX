@@ -198,38 +198,34 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
 
   // 3. Modal Nouveau Jalon (Micro-Détaillé, Pratique & Interconnecté)
   const [showMilestoneModal, setShowMilestoneModal] = useState(false);
-  const [milestoneTitle, setMilestoneTitle] = useState('Contrôles Non Destructifs 100% Radio (RT) & Ressuage (PT)');
-  const [milestoneDescription, setMilestoneDescription] = useState('Tir radiographique à 100% sur soudures bout-à-bout haute pression et ressuage sur piquages selon ASME B31.3.');
-  const [milestoneLivrable, setMilestoneLivrable] = useState('Rapport d\'interprétation des clichés radiographiques agréé');
-  const [milestoneWeight, setMilestoneWeight] = useState<number>(15);
-  const [milestoneControlOrg, setMilestoneControlOrg] = useState('Bureau Veritas Algérie');
+  const [milestoneTitle, setMilestoneTitle] = useState('');
+  const [milestoneDescription, setMilestoneDescription] = useState('');
+  const [milestoneLivrable, setMilestoneLivrable] = useState('');
+  const [milestoneWeight, setMilestoneWeight] = useState<number>(10);
+  const [milestoneControlOrg, setMilestoneControlOrg] = useState('');
   const [milestoneSupervisor, setMilestoneSupervisor] = useState('');
   const [milestoneSupervisorContact, setMilestoneSupervisorContact] = useState('');
   const [milestoneSupervisorEmail, setMilestoneSupervisorEmail] = useState('');
   const [milestoneStartDate, setMilestoneStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [milestoneTargetDate, setMilestoneTargetDate] = useState('2026-11-20');
-  const [milestoneParticipants, setMilestoneParticipants] = useState<string[]>([
-    'Mourad Zitouni (Soudeur Qualifié 6G)',
-    'Yacine Khelifi (Superviseur CND)',
-    'Tarek Meziani (Gestionnaire Matériel)',
-  ]);
-  const [milestoneBudgetCost, setMilestoneBudgetCost] = useState<number>(2400000);
-  const [milestoneLinkedOrders, setMilestoneLinkedOrders] = useState('BC-2026-0051 - Prestation tirs radiographiques Bureau Veritas');
-  const [milestoneExpenses, setMilestoneExpenses] = useState('Films radio argentiques, produits pénétrants/révélateurs PT, carburant 4x4 & groupe');
+  const [milestoneTargetDate, setMilestoneTargetDate] = useState('');
+  const [milestoneParticipants, setMilestoneParticipants] = useState<string[]>([]);
+  const [milestoneBudgetCost, setMilestoneBudgetCost] = useState<number>(0);
+  const [milestoneLinkedOrders, setMilestoneLinkedOrders] = useState('');
+  const [milestoneExpenses, setMilestoneExpenses] = useState('');
 
   // Modales Pratiques : Gestion des Participants au Projet & Imputation des Frais Chantier
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [selectedNewMemberId, setSelectedNewMemberId] = useState('');
   const [showCostModal, setShowCostModal] = useState(false);
   const [costCategory, setCostCategory] = useState('AUTRE');
-  const [costAmount, setCostAmount] = useState<number>(250000);
-  const [costDescription, setCostDescription] = useState('Frais de mission & hébergement équipe base de vie Hassi Messaoud');
+  const [costAmount, setCostAmount] = useState<number>(0);
+  const [costDescription, setCostDescription] = useState('');
 
   // Modales d'interconnexion Achats & Stocks Chantier
   const [showPurchaseRequestModal, setShowPurchaseRequestModal] = useState(false);
-  const [prDescription, setPrDescription] = useState('Fourniture électrodes basiques E7018 et disques meulage');
-  const [prAmountHT, setPrAmountHT] = useState<number>(350000);
-  const [prUrgency, setPrUrgency] = useState<'NORMALE' | 'URGENTE'>('URGENTE');
+  const [prDescription, setPrDescription] = useState('');
+  const [prAmountHT, setPrAmountHT] = useState<number>(0);
+  const [prUrgency, setPrUrgency] = useState<'NORMALE' | 'URGENTE'>('NORMALE');
   const [prSubmitting, setPrSubmitting] = useState(false);
 
   const handleCreatePurchaseRequest = async (e: React.FormEvent) => {
@@ -462,10 +458,10 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
   const [showPvrpModal, setShowPvrpModal] = useState(false);
   const [pvrpDate, setPvrpDate] = useState(new Date().toISOString().split('T')[0]);
   const [pvrpStatus, setPvrpStatus] = useState<'VALIDE_SANS_RESERVE' | 'RESERVES_EN_COURS' | 'VALIDE_RESERVES_LEVEES'>('VALIDE_SANS_RESERVE');
-  const [pvrpClientSignatory, setPvrpClientSignatory] = useState('M. Mustapha Larbi (Représentant Maître d\'Ouvrage)');
+  const [pvrpClientSignatory, setPvrpClientSignatory] = useState('');
   const [pvrpReservesCount, setPvrpReservesCount] = useState<number>(0);
   const [pvrpReservesLifted, setPvrpReservesLifted] = useState(true);
-  const [pvrpNotes, setPvrpNotes] = useState('Réception provisoire prononcée avec succès suite aux épreuves hydrostatiques à 45 bars sans fuite ni déformation.');
+  const [pvrpNotes, setPvrpNotes] = useState('');
   const [pvrpSubmitting, setPvrpSubmitting] = useState(false);
 
   const handleSavePvrp = async (e: React.FormEvent) => {
@@ -498,7 +494,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
 
   const [showPvrdModal, setShowPvrdModal] = useState(false);
   const [pvrdDate, setPvrdDate] = useState(new Date().toISOString().split('T')[0]);
-  const [pvrdNotes, setPvrdNotes] = useState('Expiration des 12 mois de garantie contractuelle sans réserve technique. Restitution et mainlevée ordonnancée de la retenue de garantie (5%).');
+  const [pvrdNotes, setPvrdNotes] = useState('');
   const [pvrdSubmitting, setPvrdSubmitting] = useState(false);
 
   const handleSavePvrd = async (e: React.FormEvent) => {
@@ -2452,27 +2448,38 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
             </div>
 
             <div className="space-y-2 text-xs">
-              <div className="p-3 border-l-4 border-[#0B207D] bg-slate-50 rounded-r flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-slate-900">Notification ODS N°01 & Démarrage travaux</div>
-                  <div className="text-[10px] text-slate-500">Par Amine Khelifi (Chef de Projet) • Conforme au contrat</div>
+              {project.startDate && (
+                <div className="p-3 border-l-4 border-[#0B207D] bg-slate-50 rounded-r flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-slate-900">Notification ODS & Démarrage contractuel</div>
+                    <div className="text-[10px] text-slate-500">Chantier : {project.name} • {project.siteLocation || 'Site'}</div>
+                  </div>
+                  <div className="text-[10px] text-slate-400">{formatDateDZ(project.startDate)}</div>
                 </div>
-                <div className="text-[10px] text-slate-400">{formatDateDZ(project.startDate)}</div>
-              </div>
-              <div className="p-3 border-l-4 border-emerald-500 bg-slate-50 rounded-r flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-slate-900">Validation Jalon : Spools tuyauterie HP réceptionnés</div>
-                  <div className="text-[10px] text-slate-500">Visa Nadia Chaib (Qualité) • Contrôles CND favorables</div>
+              )}
+              {(project.milestones || []).filter((m: any) => m.status === 'COMPLETED' || m.completed).map((m: any) => (
+                <div key={m.id} className="p-3 border-l-4 border-emerald-500 bg-slate-50 rounded-r flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-slate-900">Jalon Validé : {m.title}</div>
+                    <div className="text-[10px] text-slate-500">Échéance contractuelle : {formatDateDZ(m.targetDate)}</div>
+                  </div>
+                  <div className="text-[10px] text-slate-400">{formatDateDZ(m.completedDate || m.targetDate)}</div>
                 </div>
-                <div className="text-[10px] text-slate-400">{formatDateDZ(new Date(Date.now() - 5 * 86400000).toISOString())}</div>
-              </div>
-              <div className="p-3 border-l-4 border-purple-500 bg-slate-50 rounded-r flex items-center justify-between">
-                <div>
-                  <div className="font-bold text-slate-900">Approbation Situation Périodique N°01</div>
-                  <div className="text-[10px] text-slate-500">Visa Amine Benali (DG) • Facturation transmise à la Sonatrach</div>
+              ))}
+              {(project.workSituations || []).map((s: any) => (
+                <div key={s.id} className="p-3 border-l-4 border-purple-500 bg-slate-50 rounded-r flex items-center justify-between">
+                  <div>
+                    <div className="font-bold text-slate-900">Situation N°{s.situationNumber} : {s.status}</div>
+                    <div className="text-[10px] text-slate-500">Montant Cumulé : {formatCurrencyDA(Number(s.cumulHT || 0), false)} HT</div>
+                  </div>
+                  <div className="text-[10px] text-slate-400">{formatDateDZ(s.dateSituation || s.createdAt)}</div>
                 </div>
-                <div className="text-[10px] text-slate-400">{formatDateDZ(new Date(Date.now() - 10 * 86400000).toISOString())}</div>
-              </div>
+              ))}
+              {!project.startDate && (!project.milestones || project.milestones.length === 0) && (!project.workSituations || project.workSituations.length === 0) && (
+                <div className="p-4 text-center text-slate-400 text-xs">
+                  Aucun événement d'audit consigné pour le moment sur ce projet.
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -2833,16 +2840,13 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                         setMilestoneSupervisor(val);
                         const found = (Array.isArray(usersList) ? usersList : []).find(u => `${u.name} (${u.title || u.role})` === val || u.name === val);
                         if (found) {
-                          setMilestoneSupervisorEmail(found.email);
-                          setMilestoneSupervisorContact('+213 (0) 560 21 88 44');
+                          setMilestoneSupervisorEmail(found.email || '');
+                          setMilestoneSupervisorContact(found.phone || '');
                         }
                       }}
                       className="w-full p-2 border border-slate-300 rounded bg-white text-xs font-semibold"
                     >
-                      <option value="Sofiane Belkacem (Ingénieur Chef de Chantier SILEX)">Sofiane Belkacem (Chef de Chantier)</option>
-                      <option value="Yacine Khelifi (Superviseur CND & Soudage)">Yacine Khelifi (Superviseur CND)</option>
-                      <option value="Karim Mansouri (Directeur Technique)">Karim Mansouri (Directeur Technique)</option>
-                      <option value="Nadia Chaib (Responsable QHSE)">Nadia Chaib (Responsable QHSE)</option>
+                      <option value="">Sélectionner un superviseur habilité...</option>
                       {(Array.isArray(usersList) ? usersList : []).map(u => (
                         <option key={u.id} value={`${u.name} (${u.title || u.role})`}>
                           {u.name} ({u.role})
@@ -2896,18 +2900,12 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                 </div>
 
                 <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                  {[
-                    'Mourad Zitouni (Soudeur Qualifié 6G)',
-                    'Yacine Khelifi (Superviseur CND)',
-                    'Tarek Meziani (Gestionnaire Matériel)',
-                    'Amina Benali (Acheteuse Industrielle)',
-                    'Samira Haddad (Gestion RH Chantier)',
-                    'Technicien CND Radio (Bureau Veritas)',
-                  ].map(p => {
+                  {(Array.isArray(usersList) && usersList.length > 0 ? usersList : []).map(u => {
+                    const p = `${u.name} (${u.title || u.role})`;
                     const isSelected = milestoneParticipants.includes(p);
                     return (
                       <button
-                        key={p}
+                        key={u.id}
                         type="button"
                         onClick={() => {
                           if (isSelected) {
@@ -2927,6 +2925,9 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                       </button>
                     );
                   })}
+                  {(!usersList || usersList.length === 0) && (
+                    <span className="text-slate-400 text-xs italic">Aucun intervenant configuré</span>
+                  )}
                 </div>
               </div>
 
