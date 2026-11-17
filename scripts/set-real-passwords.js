@@ -24,6 +24,20 @@ const passwords = {
   'y.khelifi@silex-services.dz': 'Silex-MAG-2026!',
   'n.chaib@silex-services.dz': 'Silex-COM-2026!',
   'admin@silex-services.dz': 'Silex-Admin-2026!',
+  // Comptes "génériques" hérités d'une ancienne génération de seed, en doublon
+  // des comptes nominaux ci-dessus pour le même rôle. Toujours réels en base
+  // et actifs : on leur donne aussi un vrai mot de passe pour qu'ils ne
+  // restent pas silencieusement verrouillés, mais le client devrait décider
+  // s'il veut les désactiver pour éviter la confusion avec les comptes nominaux.
+  'dg@silex-services.dz': 'Silex-DG2-2026!',
+  'projets@silex-services.dz': 'Silex-RP2-2026!',
+  'achats@silex-services.dz': 'Silex-ACH2-2026!',
+  'magasin@silex-services.dz': 'Silex-MAG2-2026!',
+  'finance@silex-services.dz': 'Silex-FIN2-2026!',
+  'rh@silex-services.dz': 'Silex-RH2-2026!',
+  'maintenance@silex-services.dz': 'Silex-MAINT2-2026!',
+  'm.zitouni@silex-services.dz': 'Silex-MAINT3-2026!',
+  'qualite@silex-services.dz': 'Silex-QHSE2-2026!',
 };
 
 async function main() {
