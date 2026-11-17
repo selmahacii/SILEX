@@ -30,6 +30,11 @@ const ADMIN_SYSTEM_ROLES = [SystemRole.ADMINISTRATEUR, SystemRole.DIRECTEUR_GENE
 const AUDIT_READ_ROLES = [SystemRole.ADMINISTRATEUR, SystemRole.DIRECTEUR_GENERAL, SystemRole.RESPONSABLE_QUALITE];
 const USER_MANAGEMENT_ROLES = [SystemRole.ADMINISTRATEUR, SystemRole.DIRECTEUR_GENERAL, SystemRole.RESPONSABLE_RH];
 
+// Rôle dont l'accès projet est restreint aux seuls chantiers assignés ([A] dans
+// PERMISSIONS_MATRIX.md). Les autres rôles (DG, Finance, Achats, Qualité, Admin...)
+// gardent une vision transversale de tous les projets par conception.
+const PROJECT_SCOPED_ROLE = SystemRole.RESPONSABLE_PROJET;
+
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders() });
 }
@@ -127,6 +132,12 @@ export async function GET(
       const kpis = await dbBridge.getProjectKpis();
       return NextResponse.json(kpis, { headers: corsHeaders() });
     }
+    if (gateUser.role === PROJECT_SCOPED_ROLE && !(await dbBridge.isUserAssignedToProject(gateUser.id, code))) {
+      return NextResponse.json(
+        { error: 'Accès refusé : ce chantier ne vous est pas affecté.' },
+        { status: 403, headers: corsHeaders() }
+      );
+    }
     const subRoute = (resolvedParams.path[2] || '').toLowerCase();
     if (subRoute === 'tasks') {
       const tasks = await dbBridge.getProjectTasks(code);
@@ -170,6 +181,11 @@ export async function GET(
   }
   if (clean === '/projects') {
     const projects = await dbBridge.getProjects();
+    if (gateUser.role === PROJECT_SCOPED_ROLE) {
+      const assignedCodes = new Set(await dbBridge.getAssignedProjectCodes(gateUser.id));
+      const scoped = (projects as any[]).filter(p => assignedCodes.has(p.code));
+      return NextResponse.json(scoped, { headers: corsHeaders() });
+    }
     return NextResponse.json(projects, { headers: corsHeaders() });
   }
 
@@ -1240,6 +1256,12 @@ export async function PATCH(
   // 2. Project Update
   if (clean.startsWith('/projects/')) {
     const projCode = resolvedParams.path[1];
+    if (gateUser.role === PROJECT_SCOPED_ROLE && !(await dbBridge.isUserAssignedToProject(gateUser.id, projCode))) {
+      return NextResponse.json(
+        { error: 'Accès refusé : ce chantier ne vous est pas affecté.' },
+        { status: 403, headers: corsHeaders() }
+      );
+    }
     const updated = await dbBridge.updateProject(projCode, body);
     return NextResponse.json(updated, { headers: corsHeaders() });
   }

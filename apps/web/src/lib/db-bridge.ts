@@ -244,6 +244,36 @@ export const dbBridge = {
     return serverStore.getProjects();
   },
 
+  // Isolation ABAC : liste des codes projet auxquels un utilisateur est affecté
+  // (UserProjectAssignment). Utilisé pour restreindre les Chefs de Projet à leurs
+  // seuls chantiers assignés, conformément à PERMISSIONS_MATRIX.md ([A]).
+  async getAssignedProjectCodes(userId: string): Promise<string[]> {
+    if (!hasDb) return [];
+    try {
+      const assignments = await prisma.userProjectAssignment.findMany({
+        where: { userId },
+        include: { project: { select: { code: true } } },
+      });
+      return assignments.map(a => a.project.code);
+    } catch (err) {
+      console.warn('[DB Bridge] Error fetching project assignments:', err);
+      return [];
+    }
+  },
+
+  async isUserAssignedToProject(userId: string, projectCode: string): Promise<boolean> {
+    if (!hasDb) return true;
+    try {
+      const count = await prisma.userProjectAssignment.count({
+        where: { userId, project: { code: projectCode } },
+      });
+      return count > 0;
+    } catch (err) {
+      console.warn('[DB Bridge] Error checking project assignment:', err);
+      return true; // ne jamais bloquer sur une panne technique de vérification
+    }
+  },
+
   async getProject(codeOrId: string) {
     if (hasDb) {
       try {
