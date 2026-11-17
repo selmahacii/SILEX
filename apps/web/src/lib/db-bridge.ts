@@ -128,7 +128,7 @@ export const dbBridge = {
           orderBy: { createdAt: 'asc' },
           omit: { passwordHash: true },
         });
-        if (users && users.length > 0) return users;
+        return users || [];
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getUsers:', err);
       }
@@ -1779,7 +1779,7 @@ export const dbBridge = {
           include: { project: true, actions: true },
           orderBy: { detectedDate: 'desc' },
         });
-        if (ncs && ncs.length > 0) return ncs;
+        return ncs || [];
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getNonConformities:', err);
       }
@@ -1895,7 +1895,7 @@ export const dbBridge = {
           include: { project: true },
           orderBy: { issueDate: 'desc' },
         });
-        if (docs && docs.length > 0) return docs;
+        return docs || [];
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getQualityDocuments:', err);
       }
@@ -1966,29 +1966,30 @@ export const dbBridge = {
           },
           orderBy: { jointNumber: 'asc' },
         });
-        if (welds && welds.length > 0) {
-          return welds.map((w: any) => ({
-            ...w,
-            thicknessMm: w.thicknessMm ? Number(w.thicknessMm) : undefined,
-            cndInspection: {
-              type: w.cndType,
-              requiredRatePercent: w.cndRatePercent,
-              status: w.cndStatus,
-              cndReportRef: w.cndReportRef,
-              filmRef: w.cndFilmRef,
-              controlDate: w.cndControlDate ? w.cndControlDate.toISOString().split('T')[0] : null,
-              controllingBody: w.cndControllingBody,
-            },
-            repairHistory: (w.repairs || []).map((r: any) => ({
-              repairIndex: r.repairIndex,
-              repairDate: r.repairDate ? r.repairDate.toISOString().split('T')[0] : null,
-              repairWelderStamp: r.repairWelderStamp,
-              repairDmosRef: r.repairDmosRef,
-              postRepairCndStatus: r.postRepairCndStatus,
-              postRepairCndReportRef: r.postRepairCndReportRef,
-            })),
-          }));
-        }
+        // Une liste réelle vide est une réponse valide (aucune soudure enregistrée
+        // pour l'instant) : elle ne doit jamais basculer sur les données de
+        // démonstration en mémoire, sous peine d'afficher un chantier fictif.
+        return (welds || []).map((w: any) => ({
+          ...w,
+          thicknessMm: w.thicknessMm ? Number(w.thicknessMm) : undefined,
+          cndInspection: {
+            type: w.cndType,
+            requiredRatePercent: w.cndRatePercent,
+            status: w.cndStatus,
+            cndReportRef: w.cndReportRef,
+            filmRef: w.cndFilmRef,
+            controlDate: w.cndControlDate ? w.cndControlDate.toISOString().split('T')[0] : null,
+            controllingBody: w.cndControllingBody,
+          },
+          repairHistory: (w.repairs || []).map((r: any) => ({
+            repairIndex: r.repairIndex,
+            repairDate: r.repairDate ? r.repairDate.toISOString().split('T')[0] : null,
+            repairWelderStamp: r.repairWelderStamp,
+            repairDmosRef: r.repairDmosRef,
+            postRepairCndStatus: r.postRepairCndStatus,
+            postRepairCndReportRef: r.postRepairCndReportRef,
+          })),
+        }));
       } catch (err) {
         handleDbPersistenceError('getWeldJoints', err);
       }
@@ -2352,6 +2353,7 @@ export const dbBridge = {
   async getFinancialAccounts(filter?: any, user?: any) {
     const includeDemo = filter?.includeDemo === true && filter?.isDemoAccount !== false;
     let list: any[] = [];
+    let dbQuerySucceeded = false;
     if (hasDb) {
       try {
         const where: any = {};
@@ -2362,20 +2364,21 @@ export const dbBridge = {
           where,
           orderBy: { code: 'asc' },
         });
-        if (dbAccounts && dbAccounts.length > 0) {
-          list = dbAccounts.map((a: any) => ({
-            ...a,
-            initialBalance: Number(a.initialBalance),
-            currentBalance: Number(a.currentBalance),
-          }));
-        }
+        list = (dbAccounts || []).map((a: any) => ({
+          ...a,
+          initialBalance: Number(a.initialBalance),
+          currentBalance: Number(a.currentBalance),
+        }));
+        dbQuerySucceeded = true;
       } catch (err) {
         handleDbPersistenceError('getFinancialAccounts', err);
       }
     }
 
+    // Une base réelle vide (aucun compte configuré) n'est jamais remplacée par la
+    // démo : on ne retombe sur serverStore qu'en cas d'échec réel de la requête.
     let finalAccounts: any[] = [];
-    if (list.length > 0) {
+    if (dbQuerySucceeded) {
       if (includeDemo) {
         const demoAccounts = serverStore.getFinancialAccounts({ includeDemo: true }).filter(a => a.isDemoAccount);
         const combined = [...list];
@@ -2463,6 +2466,7 @@ export const dbBridge = {
   async getCashTransactions(filter?: any) {
     const includeDemo = filter?.includeDemo === true;
     let list: any[] = [];
+    let dbQuerySucceeded = false;
     if (hasDb) {
       try {
         const where: any = {};
@@ -2474,19 +2478,20 @@ export const dbBridge = {
           where,
           orderBy: { transactionDate: 'desc' },
         });
-        if (dbTxs && dbTxs.length > 0) {
-          list = dbTxs.map((t: any) => ({
-            ...t,
-            amount: Number(t.amount),
-          }));
-        }
+        list = (dbTxs || []).map((t: any) => ({
+          ...t,
+          amount: Number(t.amount),
+        }));
+        dbQuerySucceeded = true;
       } catch (err) {
         handleDbPersistenceError('getCashTransactions', err);
       }
     }
-    const storeTxs = serverStore.getCashTransactions({ ...filter, includeDemo });
-    if (list.length > 0) {
+    // Un journal réel vide n'est jamais remplacé par la démo : on ne retombe sur
+    // serverStore qu'en cas d'échec réel de la requête.
+    if (dbQuerySucceeded) {
       if (includeDemo) {
+        const storeTxs = serverStore.getCashTransactions({ ...filter, includeDemo });
         const combined = [...list];
         for (const st of storeTxs) {
           if (!combined.some(t => t.id === st.id || t.transactionNumber === st.transactionNumber)) {
@@ -2497,7 +2502,7 @@ export const dbBridge = {
       }
       return list;
     }
-    return storeTxs;
+    return serverStore.getCashTransactions({ ...filter, includeDemo });
   },
 
   async recordCashTransaction(data: any, user?: any) {
@@ -2684,22 +2689,20 @@ export const dbBridge = {
           where,
           orderBy: { issueDate: 'desc' },
         });
-        if (dbInvoices && dbInvoices.length > 0) {
-          return dbInvoices.map((inv: any) => ({
-            ...inv,
-            amountHT: Number(inv.amountHT),
-            vatRate: Number(inv.vatRate),
-            vatAmount: Number(inv.vatAmount),
-            retentionRate: Number(inv.retentionRate),
-            retentionAmount: Number(inv.retentionAmount),
-            amountTTC: Number(inv.amountTTC),
-            netReceivableAmount: Number(inv.netReceivableAmount),
-            paidAmount: Number(inv.paidAmount),
-            remainingAmount: Number(inv.remainingAmount),
-            warrantyHeldAmount: Number(inv.warrantyHeldAmount),
-            warrantyReleasedAmount: Number(inv.warrantyReleasedAmount),
-          }));
-        }
+        return (dbInvoices || []).map((inv: any) => ({
+          ...inv,
+          amountHT: Number(inv.amountHT),
+          vatRate: Number(inv.vatRate),
+          vatAmount: Number(inv.vatAmount),
+          retentionRate: Number(inv.retentionRate),
+          retentionAmount: Number(inv.retentionAmount),
+          amountTTC: Number(inv.amountTTC),
+          netReceivableAmount: Number(inv.netReceivableAmount),
+          paidAmount: Number(inv.paidAmount),
+          remainingAmount: Number(inv.remainingAmount),
+          warrantyHeldAmount: Number(inv.warrantyHeldAmount),
+          warrantyReleasedAmount: Number(inv.warrantyReleasedAmount),
+        }));
       } catch (err) {
         handleDbPersistenceError('getCustomerInvoices', err);
       }
@@ -2911,17 +2914,15 @@ export const dbBridge = {
           where,
           orderBy: { invoiceDate: 'desc' },
         });
-        if (dbInvoices && dbInvoices.length > 0) {
-          return dbInvoices.map((inv: any) => ({
-            ...inv,
-            amountHT: Number(inv.amountHT),
-            vatRate: Number(inv.vatRate),
-            vatAmount: Number(inv.vatAmount),
-            amountTTC: Number(inv.amountTTC),
-            paidAmount: Number(inv.paidAmount),
-            remainingAmount: Number(inv.remainingAmount),
-          }));
-        }
+        return (dbInvoices || []).map((inv: any) => ({
+          ...inv,
+          amountHT: Number(inv.amountHT),
+          vatRate: Number(inv.vatRate),
+          vatAmount: Number(inv.vatAmount),
+          amountTTC: Number(inv.amountTTC),
+          paidAmount: Number(inv.paidAmount),
+          remainingAmount: Number(inv.remainingAmount),
+        }));
       } catch (err) {
         handleDbPersistenceError('getSupplierInvoices', err);
       }
@@ -3873,14 +3874,12 @@ export const dbBridge = {
           orderBy: { createdAt: 'desc' },
           take: 100,
         });
-        if (logs && logs.length > 0) {
-          return logs.map((l: any) => ({
-            ...l,
-            entityType: l.entityName,
-            details: l.description,
-            timestamp: l.createdAt ? l.createdAt.toISOString() : new Date().toISOString(),
-          }));
-        }
+        return (logs || []).map((l: any) => ({
+          ...l,
+          entityType: l.entityName,
+          details: l.description,
+          timestamp: l.createdAt ? l.createdAt.toISOString() : new Date().toISOString(),
+        }));
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getAuditLogs:', err);
       }
