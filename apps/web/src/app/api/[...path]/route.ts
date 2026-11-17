@@ -215,7 +215,12 @@ export async function GET(
   }
   if (clean.includes('/procurement/rfq') || clean.includes('/procurement/consultations')) {
     const projId = req.nextUrl.searchParams.get('projectId') || req.nextUrl.searchParams.get('project') || undefined;
-    const rfqs = await dbBridge.getRfqConsultations(projId);
+    const rfqs: any[] = await dbBridge.getRfqConsultations(projId);
+    if (gateUser.role === PROJECT_SCOPED_ROLE) {
+      const assignedCodes = new Set(await dbBridge.getAssignedProjectCodes(gateUser.id));
+      const scoped = rfqs.filter(r => assignedCodes.has(r.projectCode) || assignedCodes.has(r.projectId));
+      return NextResponse.json(scoped, { headers: corsHeaders() });
+    }
     return NextResponse.json(rfqs, { headers: corsHeaders() });
   }
   if (clean.includes('/procurement/contracts')) {
@@ -283,7 +288,12 @@ export async function GET(
     return NextResponse.json(prs, { headers: corsHeaders() });
   }
   if (clean.includes('/procurement/purchase-orders') || clean.includes('/purchase-orders')) {
-    const pos = await dbBridge.getPurchaseOrders();
+    const pos: any[] = await dbBridge.getPurchaseOrders();
+    if (gateUser.role === PROJECT_SCOPED_ROLE) {
+      const assignedCodes = new Set(await dbBridge.getAssignedProjectCodes(gateUser.id));
+      const scoped = pos.filter(po => assignedCodes.has(po.project?.code) || assignedCodes.has(po.projectCode));
+      return NextResponse.json(scoped, { headers: corsHeaders() });
+    }
     return NextResponse.json(pos, { headers: corsHeaders() });
   }
   if (clean.includes('/procurement/suppliers') || clean.includes('/suppliers')) {
