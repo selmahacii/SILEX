@@ -13,7 +13,6 @@ import {
   AlertCircle,
   CheckCircle2,
   Award,
-  ShieldCheck,
 } from 'lucide-react';
 import { SILEX_DOMAINS, COMPANY_ESTABLISHED, COMPANY_NAME } from '@silex/shared';
 
@@ -53,12 +52,6 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleUseSuperAdmin = () => {
-    setEmail('admin@silex-services.dz');
-    setPassword('Silex2026@Admin!');
-    setError(null);
   };
 
   return (
@@ -200,32 +193,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Superadmin Credentials Quick Pre-fill */}
-          <div className="pt-3 border-t border-slate-100">
-            <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 font-bold text-[#07164D]">
-                  <ShieldCheck className="w-4 h-4 text-[#0B207D]" />
-                  <span>Accès Super-Administrateur Initial</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleUseSuperAdmin}
-                  className="text-[11px] font-bold text-[#0B207D] hover:underline cursor-pointer bg-white px-2 py-0.5 rounded border border-blue-200"
-                >
-                  Pré-remplir
-                </button>
-              </div>
-              <div className="text-[11px] text-slate-600 flex flex-wrap gap-x-4 gap-y-1">
-                <span>Email : <strong className="text-slate-900 font-mono">admin@silex-services.dz</strong></span>
-                <span>Mot de passe : <strong className="text-slate-900 font-mono">Silex2026@Admin!</strong></span>
-              </div>
-              <div className="text-[10px] text-slate-500 italic pt-1 border-t border-blue-100">
-                Une fois connecté en SuperAdmin, créez les collaborateurs et gérez les permissions RBAC micro-détaillées depuis le module Administration Système.
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Footer Guarantee */}
