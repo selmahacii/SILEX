@@ -387,8 +387,8 @@ export function ProjectConstraintsTab({
 
       {/* Modal Résolution */}
       {resolvingConstraint && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-md w-full overflow-hidden">
             <div className="p-4 bg-emerald-700 text-white flex items-center justify-between">
               <div className="font-bold text-sm flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4" />
@@ -447,8 +447,8 @@ export function ProjectConstraintsTab({
 
       {/* Modal Création Contrainte */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden my-6 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden my-6">
             <div className="p-4 bg-rose-700 text-white flex items-center justify-between">
               <div className="font-bold text-sm flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4" />

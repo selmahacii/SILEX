@@ -6331,7 +6331,7 @@ class ServerStore {
     return inv;
   }
 
-  // --- MÉTHODES DE ROLLBACK DE SÉCURITÉ EN CAS D'ÉCHEC POSTGRESQL ---
+  // --- MÉTHODES DE ROLLBACK DE SÉCURITÉ EN CAS D'ÉCHEC DE BASE DE DONNÉES ---
   rollbackFinancialAccount(id: string) {
     this.financialAccounts = this.financialAccounts.filter(a => a.id !== id);
   }

@@ -626,8 +626,8 @@ export function ProjectTasksTab({
 
       {/* Modal Création Tâche */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden">
             <div className="p-4 bg-[#0B207D] text-white flex items-center justify-between">
               <div className="font-bold text-sm flex items-center gap-2">
                 <Plus className="w-4 h-4" />

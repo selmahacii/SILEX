@@ -403,7 +403,7 @@ export default function ReportsPage() {
         wilaya,
         p.sector,
         `"${pole}"`,
-        `"${(p.managerName || 'Amine Khelifi').replace(/"/g, '""')}"`,
+        `"${(p.managerName || 'Non assigné').replace(/"/g, '""')}"`,
         p.status,
         p.startDate || '',
         p.contractEndDate || '',
@@ -469,7 +469,7 @@ export default function ReportsPage() {
         siteLocation: p.siteLocation,
         wilaya: p.wilaya || 'Alger',
         sector: p.sector,
-        managerName: p.managerName || 'Amine Khelifi',
+        managerName: p.managerName || 'Non assigné',
         status: p.status,
         contractAmount: contract,
         revisedBudget: bRev,
@@ -1016,7 +1016,7 @@ export default function ReportsPage() {
 
                       {/* Responsable */}
                       <td className="py-2.5 px-2 text-slate-600 text-[10.5px]">
-                        {p.managerName || 'Amine Khelifi'}
+                        {p.managerName || 'Non assigné'}
                       </td>
 
                       {/* Statut */}

@@ -8,7 +8,7 @@ const isProductionStrict = process.env.NODE_ENV === 'production' && process.env.
 function handleDbPersistenceError(context: string, err: any): never | void {
   console.error(`[DB Bridge] ${context} error:`, err);
   if (isProductionStrict) {
-    throw new Error(`[DB Bridge Production Gate] Échec de persistance base de données PostgreSQL Neon lors de "${context}". Le basculement mémoire est strictement interdit en environnement de production.`);
+    throw new Error(`[DB Bridge] Échec de persistance base de données lors de "${context}".`);
   }
 }
 
@@ -21,7 +21,7 @@ function handleFinancePersistenceError(context: string, err: any, rollbackFn?: (
       console.error(`[DB Bridge Rollback Failure] ${context}:`, rbErr);
     }
   }
-  const error = new Error(`[DB_PERSISTENCE_FAILED] Échec de persistance PostgreSQL pour "${context}": ${err?.message || err}`);
+  const error = new Error(`[DB_PERSISTENCE_FAILED] Échec de persistance pour "${context}": ${err?.message || err}`);
   (error as any).code = 'DB_PERSISTENCE_FAILED';
   (error as any).originalError = err;
   throw error;
@@ -2394,7 +2394,7 @@ export const dbBridge = {
 
   async recordCashTransaction(data: any, user?: any) {
     if (hasDb && !data.isDemoTransaction) {
-      // 1. Contrôle d'idempotence en base PostgreSQL
+      // 1. Contrôle d'idempotence en base de données relationnelle
       if (data.idempotencyKey) {
         try {
           const existingTx = await (prisma as any).cashTransaction.findUnique({
@@ -2847,7 +2847,7 @@ export const dbBridge = {
 
   async createSupplierInvoice(data: any, user?: any) {
     if (hasDb && !data.isDemoInvoice) {
-      // Vérifier si la commande existe en base relationnelle PostgreSQL
+      // Vérifier si la commande existe en base relationnelle
       let poInDb = null;
       if (data.purchaseOrderId || data.purchaseOrderCode) {
         try {
@@ -2864,7 +2864,7 @@ export const dbBridge = {
         }
       }
 
-      // Si la commande n'existe pas dans PostgreSQL (ex: données démo en mémoire ou facture sans BC persistant), garder l'isolation mémoire
+      // Si la commande n'existe pas dans la base (ex: données démo en mémoire ou facture sans BC persistant), garder l'isolation mémoire
       if (!poInDb) {
         return serverStore.createSupplierInvoice(data, user);
       }

@@ -900,7 +900,7 @@ export default function QualityPage() {
       {/* MODAL: Nouveau Document */}
       {showDocModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-lg max-w-md w-full p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-[#142B45] flex items-center gap-2">
                 <FileCheck className="w-4 h-4 text-[#0A7F7C]" />
@@ -998,7 +998,7 @@ export default function QualityPage() {
       {/* MODAL: Nouvelle Non-Conformité */}
       {showNcModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-lg w-full p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-lg max-w-lg w-full p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-[#C44747] flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-600" />
@@ -1106,7 +1106,7 @@ export default function QualityPage() {
       {/* MODAL: Nouvelle Action Corrective */}
       {showActionModal && selectedNcForAction && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-5 shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-lg max-w-md w-full p-5 shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-[#142B45] flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-[#0A7F7C]" />

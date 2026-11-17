@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     if (isProduction || !isDemoMode) {
       return NextResponse.json(
         {
-          error: 'Le basculement direct de profil est strictement désactivé sur cet environnement de production.',
+          error: 'Le basculement direct de profil est strictement désactivé sur cet environnement.',
           code: 'SECURITY_DEMO_DISABLED',
         },
         { status: 403, headers: corsHeaders() }

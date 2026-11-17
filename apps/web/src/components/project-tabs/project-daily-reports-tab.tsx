@@ -400,7 +400,7 @@ export function ProjectDailyReportsTab({
 
       {/* Modal Fiche Imprimable A4 */}
       {showPrintModal && selectedReport && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
           <div className="bg-white rounded-lg shadow-2xl max-w-3xl w-full p-6 text-slate-900 border border-slate-300 print:border-none print:shadow-none print:p-0 my-8">
             {/* Header actions (hidden in print) */}
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200 print:hidden">
@@ -596,8 +596,8 @@ export function ProjectDailyReportsTab({
 
       {/* Modal Création Rapport */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-2xl w-full overflow-hidden my-6 animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-2xl w-full overflow-hidden my-6">
             <div className="p-4 bg-[#0B207D] text-white flex items-center justify-between">
               <div className="font-bold text-sm flex items-center gap-2">
                 <FileText className="w-4 h-4" />

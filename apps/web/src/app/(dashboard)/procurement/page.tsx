@@ -1198,7 +1198,7 @@ export default function ProcurementPage() {
                   <div>
                     <span className="text-slate-400 block text-[10px] uppercase font-bold">Demandeur Opérationnel</span>
                     <p className="font-medium text-slate-800 mt-0.5">
-                      {selectedPR.requester?.name || 'Sofiane Belkacem (Chef de Projet)'} • {selectedPR.department || 'Direction Projets Chantiers'}
+                      {selectedPR.requester?.name || selectedPR.requestedByName || 'Demandeur non assigné'} • {selectedPR.department || 'Direction Opérations Chantiers'}
                     </p>
                   </div>
                 </div>

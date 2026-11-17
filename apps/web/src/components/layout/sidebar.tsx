@@ -361,7 +361,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
       {mobileOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden animate-in fade-in duration-200"
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           aria-hidden="true"
         />
       )}
@@ -376,7 +376,7 @@ export function Sidebar({ mobileOpen = false, onClose }: SidebarProps) {
 
       {/* Modal / Flyout for the 5 Domains of Activity */}
       {showDomainsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden text-slate-800">
             <div className="bg-[#07164D] p-5 text-white flex items-center justify-between border-b border-[#152972]">
               <div className="flex items-center gap-3">

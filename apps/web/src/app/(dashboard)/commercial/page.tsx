@@ -715,7 +715,7 @@ export default function CommercialModulePage() {
                       </div>
 
                       {/* Barre d'Actions & Gouvernance SoD */}
-                      <div className="flex flex-wrap items-center gap-2 bg-white/10 p-2.5 rounded-lg border border-white/20 backdrop-blur-xs">
+                      <div className="flex flex-wrap items-center gap-2 bg-white/10 p-2.5 rounded-lg border border-white/20">
                         {/* Comparateur de versions si révisions existantes */}
                         {selectedCostSheet.revisions && selectedCostSheet.revisions.length > 0 && (
                           <button
@@ -1632,7 +1632,7 @@ export default function CommercialModulePage() {
       {/* MODAL COMPARATEUR VISUEL DE VERSIONS DE CHIFFRAGE */}
       {/* ======================================================== */}
       {showCompareModal && selectedCostSheet && comparisonView && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full border border-slate-200 overflow-hidden text-slate-900 my-8">
             <div className="bg-[#07164D] p-4 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1791,7 +1791,7 @@ export default function CommercialModulePage() {
       {/* MODAL CRÉATION DE RÉVISION (VERSIONING V(n+1)) */}
       {/* ======================================================== */}
       {showRevisionModal && selectedCostSheet && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden text-slate-900">
             <div className="bg-[#07164D] p-4 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -1853,7 +1853,7 @@ export default function CommercialModulePage() {
       {/* MODAL ÉDITION CONTRIBUTION PROJET */}
       {/* ======================================================== */}
       {activeContributionModal === 'PROJECT' && projectContribForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden text-slate-900 my-8">
             <div className="bg-[#07164D] p-4 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2019,7 +2019,7 @@ export default function CommercialModulePage() {
       {/* MODAL ÉDITION CONTRIBUTION ACHATS */}
       {/* ======================================================== */}
       {activeContributionModal === 'PROCUREMENT' && procurementContribForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden text-slate-900 my-8">
             <div className="bg-[#07164D] p-4 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2179,7 +2179,7 @@ export default function CommercialModulePage() {
       {/* MODAL ÉDITION CONTRIBUTION RH */}
       {/* ======================================================== */}
       {activeContributionModal === 'HR' && hrContribForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden text-slate-900 my-8">
             <div className="bg-[#07164D] p-4 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2338,7 +2338,7 @@ export default function CommercialModulePage() {
       {/* MODAL ÉDITION CONTRIBUTION FINANCE */}
       {/* ======================================================== */}
       {activeContributionModal === 'FINANCE' && financeContribForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden text-slate-900">
             <div className="bg-[#07164D] p-4 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2452,7 +2452,7 @@ export default function CommercialModulePage() {
       {/* MODAL TRANSITION D'ÉTAPE DU PIPELINE CRM */}
       {/* ======================================================== */}
       {showStageModal && selectedOppForStage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden text-slate-900">
             <div className="bg-[#07164D] p-4 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2605,7 +2605,7 @@ export default function CommercialModulePage() {
       {/* MODAL ARBITRAGE DIRECTION GÉNÉRALE */}
       {/* ======================================================== */}
       {showArbitrageModal && selectedCostSheet && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full border border-slate-200 overflow-hidden text-slate-900">
             <div className="bg-[#07164D] p-4 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2711,7 +2711,7 @@ export default function CommercialModulePage() {
       {/* MODAL CRÉATION OPPORTUNITÉ COMMERCIALE */}
       {/* ======================================================== */}
       {showNewOppModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="bg-white rounded-xl shadow-2xl max-w-xl w-full border border-slate-200 overflow-hidden text-slate-900">
             <div className="bg-[#07164D] p-4 text-white flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -2854,7 +2854,7 @@ export default function CommercialModulePage() {
       {/* MODAL APERÇU A4 DU DEVIS CLIENT IMPRIMABLE */}
       {/* ======================================================== */}
       {selectedQuoteForPrint && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
           <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full border border-slate-300 overflow-hidden text-slate-900 my-8">
             <div className="bg-[#07164D] p-3 text-white flex items-center justify-between px-6">
               <span className="text-xs font-bold tracking-wide">

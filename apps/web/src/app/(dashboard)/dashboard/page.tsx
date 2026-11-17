@@ -517,12 +517,12 @@ export default function ExecutiveDashboardPage() {
                               {w.projectCode}
                             </Link>
                           </>
-                        ) : (
-                          <>Client : <strong className="text-slate-800">{w.clientName || 'Sonatrach Raffinerie Skikda'}</strong></>
-                        )}
+                        ) : w.clientName ? (
+                          <>Client : <strong className="text-slate-800">{w.clientName}</strong></>
+                        ) : null}
                       </div>
                       <div className="text-[10px] text-slate-400 mt-0.5">
-                        Demandeur : <strong>{w.requesterName || w.initiatorName || 'Chef de Projets'}</strong> ({w.department || w.initiatorDepartment || 'Opérations & Projets'}) • Montant : <strong className="text-slate-800">{formatCurrencyDA(Number(w.amountHT || 0), false)} HT</strong> <span className="text-slate-500">({formatCurrencyDA(Number(w.amountTTC || Math.round(Number(w.amountHT || 0) * 1.19)), false)} TTC)</span>
+                        Demandeur : <strong>{w.requesterName || w.initiatorName || 'Direction Opérationnelle'}</strong> ({w.department || w.initiatorDepartment || 'Opérations'}) • Montant : <strong className="text-slate-800">{formatCurrencyDA(Number(w.amountHT || 0), false)} HT</strong> <span className="text-slate-500">({formatCurrencyDA(Number(w.amountTTC || Math.round(Number(w.amountHT || 0) * 1.19)), false)} TTC)</span>
                       </div>
                     </div>
                     <Link

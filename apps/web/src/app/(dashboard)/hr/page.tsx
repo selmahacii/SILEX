@@ -72,20 +72,20 @@ export default function HrPage() {
   const [lvStart, setLvStart] = useState(new Date().toISOString().split('T')[0]);
   const [lvEnd, setLvEnd] = useState(new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0]);
   const [lvDays, setLvDays] = useState(14);
-  const [lvReason, setLvReason] = useState('Congé annuel régulier');
+  const [lvReason, setLvReason] = useState('');
 
   const [showMissionModal, setShowMissionModal] = useState(false);
   const [misEmployeeId, setMisEmployeeId] = useState('');
-  const [misDestination, setMisDestination] = useState('Zone Industrielle Skikda (RA1K)');
-  const [misPurpose, setMisPurpose] = useState('Supervision montage tuyauterie HP vapeur');
+  const [misDestination, setMisDestination] = useState('');
+  const [misPurpose, setMisPurpose] = useState('');
   const [misDays, setMisDays] = useState(5);
   const [misPerDiem, setMisPerDiem] = useState(4500);
 
   const [showRecruitmentModal, setShowRecruitmentModal] = useState(false);
-  const [recRole, setRecRole] = useState('Soudeur Haute Pression TIG 6G');
-  const [recCount, setRecCount] = useState(2);
+  const [recRole, setRecRole] = useState('');
+  const [recCount, setRecCount] = useState(1);
   const [recDuration, setRecDuration] = useState(3);
-  const [recJustification, setRecJustification] = useState('Renfort d\'équipe pour arrêt technique');
+  const [recJustification, setRecJustification] = useState('');
 
   // Search
   const [searchEmp, setSearchEmp] = useState('');
@@ -248,11 +248,11 @@ export default function HrPage() {
   const handleCreateRecruitment = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const proj = projects[0];
+      const proj = projects && projects.length > 0 ? projects[0] : null;
       await api.post('/hr/recruitments', {
-        projectId: proj ? proj.id : 'prj-2026-001',
-        projectCode: proj ? proj.code : 'PRJ-2026-001',
-        projectName: proj ? proj.name : 'Chantier Raffinerie Skikda',
+        projectId: proj ? proj.id : (projects[0]?.id || 'DIR-OPERATIONS'),
+        projectCode: proj ? proj.code : 'GLOBAL',
+        projectName: proj ? proj.name : 'Direction des Opérations & Chantiers',
         requestedRole: recRole,
         headcountNeeded: Number(recCount),
         contractType: 'CHANTIER',
@@ -1264,7 +1264,7 @@ export default function HrPage() {
       {/* MODAL CRÉATION COLLABORATEUR */}
       {showEmployeeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-[#142B45] flex items-center gap-2">
@@ -1423,7 +1423,7 @@ export default function HrPage() {
       {/* MODAL CRÉATION CERTIFICATION / CQS */}
       {showCertModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-[#182433] flex items-center gap-2">
@@ -1541,7 +1541,7 @@ export default function HrPage() {
       {/* MODAL POINTAGE CHANTIER */}
       {showAttendanceModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-[#142B45] flex items-center gap-2">
@@ -1701,7 +1701,7 @@ export default function HrPage() {
 
         return (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
-            <div className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl max-h-[92vh] overflow-hidden border border-slate-200 flex flex-col text-slate-800 animate-in zoom-in-95 duration-150">
+            <div className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl max-h-[92vh] overflow-hidden border border-slate-200 flex flex-col text-slate-800">
               
               {/* En-tête Dossier aux couleurs SILEX SERVICES */}
               <div className="bg-[#07164D] p-5 text-white flex items-start justify-between border-b border-[#152972]">
@@ -2416,7 +2416,7 @@ export default function HrPage() {
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Motif / Justification</label>
-                <textarea rows={2} value={lvReason} onChange={e => setLvReason(e.target.value)} className="w-full p-2 border rounded" />
+                <textarea rows={2} value={lvReason} onChange={e => setLvReason(e.target.value)} placeholder="Ex: Congé annuel régulier..." className="w-full p-2 border rounded" />
               </div>
               <div className="flex justify-end gap-2 pt-2 border-t">
                 <button type="button" onClick={() => setShowLeaveModal(false)} className="px-3 py-1.5 border rounded">Annuler</button>
@@ -2456,11 +2456,11 @@ export default function HrPage() {
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Lieu d'Intervention / Site *</label>
-                <input type="text" value={misDestination} onChange={e => setMisDestination(e.target.value)} className="w-full p-2 border rounded" required />
+                <input type="text" value={misDestination} onChange={e => setMisDestination(e.target.value)} placeholder="Ex: Hassi Messaoud, Skikda, Arzew..." className="w-full p-2 border rounded" required />
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Objet Technique de la Mission *</label>
-                <input type="text" value={misPurpose} onChange={e => setMisPurpose(e.target.value)} className="w-full p-2 border rounded" required />
+                <input type="text" value={misPurpose} onChange={e => setMisPurpose(e.target.value)} placeholder="Ex: Supervision montage tuyauterie..." className="w-full p-2 border rounded" required />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -2497,7 +2497,7 @@ export default function HrPage() {
             <form onSubmit={handleCreateRecruitment} className="space-y-3 text-xs">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Spécialité & Qualification Requise *</label>
-                <input type="text" value={recRole} onChange={e => setRecRole(e.target.value)} className="w-full p-2 border rounded" required />
+                <input type="text" value={recRole} onChange={e => setRecRole(e.target.value)} placeholder="Ex: Soudeur Haute Pression TIG 6G..." className="w-full p-2 border rounded" required />
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
@@ -2511,7 +2511,7 @@ export default function HrPage() {
               </div>
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 uppercase mb-1">Justification Technique *</label>
-                <textarea rows={2} value={recJustification} onChange={e => setRecJustification(e.target.value)} className="w-full p-2 border rounded" required />
+                <textarea rows={2} value={recJustification} onChange={e => setRecJustification(e.target.value)} placeholder="Ex: Renfort d'équipe pour arrêt technique programmé..." className="w-full p-2 border rounded" required />
               </div>
               <div className="flex justify-end gap-2 pt-2 border-t">
                 <button type="button" onClick={() => setShowRecruitmentModal(false)} className="px-3 py-1.5 border rounded">Annuler</button>
