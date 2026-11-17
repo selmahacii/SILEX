@@ -1,6 +1,7 @@
 import { prisma } from './prisma';
 import { serverStore } from './server-store';
 import { SystemRole } from '@silex/shared';
+import * as argon2 from 'argon2';
 
 const hasDb = Boolean(process.env.DATABASE_URL && process.env.DATABASE_URL.startsWith('postgres'));
 const isProductionStrict = process.env.NODE_ENV === 'production' && process.env.SILEX_ENABLE_DEMO_MODE !== 'true';
@@ -93,6 +94,21 @@ export const dbBridge = {
     return serverStore.getUserByEmail(email);
   },
 
+  // Authentifie un utilisateur par email + mot de passe en clair (Argon2id strict).
+  // Retourne l'utilisateur si et seulement si le mot de passe correspond au hash stocké.
+  async authenticateUser(email: string, password: string) {
+    if (!email || !password) return null;
+    const user = await this.getUserByEmail(email);
+    if (!user || !(user as any).passwordHash) return null;
+    try {
+      const valid = await argon2.verify((user as any).passwordHash, password);
+      return valid ? user : null;
+    } catch (err) {
+      console.warn('[DB Bridge] Error verifying password:', err);
+      return null;
+    }
+  },
+
   async getUserById(id: string) {
     if (hasDb) {
       try {
@@ -118,13 +134,17 @@ export const dbBridge = {
   },
 
   async createUser(data: any) {
+    if (!data.password || String(data.password).length < 8) {
+      throw new Error('Un mot de passe d\'au moins 8 caractères est obligatoire pour créer un utilisateur.');
+    }
+    const passwordHash = await argon2.hash(String(data.password));
     if (hasDb) {
       try {
         const created = await prisma.user.create({
           data: {
             name: data.name,
             email: data.email.toLowerCase(),
-            passwordHash: '$argon2id$v=19$m=65536,t=3,p=4$dummyhashdemo2026',
+            passwordHash,
             title: data.title || 'Collaborateur SILEX',
             role: data.role || 'RESPONSABLE_PROJET',
             departmentCode: data.departmentCode || 'OPERATIONS_PROJETS',
@@ -151,7 +171,12 @@ export const dbBridge = {
         if (data.role) updateData.role = data.role;
         if (data.departmentCode) updateData.departmentCode = data.departmentCode;
         if (typeof data.active === 'boolean') updateData.active = data.active;
-        if (data.password) updateData.passwordHash = '$argon2id$v=19$m=65536,t=3,p=4$dummyhashdemo2026';
+        if (data.password) {
+          if (String(data.password).length < 8) {
+            throw new Error('Le mot de passe doit comporter au moins 8 caractères.');
+          }
+          updateData.passwordHash = await argon2.hash(String(data.password));
+        }
 
         const updated = await prisma.user.update({
           where: { id },

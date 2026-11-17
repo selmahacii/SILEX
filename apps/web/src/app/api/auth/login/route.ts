@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SystemRole } from '@silex/shared';
 import { dbBridge } from '@/lib/db-bridge';
 import { generateAuthToken } from '@/lib/auth-server';
 
@@ -27,25 +26,22 @@ export async function POST(req: NextRequest) {
     }
 
     const email = (body.email || '').toLowerCase().trim();
-    let role = (body.role || SystemRole.DIRECTEUR_GENERAL) as SystemRole;
+    const password = body.password || '';
 
-    let user: any = null;
-    if (email) {
-      user = await dbBridge.getUserByEmail(email);
-    }
-    if (!user) {
-      user = await dbBridge.getUserByRole(role);
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Email et mot de passe requis.' },
+        { status: 401, headers: corsHeaders() }
+      );
     }
 
+    const user: any = await dbBridge.authenticateUser(email, password);
+
     if (!user) {
-      user = {
-        id: 'usr-dg-001',
-        email: email || 'a.benali@silex-services.dz',
-        name: 'Amine Benali',
-        role: role || SystemRole.DIRECTEUR_GENERAL,
-        departmentCode: 'DIRECTION_GENERALE',
-        title: 'Directeur Général',
-      };
+      return NextResponse.json(
+        { error: 'Identifiants invalides.' },
+        { status: 401, headers: corsHeaders() }
+      );
     }
 
     const token = generateAuthToken(user);

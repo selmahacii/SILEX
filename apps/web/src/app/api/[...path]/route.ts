@@ -25,17 +25,21 @@ export async function GET(
   const path = '/' + (resolvedParams.path || []).join('/');
   const clean = path.toLowerCase();
 
+  // 0. Porte d'authentification globale : toute lecture de données applicatives exige
+  // un jeton JWT valide. Sans cela, n'importe quel appelant anonyme pouvait lire
+  // utilisateurs, audit, RBAC, RH, commercial, projets, achats, stocks, etc.
+  const gateAuthHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+  const gateUser = await parseUserFromToken(gateAuthHeader);
+  if (!gateUser) {
+    return NextResponse.json(
+      { error: 'Authentification requise.' },
+      { status: 401, headers: corsHeaders() }
+    );
+  }
+
   // 1. Auth Me
   if (clean.includes('/auth/me')) {
-    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
-    const user = await parseUserFromToken(authHeader);
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Session introuvable ou jeton expiré' },
-        { status: 401, headers: corsHeaders() }
-      );
-    }
-    return NextResponse.json(user, { headers: corsHeaders() });
+    return NextResponse.json(gateUser, { headers: corsHeaders() });
   }
 
   // 2. Users & Audit
@@ -451,27 +455,34 @@ export async function POST(
     // ignore
   }
 
-  // 1. Auth (Login only - Demo switch is restricted to dedicated secured route)
+  // 0. Porte d'authentification globale (voir GET). /auth/login et /auth/demo-switch
+  // ont leurs propres fichiers de route dédiés et ne transitent jamais par ce catch-all.
+  const gateAuthHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+  const gateUser = await parseUserFromToken(gateAuthHeader);
+  if (!gateUser) {
+    return NextResponse.json(
+      { error: 'Authentification requise.' },
+      { status: 401, headers: corsHeaders() }
+    );
+  }
+
+  // 1. Auth (Login) — délégué à /api/auth/login/route.ts qui vérifie réellement le mot de passe
+  // (Argon2id). Ce chemin du catch-all ne doit jamais émettre de jeton sans vérification.
   if (clean.includes('/auth/login')) {
     const email = (body.email || '').toLowerCase().trim();
-    let role = (body.role || SystemRole.DIRECTEUR_GENERAL) as SystemRole;
-
-    let user: any = null;
-    if (email) {
-      user = await dbBridge.getUserByEmail(email);
+    const password = body.password || '';
+    if (!email || !password) {
+      return NextResponse.json(
+        { error: 'Email et mot de passe requis.' },
+        { status: 401, headers: corsHeaders() }
+      );
     }
+    const user = await dbBridge.authenticateUser(email, password);
     if (!user) {
-      user = await dbBridge.getUserByRole(role);
-    }
-    if (!user) {
-      user = {
-        id: 'usr-dg-001',
-        email: email || 'a.benali@silex-services.dz',
-        name: 'Amine Benali',
-        role: role || SystemRole.DIRECTEUR_GENERAL,
-        departmentCode: 'DIRECTION_GENERALE',
-        title: 'Directeur Général',
-      };
+      return NextResponse.json(
+        { error: 'Identifiants invalides.' },
+        { status: 401, headers: corsHeaders() }
+      );
     }
     const token = generateAuthToken(user);
     const payload = {
@@ -1087,6 +1098,16 @@ export async function PATCH(
     // ignore
   }
 
+  // 0. Porte d'authentification globale (voir GET).
+  const gateAuthHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+  const gateUser = await parseUserFromToken(gateAuthHeader);
+  if (!gateUser) {
+    return NextResponse.json(
+      { error: 'Authentification requise.' },
+      { status: 401, headers: corsHeaders() }
+    );
+  }
+
   // 0.5 Commercial PATCH actions
   if (clean.includes('/commercial/cost-sheets/') || clean.includes('/cost-sheets/')) {
     const sheetId = resolvedParams.path.find(p => p.startsWith('fc-') || p.startsWith('FC-')) || resolvedParams.path[2] || resolvedParams.path[1];
@@ -1212,6 +1233,16 @@ export async function DELETE(
   const resolvedParams = await params;
   const path = '/' + (resolvedParams.path || []).join('/');
   const clean = path.toLowerCase();
+
+  // 0. Porte d'authentification globale (voir GET).
+  const gateAuthHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+  const gateUser = await parseUserFromToken(gateAuthHeader);
+  if (!gateUser) {
+    return NextResponse.json(
+      { error: 'Authentification requise.' },
+      { status: 401, headers: corsHeaders() }
+    );
+  }
 
   if (clean.includes('/members')) {
     const projId = resolvedParams.path[1];
