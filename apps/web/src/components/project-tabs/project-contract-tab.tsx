@@ -38,6 +38,8 @@ export function ProjectContractTab({ project, onRefresh, isDG, isProjectManager 
   const contractTTC = contractHT + tvaAmount;
   const retentionRate = project.retentionRate || 5;
   const retentionAmount = Math.round(contractHT * (retentionRate / 100));
+  const penaltyCapRate = project.penaltyCapRate || 10;
+  const penaltyCapAmount = Math.round(contractHT * (penaltyCapRate / 100));
 
   const handleOpenEditItem = (item: any) => {
     setEditingItemId(item.id);
@@ -90,21 +92,25 @@ export function ProjectContractTab({ project, onRefresh, isDG, isProjectManager 
           )}
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 text-xs">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4 text-xs">
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
             <span className="text-[10px] text-slate-500 font-bold uppercase block">Réf. Contrat de Marché</span>
             <span className="font-mono font-bold text-slate-900 text-sm mt-0.5 block">
-              {project.contractReference || `CTR-${project.code}`}
+              {project.contractReference || 'Non renseigné'}
             </span>
-            <span className="text-[10px] text-emerald-700 font-medium">Contrat d&apos;exécution signé</span>
+            <span className={`text-[10px] font-medium ${project.contractReference ? 'text-emerald-700' : 'text-slate-400'}`}>
+              {project.contractReference ? "Contrat d'exécution signé" : "En attente de formalisation"}
+            </span>
           </div>
 
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
             <span className="text-[10px] text-slate-500 font-bold uppercase block">Bon de Commande Client</span>
             <span className="font-mono font-bold text-[#0B207D] text-sm mt-0.5 block">
-              {project.clientPoNumber || `BC-${project.clientName?.slice(0, 4).toUpperCase()}-2026`}
+              {project.clientPoNumber || 'Non renseigné'}
             </span>
-            <span className="text-[10px] text-slate-500">Document commercial confirmé</span>
+            <span className={`text-[10px] ${project.clientPoNumber ? 'text-slate-600' : 'text-slate-400'}`}>
+              {project.clientPoNumber ? "Document commercial confirmé" : "En attente de transmission"}
+            </span>
           </div>
 
           <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
@@ -115,12 +121,20 @@ export function ProjectContractTab({ project, onRefresh, isDG, isProjectManager 
             <span className="text-[10px] text-slate-500">Montant TVA : {formatCurrencyDA(tvaAmount, false)}</span>
           </div>
 
-          <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
-            <span className="text-[10px] text-slate-500 font-bold uppercase block">Retenue de Garantie</span>
-            <span className="font-bold text-slate-900 text-sm mt-0.5 block">
+          <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+            <span className="text-[10px] text-purple-700 font-bold uppercase block">Retenue de Garantie</span>
+            <span className="font-bold text-purple-900 text-sm mt-0.5 block">
               {retentionRate}% ({formatCurrencyDA(retentionAmount, false)})
             </span>
-            <span className="text-[10px] text-slate-500">Restituée à la réception définitive (12 mois)</span>
+            <span className="text-[10px] text-purple-600">Restituée à la réception définitive (12 mois)</span>
+          </div>
+
+          <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+            <span className="text-[10px] text-amber-700 font-bold uppercase block">Plafond Pénalités</span>
+            <span className="font-bold text-amber-900 text-sm mt-0.5 block">
+              {penaltyCapRate}% ({formatCurrencyDA(penaltyCapAmount, false)})
+            </span>
+            <span className="text-[10px] text-amber-600">Max contractuel retard</span>
           </div>
         </div>
 
@@ -155,7 +169,7 @@ export function ProjectContractTab({ project, onRefresh, isDG, isProjectManager 
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-600 font-medium">Avancement physique pondéré :</span>
             <span className="px-3 py-1 bg-emerald-100 text-emerald-800 font-extrabold text-sm rounded-lg border border-emerald-300">
-              {project.physicalProgress}%
+              {Number(project.physicalProgress || 0)}%
             </span>
           </div>
         </div>
@@ -177,7 +191,14 @@ export function ProjectContractTab({ project, onRefresh, isDG, isProjectManager 
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {contractItems.map((it: any) => {
+              {contractItems.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="p-8 text-center text-slate-400">
+                    Aucun lot de prestations contractuelles enregistré pour ce chantier.
+                  </td>
+                </tr>
+              ) : (
+                contractItems.map((it: any) => {
                 const isEditing = editingItemId === it.id;
                 const isComplete = it.progress >= 100;
                 return (
