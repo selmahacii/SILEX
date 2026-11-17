@@ -747,8 +747,32 @@ export const dbBridge = {
             data: { status: 'APPROVED' },
           });
         }
+        if (res.type === 'COST_SHEET' && (res.targetId || res.targetCode || res.reference)) {
+          const dbSheet = await (prisma as any).costSheet.findFirst({
+            where: { OR: [{ id: res.targetId || '' }, { reference: res.targetCode || res.reference || '' }] },
+          });
+          if (dbSheet) {
+            await (prisma as any).costSheet.update({
+              where: { id: dbSheet.id },
+              data: {
+                status: 'VALIDEE',
+                dgDecision: 'APPROVED',
+                dgDecisionNotes: notes || 'Approbation Direction Générale accordée.',
+                dgDecisionDate: new Date(),
+                dgDecisionBy: user?.name || 'Direction Générale',
+                isImmutable: true,
+              },
+            });
+          }
+        }
+        if (res.type === 'WORK_SITUATION' && (res.targetId || res.targetCode)) {
+          await (prisma as any).workSituation.updateMany({
+            where: { OR: [{ id: res.targetId || '' }, { situationNumber: res.targetCode || '' }] },
+            data: { status: 'APPROVED' },
+          });
+        }
       } catch (e) {
-        console.warn('[DB Bridge] Error updating PR in DB on workflow approval:', e);
+        console.warn('[DB Bridge] Error updating target record in DB on workflow approval:', e);
       }
     }
     await this.logAudit('APPROVE_WORKFLOW', 'WORKFLOW', id, `Dossier approuvé avec mention: ${notes || 'Validé'}`, user);
@@ -765,8 +789,31 @@ export const dbBridge = {
             data: { status: 'REJECTED' },
           });
         }
+        if (res.type === 'COST_SHEET' && (res.targetId || res.targetCode || res.reference)) {
+          const dbSheet = await (prisma as any).costSheet.findFirst({
+            where: { OR: [{ id: res.targetId || '' }, { reference: res.targetCode || res.reference || '' }] },
+          });
+          if (dbSheet) {
+            await (prisma as any).costSheet.update({
+              where: { id: dbSheet.id },
+              data: {
+                status: 'REFUSEE',
+                dgDecision: 'REJECTED',
+                dgDecisionNotes: reason,
+                dgDecisionDate: new Date(),
+                dgDecisionBy: user?.name || 'Direction Générale',
+              },
+            });
+          }
+        }
+        if (res.type === 'WORK_SITUATION' && (res.targetId || res.targetCode)) {
+          await (prisma as any).workSituation.updateMany({
+            where: { OR: [{ id: res.targetId || '' }, { situationNumber: res.targetCode || '' }] },
+            data: { status: 'REJECTED' },
+          });
+        }
       } catch (e) {
-        console.warn('[DB Bridge] Error updating PR in DB on workflow rejection:', e);
+        console.warn('[DB Bridge] Error updating target record in DB on workflow rejection:', e);
       }
     }
     await this.logAudit('REJECT_WORKFLOW', 'WORKFLOW', id, `Dossier rejeté. Motif: ${reason}`, user);
