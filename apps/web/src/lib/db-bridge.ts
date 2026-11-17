@@ -3653,33 +3653,10 @@ export const dbBridge = {
   },
 
   async getCustomerQuotes() {
-    if (hasDb) {
-      try {
-        const quotes = await (prisma as any).customerQuote.findMany({
-          orderBy: { createdAt: 'desc' },
-          include: { opportunity: true, costSheet: true, lines: true },
-        });
-        return quotes || [];
-      } catch (err) {
-        handleDbPersistenceError('getCustomerQuotes', err);
-      }
-    }
     return serverStore.getCustomerQuotes();
   },
 
   async getCustomerQuote(id: string) {
-    if (hasDb) {
-      try {
-        const quote = await (prisma as any).customerQuote.findFirst({
-          where: { OR: [{ id }, { reference: id }, { quoteNumber: id }] },
-          include: { opportunity: true, costSheet: true, lines: true },
-        });
-        if (quote) return quote;
-        return null;
-      } catch (err) {
-        handleDbPersistenceError('getCustomerQuote', err);
-      }
-    }
     return serverStore.getCustomerQuote(id);
   },
 
