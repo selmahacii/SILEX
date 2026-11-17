@@ -140,7 +140,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
         managerId: selectedManagerId,
       });
       setShowChangeManagerModal(false);
-      setNotification('Responsable de Chantier désigné avec succès dans PostgreSQL !');
+      setNotification('Responsable de Chantier désigné avec succès !');
       setTimeout(() => setNotification(null), 5000);
       await fetchProject();
     } catch (err: any) {
@@ -167,7 +167,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
         contractEndDate: dateFinContractuelle ? new Date(dateFinContractuelle).toISOString() : undefined,
       });
       setShowChangeDatesModal(false);
-      setNotification('Dates contractuelles et échéances mises à jour avec succès dans PostgreSQL !');
+      setNotification('Dates contractuelles et échéances mises à jour avec succès !');
       setTimeout(() => setNotification(null), 5000);
       await fetchProject();
     } catch (err: any) {
@@ -580,7 +580,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
         managerId: editManagerId || undefined,
       });
       setShowEditModal(false);
-      setNotification('Fiche projet modifiée avec succès dans PostgreSQL !');
+      setNotification('Fiche projet modifiée avec succès !');
       setTimeout(() => setNotification(null), 5000);
       await fetchProject();
     } catch (err: any) {
@@ -2482,7 +2482,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       {/* MODALE 1 : MODIFIER LE PROJET */}
       {/* ========================================================================= */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150 backdrop-blur-xs">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-white rounded-xl max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto border border-slate-200">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -2674,7 +2674,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       {/* MODALE 2 : AJUSTER L'AVANCEMENT */}
       {/* ========================================================================= */}
       {showProgressModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150 backdrop-blur-xs">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">
@@ -2761,7 +2761,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       {/* MODALE 3 : AJOUTER UN JALON CONTRACTUEL (MICRO-DÉTAILLÉ & INTERCONNECTÉ) */}
       {/* ========================================================================= */}
       {showMilestoneModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150 backdrop-blur-xs">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-white rounded-xl max-w-xl w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto border border-slate-200">
             <div className="flex items-start justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
@@ -2780,90 +2780,6 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
               <button onClick={() => setShowMilestoneModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
                 <X className="w-4 h-4" />
               </button>
-            </div>
-
-            {/* Presets Industriels 1 Clic */}
-            <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                Préréglages d'étapes industrielles chantiers (1 clic) :
-              </label>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() =>
-                    applyMilestonePreset(
-                      'Épreuve hydrostatique réseau HP 150 bars sous contrôle APAVE',
-                      'Mise en pression d\'épreuve hydrostatique à froid (150 bars) avec maintien de pression 4 heures sous PV contradictoire Bureau Veritas et Sonatrach DP.',
-                      'PV d\'épreuve hydrostatique certifié conforme et signé',
-                      25,
-                      'APAVE Algérie'
-                    )
-                  }
-                  className="px-2.5 py-1 text-[11px] font-semibold bg-blue-50 hover:bg-blue-100 text-[#0B207D] border border-blue-200 rounded cursor-pointer transition-colors"
-                >
-                  Épreuve Hydro 150B
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    applyMilestonePreset(
-                      'Préfabrication 50% spools tuyauterie HP en atelier',
-                      'Assemblage, soudage TIG/SMAW et traçage de 50% des lignes de tuyauterie 6" et 10" avec CCPU 3.1 certifiés.',
-                      'Fiches suiveuses de soudage et rapport dimensionnel atelier',
-                      20,
-                      'Contrôle Interne SILEX'
-                    )
-                  }
-                  className="px-2.5 py-1 text-[11px] font-semibold bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded cursor-pointer transition-colors"
-                >
-                  Préfab Spools 50%
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    applyMilestonePreset(
-                      'Contrôles Non Destructifs 100% Radio (RT) & Ressuage (PT)',
-                      'Tir radiographique à 100% sur soudures bout-à-bout haute pression et ressuage sur piquages selon ASME B31.3.',
-                      'Rapport d\'interprétation des clichés radiographiques agréé',
-                      15,
-                      'Bureau Veritas Algérie'
-                    )
-                  }
-                  className="px-2.5 py-1 text-[11px] font-semibold bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded cursor-pointer transition-colors"
-                >
-                  Contrôle CND 100%
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    applyMilestonePreset(
-                      'Homologation DMOS & Qualifications Soudeurs ASME IX',
-                      'Cahier de soudage approuvé par le client et qualifications de soudage 6G délivrées aux tuyauteurs-soudeurs.',
-                      'Certificats CQS soudeurs validés Bureau Veritas',
-                      10,
-                      'Bureau Veritas Algérie'
-                    )
-                  }
-                  className="px-2.5 py-1 text-[11px] font-semibold bg-slate-50 hover:bg-slate-100 text-slate-800 border border-slate-200 rounded cursor-pointer transition-colors"
-                >
-                  Homologation DMOS
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    applyMilestonePreset(
-                      'Réception Provisoire des Travaux & Levée des Réserves',
-                      'Visite contradictoire du chantier avec la commission Sonatrach DP, vérification des skids et signature du PV de réception provisoire.',
-                      'Procès-Verbal de Réception Provisoire (PVRP) sans réserves',
-                      30,
-                      'Commission Sonatrach / Client'
-                    )
-                  }
-                  className="px-2.5 py-1 text-[11px] font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded cursor-pointer transition-colors"
-                >
-                  Réception Provisoire
-                </button>
-              </div>
             </div>
 
             <form onSubmit={handleCreateMilestone} className="space-y-4 text-xs">
@@ -3170,7 +3086,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                   Interconnexion Automatique :
                 </div>
                 <div>
-                  La validation de ce jalon recalculera immédiatement le pourcentage d'avancement physique du projet dans PostgreSQL et mettra à jour l'ensemble des tableaux de bord.
+                  La validation de ce jalon recalculera immédiatement le pourcentage d'avancement physique du projet et mettra à jour l'ensemble des tableaux de bord.
                 </div>
               </div>
 
@@ -3199,7 +3115,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       {/* MODALE PRATIQUE : AFFECTER UN PARTICIPANT AU PROJET */}
       {/* ========================================================================= */}
       {showAddMemberModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150 backdrop-blur-xs">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -3262,7 +3178,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       {/* MODALE PRATIQUE : IMPUTER UNE DÉPENSE / FRAIS DE CHANTIER DANS POSTGRES */}
       {/* ========================================================================= */}
       {showCostModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150 backdrop-blur-xs">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -3346,7 +3262,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
         const projectedContractAmount = contractAmountNum + Number(odsCostImpact || 0);
 
         return (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150 backdrop-blur-xs">
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
             <div className="bg-white rounded-xl max-w-xl w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto border border-slate-200">
               <div className="flex items-start justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2.5">
@@ -3596,7 +3512,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
         const projectedBilledPct = contractAmountNum > 0 ? ((newCumulProjected / contractAmountNum) * 100).toFixed(1) : '0';
 
         return (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150 backdrop-blur-xs">
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
             <div className="bg-white rounded-xl max-w-3xl w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto border border-slate-200">
               <div className="flex items-start justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2.5">
@@ -3873,7 +3789,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       {/* MODALE : DÉSIGNER / CHANGER LE RESPONSABLE DU PROJET */}
       {/* ========================================================================= */}
       {showChangeManagerModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150 backdrop-blur-xs">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -3939,8 +3855,8 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       {/* ========================================================================= */}
       {/* Modal Demande d'Achat Chantier */}
       {showPurchaseRequestModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-md w-full overflow-hidden">
             <div className="p-4 bg-[#0B207D] text-white flex items-center justify-between">
               <div className="font-bold text-sm flex items-center gap-2">
                 <ShoppingCart className="w-4 h-4" />
@@ -3996,8 +3912,8 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
 
       {/* Modal Sortie Réelle Stock */}
       {showStockConsumptionModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-md w-full overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-md w-full overflow-hidden">
             <div className="p-4 bg-[#0A7F7C] text-white flex items-center justify-between">
               <div className="font-bold text-sm flex items-center gap-2">
                 <Boxes className="w-4 h-4" />
@@ -4065,7 +3981,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       {/* MODALE : ENREGISTRER UN POINTAGE JOURNALIER MAIN-D'ŒUVRE */}
       {/* ========================================================================= */}
       {showTimesheetModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden">
             <div className="p-4 bg-[#0B207D] text-white flex items-center justify-between">
               <div className="font-bold text-sm flex items-center gap-2">
@@ -4230,7 +4146,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       {/* MODALE : PV DE RÉCEPTION PROVISOIRE (PVRP) */}
       {/* ========================================================================= */}
       {showPvrpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-md w-full overflow-hidden">
             <div className="p-4 bg-[#0B207D] text-white flex items-center justify-between">
               <div className="font-bold text-sm flex items-center gap-2">
@@ -4327,7 +4243,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       {/* MODALE : PV DE RÉCEPTION DÉFINITIVE (PVRD) & LIBÉRATION RETENUE 5% */}
       {/* ========================================================================= */}
       {showPvrdModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-lg shadow-xl border border-slate-200 max-w-md w-full overflow-hidden">
             <div className="p-4 bg-emerald-700 text-white flex items-center justify-between">
               <div className="font-bold text-sm flex items-center gap-2">
@@ -4393,7 +4309,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       )}
 
       {showChangeDatesModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150 backdrop-blur-xs">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
           <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">

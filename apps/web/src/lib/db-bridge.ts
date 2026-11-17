@@ -3156,6 +3156,79 @@ export const dbBridge = {
 
   // --- MODULE COMMERCIAL & DEVIS ---
   async getCommercialKpis() {
+    if (hasDb) {
+      try {
+        const opps = await (prisma as any).opportunity.findMany({
+          include: { costSheets: true, convertedProject: true },
+        });
+        const costSheets = await (prisma as any).costSheet.findMany();
+        const projects = await (prisma as any).project.findMany();
+
+        const totalOpportunities = (opps || []).length;
+        const activeOpportunities = (opps || []).filter((o: any) => !['PERDUE', 'ANNULEE', 'GAGNEE'].includes(o.status)).length;
+        const openOpportunities = (opps || []).filter((o: any) => !['PERDUE', 'ANNULEE'].includes(o.status)).length;
+        const pipelineValue = (opps || [])
+          .filter((o: any) => !['PERDUE', 'ANNULEE', 'GAGNEE'].includes(o.status))
+          .reduce((acc: number, o: any) => acc + Number(o.estimatedAmount || 0), 0);
+        const weightedPipelineValue = (opps || [])
+          .filter((o: any) => !['PERDUE', 'ANNULEE', 'GAGNEE'].includes(o.status))
+          .reduce((acc: number, o: any) => acc + Number(o.weightedValue || 0), 0);
+
+        const inNegotiation = (opps || []).filter((o: any) => o.status === 'NEGOCIATION');
+        const inCosting = (opps || []).filter((o: any) => o.status === 'CHIFFRAGE' || o.status === 'VALIDATION_INTERNE');
+        const won = (opps || []).filter((o: any) => o.status === 'GAGNEE');
+
+        const pendingCostSheetsCount = (costSheets || []).filter((s: any) => s.status === 'PRETE_POUR_VALIDATION' || s.status === 'EN_ATTENTE_DG').length;
+        const approvedCostSheetsCount = (costSheets || []).filter((s: any) => s.status === 'APPROUVEE_DG' || s.status === 'VALIDEE').length;
+        const validatedCostSheetsCount = approvedCostSheetsCount;
+
+        const stagesBreakdown: Record<string, { count: number; value: number }> = {
+          NOUVELLE: { count: 0, value: 0 },
+          QUALIFIEE: { count: 0, value: 0 },
+          VISITE_TECHNIQUE: { count: 0, value: 0 },
+          CHIFFRAGE: { count: 0, value: 0 },
+          VALIDATION_INTERNE: { count: 0, value: 0 },
+          OFFRE_SOUMISE: { count: 0, value: 0 },
+          NEGOCIATION: { count: 0, value: 0 },
+          GAGNEE: { count: 0, value: 0 },
+          PERDUE: { count: 0, value: 0 },
+          ANNULEE: { count: 0, value: 0 },
+        };
+        for (const opp of (opps || [])) {
+          const st = opp.status || 'NOUVELLE';
+          if (!stagesBreakdown[st]) stagesBreakdown[st] = { count: 0, value: 0 };
+          stagesBreakdown[st].count += 1;
+          stagesBreakdown[st].value += Number(opp.estimatedAmount || 0);
+        }
+
+        const conversionRate = totalOpportunities > 0 ? Math.round((won.length / totalOpportunities) * 1000) / 10 : 0;
+        const totalWonValue = won.reduce((acc: number, o: any) => acc + Number(o.estimatedAmount || 0), 0);
+        const wonOpportunitiesCount = (projects || []).filter((p: any) => p.opportunityId).length || won.length;
+
+        return {
+          totalOpportunities,
+          activeOpportunities,
+          openOpportunities,
+          pipelineValue,
+          weightedPipelineValue,
+          inNegotiationCount: inNegotiation.length,
+          inNegotiationValue: inNegotiation.reduce((acc: number, o: any) => acc + Number(o.estimatedAmount || 0), 0),
+          inCostingCount: inCosting.length,
+          inCostingValue: inCosting.reduce((acc: number, o: any) => acc + Number(o.estimatedAmount || 0), 0),
+          pendingCostSheetsCount,
+          approvedCostSheetsCount,
+          validatedCostSheetsCount,
+          quotesSentCount: 0,
+          quotesAcceptedCount: 0,
+          totalWonValue,
+          wonOpportunitiesCount,
+          conversionRate,
+          stagesBreakdown,
+        };
+      } catch (err) {
+        handleDbPersistenceError('getCommercialKpis', err);
+      }
+    }
     return serverStore.getCommercialKpis();
   },
 
@@ -3166,13 +3239,11 @@ export const dbBridge = {
           orderBy: { createdAt: 'desc' },
           include: { costSheets: true, convertedProject: true },
         });
-        if (dbOpps && dbOpps.length > 0) {
-          return dbOpps.map((o: any) => ({
-            ...o,
-            estimatedAmount: Number(o.estimatedAmount || 0),
-            weightedValue: Number(o.weightedValue || 0),
-          }));
-        }
+        return (dbOpps || []).map((o: any) => ({
+          ...o,
+          estimatedAmount: Number(o.estimatedAmount || 0),
+          weightedValue: Number(o.weightedValue || 0),
+        }));
       } catch (err) {
         handleDbPersistenceError('getOpportunities', err);
       }
@@ -3196,6 +3267,7 @@ export const dbBridge = {
             weightedValue: Number(opp.weightedValue || 0),
           };
         }
+        return null;
       } catch (err) {
         handleDbPersistenceError('getOpportunity', err);
       }
@@ -3314,19 +3386,17 @@ export const dbBridge = {
             revisions: true,
           },
         });
-        if (sheets && sheets.length > 0) {
-          return sheets.map((cs: any) => ({
-            ...cs,
-            totalDirectCost: Number(cs.totalDirectCost || 0),
-            totalIndirectCost: Number(cs.totalIndirectCost || 0),
-            totalEstimatedCost: Number(cs.totalEstimatedCost || 0),
-            proposedSellingPrice: Number(cs.proposedSellingPrice || 0),
-            estimatedMarginValue: Number(cs.estimatedMarginValue || 0),
-            targetMarginPercent: Number(cs.targetMarginPercent || 0),
-            marginRateOnCost: Number(cs.marginRateOnCost || 0),
-            markupRate: Number(cs.markupRate || 0),
-          }));
-        }
+        return (sheets || []).map((cs: any) => ({
+          ...cs,
+          totalDirectCost: Number(cs.totalDirectCost || 0),
+          totalIndirectCost: Number(cs.totalIndirectCost || 0),
+          totalEstimatedCost: Number(cs.totalEstimatedCost || 0),
+          proposedSellingPrice: Number(cs.proposedSellingPrice || 0),
+          estimatedMarginValue: Number(cs.estimatedMarginValue || 0),
+          targetMarginPercent: Number(cs.targetMarginPercent || 0),
+          marginRateOnCost: Number(cs.marginRateOnCost || 0),
+          markupRate: Number(cs.markupRate || 0),
+        }));
       } catch (err) {
         handleDbPersistenceError('getCostSheets', err);
       }
@@ -3359,6 +3429,7 @@ export const dbBridge = {
             markupRate: Number(cs.markupRate || 0),
           };
         }
+        return null;
       } catch (err) {
         handleDbPersistenceError('getCostSheet', err);
       }

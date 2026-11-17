@@ -352,7 +352,7 @@ export default function MaintenancePage() {
         setSelectedAssetForDetail(updated);
       }
       await loadMaintenanceData();
-      setNotification(`Fiche équipement ${updated.assetTag} mise à jour avec succès dans PostgreSQL !`);
+      setNotification(`Fiche équipement ${updated.assetTag} mise à jour avec succès !`);
       setTimeout(() => setNotification(null), 5000);
     } catch (err: any) {
       alert(err.message || 'Erreur lors de la modification');
@@ -424,7 +424,7 @@ export default function MaintenancePage() {
       setShowAssetModal(false);
       setAssetName('');
       await loadMaintenanceData();
-      setNotification(`Équipement "${created.name}" (${created.assetTag}) enregistré avec succès dans PostgreSQL !`);
+      setNotification(`Équipement "${created.name}" (${created.assetTag}) enregistré avec succès !`);
       setTimeout(() => setNotification(null), 5000);
     } catch (err: any) {
       alert(err.message);
@@ -661,7 +661,7 @@ export default function MaintenancePage() {
             {orders.length} interventions tracées
           </div>
           <div className="text-[10px] text-slate-500 mt-1">
-            Persistées et historisées dans PostgreSQL
+            Persistées et historisées dans le registre central
           </div>
         </div>
       </div>
@@ -1238,7 +1238,7 @@ export default function MaintenancePage() {
         const activeProject = (Array.isArray(projects) ? projects : []).find(p => p.id === a.currentProjectId) || a.currentProject;
 
         return (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
             <div className="bg-white rounded-xl max-w-3xl w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto border border-slate-200">
               {/* Header */}
               <div className="flex items-start justify-between pb-3 border-b border-slate-100">
@@ -1366,7 +1366,7 @@ export default function MaintenancePage() {
                     Historique & Registre des Interventions ({assetOrders.length})
                   </h4>
                   <span className="text-[11px] text-slate-500">
-                    Traçabilité complète PostgreSQL (Sonatrach / HSE)
+                    Traçabilité d'audit certifiée (Sonatrach / HSE)
                   </span>
                 </div>
 
@@ -1482,7 +1482,7 @@ export default function MaintenancePage() {
       {/* MODAL 2 : MODIFIER UN ÉQUIPEMENT EXISTANT (PATCH /fleet/assets/:id) */}
       {/* ========================================================================= */}
       {selectedAssetForEdit && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 animate-in fade-in duration-150 backdrop-blur-xs">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl max-w-lg w-full p-5 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -1617,7 +1617,7 @@ export default function MaintenancePage() {
       {/* MODALE CRÉATION ÉQUIPEMENT */}
       {showAssetModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-[#142B45] flex items-center gap-2">
@@ -1755,8 +1755,8 @@ export default function MaintenancePage() {
         const isAssetOperational = activeSelectedAsset?.status === 'OPERATIONAL';
 
         return (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 backdrop-blur-xs">
-            <div className="bg-white rounded-xl max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150 border border-slate-200">
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
+            <div className="bg-white rounded-xl max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto border border-slate-200">
               {/* Header */}
               <div className="flex items-start justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-start gap-3">
@@ -2087,50 +2087,6 @@ export default function MaintenancePage() {
                       </button>
                     </div>
 
-                    {/* Presets rapides de panne */}
-                    <div>
-                      <div className="text-[11px] font-semibold text-slate-700 mb-1">
-                        Symptômes & Pannes Fréquentes (Remplissage Rapide) :
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => applyCurativePreset('Fuite flexible hydraulique haute pression', 65000, 'Flexible HP 3/4" 400 bars & 2 raccords à sertir')}
-                          className="px-2 py-1 bg-white hover:bg-red-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-800 cursor-pointer inline-flex items-center gap-1.5"
-                        >
-                          <Droplet className="w-3 h-3 text-cyan-600" /> Fuite Flexible HP (210b)
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => applyCurativePreset('Surchauffe moteur diesel (> 100°C) / Perte liquide', 85000, 'Pompe à eau, courroie et liquide refroidissement')}
-                          className="px-2 py-1 bg-white hover:bg-red-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-800 cursor-pointer inline-flex items-center gap-1.5"
-                        >
-                          <Flame className="w-3 h-3 text-red-600" /> Surchauffe Moteur Diesel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => applyCurativePreset('Coupure régulateur alternateur / Absence tension 380V', 95000, 'Carte régulateur AVR & pont de diodes')}
-                          className="px-2 py-1 bg-white hover:bg-red-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-800 cursor-pointer inline-flex items-center gap-1.5"
-                        >
-                          <Zap className="w-3 h-3 text-amber-500" /> Défaut Alternateur / 380V
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => applyCurativePreset('Rupture câble de levage / Fin de course treuil', 140000, 'Câble anti-giratoire 16mm & accessoires')}
-                          className="px-2 py-1 bg-white hover:bg-red-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-800 cursor-pointer inline-flex items-center gap-1.5"
-                        >
-                          <Building2 className="w-3 h-3 text-slate-600" /> Câble Levage / Treuil
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => applyCurativePreset('Défaut amorçage arc / Dérèglement ampérage poste de soudure', 50000, 'Potentiomètre commande & contacteurs')}
-                          className="px-2 py-1 bg-white hover:bg-red-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-800 cursor-pointer inline-flex items-center gap-1.5"
-                        >
-                          <Wrench className="w-3 h-3 text-slate-700" /> Dérèglement Soudure 500A
-                        </button>
-                      </div>
-                    </div>
-
                     {/* Immobilisation immédiate & Pièces requises */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                       <label className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded border border-red-200">
@@ -2142,7 +2098,7 @@ export default function MaintenancePage() {
                         />
                         <div>
                           <div className="font-bold text-red-900 text-[11px]">Immobilisation immédiate</div>
-                          <div className="text-[10px] text-slate-500">Bascule en "EN MAINTENANCE" dans PostgreSQL</div>
+                          <div className="text-[10px] text-slate-500">Bascule en "EN MAINTENANCE"</div>
                         </div>
                       </label>
                       <div>
@@ -2206,38 +2162,6 @@ export default function MaintenancePage() {
                           <option value="CONFORMITE_ELEC_ATEX">Conformité Électrique & Terre ATEX</option>
                         </select>
                       </div>
-                    </div>
-
-                    {/* Presets rapides VGP */}
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => applyRegulatoryPreset('APAVE Algérie', 'VGP_LEVAGE', 120000, 12)}
-                        className="px-2 py-1 bg-white hover:bg-indigo-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-800 cursor-pointer inline-flex items-center gap-1.5"
-                      >
-                        <Scale className="w-3 h-3 text-indigo-600" /> VGP Levage APAVE (1 an)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyRegulatoryPreset('Bureau Veritas Algérie', 'EPREUVE_HYDRO', 160000, 12)}
-                        className="px-2 py-1 bg-white hover:bg-indigo-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-800 cursor-pointer inline-flex items-center gap-1.5"
-                      >
-                        <Gauge className="w-3 h-3 text-blue-600" /> Épreuve Hydro Veritas
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyRegulatoryPreset('SGS Algérie', 'CND_MAGNETO', 140000, 12)}
-                        className="px-2 py-1 bg-white hover:bg-indigo-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-800 cursor-pointer inline-flex items-center gap-1.5"
-                      >
-                        <Search className="w-3 h-3 text-slate-600" /> CND Magnétoscopie Châssis
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => applyRegulatoryPreset('CTC (Contrôle Technique Construction)', 'CONFORMITE_ELEC_ATEX', 90000, 6)}
-                        className="px-2 py-1 bg-white hover:bg-indigo-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-800 cursor-pointer inline-flex items-center gap-1.5"
-                      >
-                        <Zap className="w-3 h-3 text-amber-500" /> Contrôle Terre & ATEX (6 mois)
-                      </button>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -2571,11 +2495,7 @@ export default function MaintenancePage() {
                 </div>
 
                 {/* Footer buttons */}
-                <div className="flex items-center justify-between pt-3 border-t border-slate-200">
-                  <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                    <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                    Persistance immédiate dans PostgreSQL
-                  </div>
+                <div className="flex items-center justify-end pt-3 border-t border-slate-200">
                   <div className="flex gap-2">
                     <button
                       type="button"

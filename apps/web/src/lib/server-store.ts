@@ -2074,6 +2074,14 @@ class ServerStore {
   }
 
   private initCommercialBaseline() {
+    // Mode Entreprise : Zéro donnée fictive par défaut.
+    this.opportunities = [];
+    this.costSheets = [];
+    this.customerQuotes = [];
+    this.initQualityBaseline();
+  }
+
+  public seedCommercialTestBaseline() {
     this.opportunities = [
       {
         id: 'opp-2026-001',
@@ -2440,9 +2448,6 @@ class ServerStore {
         ],
       });
     }
-
-    // Initialiser les données Qualité, FNC, GED et Weld Book
-    this.initQualityBaseline();
   }
 
   private initQualityBaseline() {

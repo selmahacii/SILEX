@@ -507,8 +507,8 @@ export default function WorkflowsPage() {
         const projRemaining = Math.max(0, projBudget - projCommitted);
 
         return (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 backdrop-blur-xs">
-            <div className="bg-white rounded-xl max-w-3xl w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150 border border-slate-200">
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
+            <div className="bg-white rounded-xl max-w-3xl w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto border border-slate-200">
               {/* Header */}
               <div className="flex items-start justify-between pb-3 border-b border-slate-200">
                 <div className="flex items-start gap-3">
@@ -833,31 +833,6 @@ export default function WorkflowsPage() {
                       placeholder="Indiquer les motivations de la décision DG..."
                       className="w-full p-2 border border-slate-300 rounded bg-white text-xs text-slate-900 focus:outline-none focus:border-[#0B207D]"
                     />
-
-                    {/* Presets rapides de visa DG */}
-                    <div className="flex flex-wrap gap-1.5 mt-1.5">
-                      <button
-                        type="button"
-                        onClick={() => setDecisionNotes('Offre conforme techniquement et financièrement, fournisseur homologué A, délai compatible avec le jalon chantier.')}
-                        className="px-2 py-0.5 bg-white hover:bg-emerald-50 border border-slate-200 rounded text-[10px] font-medium text-slate-700 cursor-pointer"
-                      >
-                        ✓ Offre conforme & validée
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDecisionNotes('Demande de réexamen : négocier une remise tarifaire de 5% ou proposer une variante matière stock.')}
-                        className="px-2 py-0.5 bg-white hover:bg-amber-50 border border-slate-200 rounded text-[10px] font-medium text-slate-700 cursor-pointer"
-                      >
-                        ↺ Demande renégociation -5%
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDecisionNotes('Dépassement du budget prévisionnel alloué pour ce jalon chantier.')}
-                        className="px-2 py-0.5 bg-white hover:bg-red-50 border border-slate-200 rounded text-[10px] font-medium text-slate-700 cursor-pointer"
-                      >
-                        ✗ Dépassement budgétaire
-                      </button>
-                    </div>
                   </div>
 
                   {/* Boutons d'Action Directs */}
@@ -916,7 +891,7 @@ export default function WorkflowsPage() {
       {/* MODALE DÉCISION DG (APPROUVER, REJETER, DEMANDER RÉEXAMEN) */}
       {selectedItemForDecision && decisionAction && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150 my-8">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl my-8">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">

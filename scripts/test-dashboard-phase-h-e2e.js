@@ -8,6 +8,7 @@ const { serverStore } = require('../apps/web/src/lib/server-store');
 
 async function run() {
   console.log('=== TEST E2E PHASE H : CONSOLIDATION DIRECTION GÉNÉRALE & PILOTAGE EXÉCUTIF ===\n');
+  serverStore.seedCommercialTestBaseline();
 
   // =========================================================================
   // 1. VÉRIFICATION DU CALCUL DE MARGE & ÉLIMINATION DU 94.4% ARTIFICIEL

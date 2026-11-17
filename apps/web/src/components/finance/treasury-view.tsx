@@ -481,7 +481,7 @@ export function TreasuryView({
             {filteredTransactions.length} <span className="text-sm font-normal text-slate-500">/ {transactions.length} flux</span>
           </div>
           <p className="mt-1 text-[11px] text-slate-500">
-            Grand livre synchronisé PostgreSQL
+            Grand livre synchronisé
           </p>
         </div>
       </div>
@@ -613,7 +613,7 @@ export function TreasuryView({
                         </span>
                       ) : (
                         <span className="rounded bg-emerald-50 px-1 py-0.2 text-[9px] font-bold text-emerald-700 border border-emerald-200">
-                          POSTGRESQL
+                          ACTIF
                         </span>
                       )}
                     </div>

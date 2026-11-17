@@ -8,6 +8,7 @@ const { serverStore } = require('../apps/web/src/lib/server-store');
 
 async function run() {
   console.log('=== TEST E2E PHASE D : MODULE COMMERCIAL, PIPELINE CRM & CHIFFRAGE COLLABORATIF ===\n');
+  serverStore.seedCommercialTestBaseline();
 
   // =========================================================================
   // 1. PIPELINE CRM INDUSTRIEL À 10 ÉTAPES & RÈGLES DE TRANSITION STRICTES

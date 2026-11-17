@@ -192,11 +192,6 @@ export default function ProcurementPage() {
     );
   };
 
-  const applyJustificationPreset = (text: string, urgency: 'NORMAL' | 'HIGH' | 'CRITICAL') => {
-    setRequestJustification(text);
-    setRequestUrgency(urgency);
-  };
-
   // Modal Modification / Édition DA
   const [showEditPrModal, setShowEditPrModal] = useState(false);
   const [editQty, setEditQty] = useState<number>(50);
@@ -472,7 +467,7 @@ export default function ProcurementPage() {
       setShowCreateSupplierModal(false);
       await loadData();
       setActiveTab('suppliers');
-      setNotification(`Fournisseur "${created.name}" (${created.code}) homologué avec succès dans PostgreSQL !`);
+      setNotification(`Fournisseur "${created.name}" (${created.code}) homologué avec succès !`);
       setTimeout(() => setNotification(null), 6000);
     } catch (err: any) {
       alert(err.message);
@@ -1858,8 +1853,8 @@ export default function ProcurementPage() {
         const currentDaImpactPct = projBudget > 0 ? ((totalPRLinesHT / projBudget) * 100).toFixed(1) : '0';
 
         return (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50 backdrop-blur-xs">
-            <div className="bg-white rounded-xl max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150 border border-slate-200">
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
+            <div className="bg-white rounded-xl max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto border border-slate-200">
               {/* Header */}
               <div className="flex items-start justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-start gap-3">
@@ -2240,9 +2235,8 @@ export default function ProcurementPage() {
                       <DollarSign className="w-4 h-4 text-[#0B207D]" />
                       Ventilation Financière Globale & Régime Fiscal Algérien
                     </span>
-                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
-                      Calcul en temps réel
+                    <span className="text-[10px] text-slate-500 font-medium">
+                      Montants HT & TVA
                     </span>
                   </div>
 
@@ -2401,66 +2395,10 @@ export default function ProcurementPage() {
                     <span className="text-[10px] text-slate-500">Transmis au service Achats et à la DG</span>
                   </div>
 
-                  {/* Presets rapides de justification */}
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        applyJustificationPreset(
-                          'Approvisionnement prioritaire pour test d\'épreuve hydraulique sous pression (150 bars) et tie-in réseau selon planning contractuel Sonatrach.',
-                          'HIGH'
-                        )
-                      }
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-700 cursor-pointer inline-flex items-center gap-1"
-                    >
-                      <Gauge className="w-3 h-3 text-cyan-600" />
-                      Épreuve Hydro 150 bars
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        applyJustificationPreset(
-                          'Remplacement préventif et révision des robinetteries industrielles pendant la fenêtre d\'arrêt d\'unité U-100.',
-                          'NORMAL'
-                        )
-                      }
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-700 cursor-pointer inline-flex items-center gap-1"
-                    >
-                      <Factory className="w-3 h-3 text-amber-600" />
-                      Arrêt Unité U-100
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        applyJustificationPreset(
-                          'Fourniture des électrodes et fils de soudage certifiés pour passage des épreuves de qualification soudeur ASME IX / Bureau Veritas.',
-                          'NORMAL'
-                        )
-                      }
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 border border-slate-200 rounded text-[10px] font-semibold text-slate-700 cursor-pointer inline-flex items-center gap-1"
-                    >
-                      <Flame className="w-3 h-3 text-orange-600" />
-                      Épreuves Soudeurs ASME
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        applyJustificationPreset(
-                          'Intervention curative urgente suite à détection de fuite sur bride amont lors de la mise en service du collecteur (Risque pénalités Sonatrach).',
-                          'CRITICAL'
-                        )
-                      }
-                      className="px-2 py-0.5 bg-slate-100 hover:bg-red-50 border border-slate-200 rounded text-[10px] font-semibold text-red-700 cursor-pointer inline-flex items-center gap-1"
-                    >
-                      <AlertTriangle className="w-3 h-3 text-red-600" />
-                      Avarie Urgente Bride / Fuite
-                    </button>
-                  </div>
-
                   <textarea
                     value={requestJustification}
                     onChange={e => setRequestJustification(e.target.value)}
-                    rows={2}
+                    rows={3}
                     placeholder="Préciser le contexte technique, la ligne isométrique concernée ou la cause du besoin..."
                     className="w-full p-2.5 border border-slate-300 rounded-lg text-slate-900 bg-white focus:outline-none focus:border-[#0B207D] text-xs leading-relaxed"
                     required
@@ -2468,11 +2406,7 @@ export default function ProcurementPage() {
                 </div>
 
                 {/* Footer Buttons */}
-                <div className="flex items-center justify-between pt-3 border-t border-slate-200">
-                  <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                    <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                    Enregistrement PostgreSQL immédiat
-                  </div>
+                <div className="flex items-center justify-end pt-3 border-t border-slate-200">
                   <div className="flex gap-2">
                     <button
                       type="button"
@@ -2499,7 +2433,7 @@ export default function ProcurementPage() {
       {/* MODAL MODIFICATION DA (UPDATES PRIX & QUANTITÉS & TVA) */}
       {showEditPrModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">
@@ -2611,7 +2545,7 @@ export default function ProcurementPage() {
       {/* MODAL AJOUT VARIANTE / OFFRE FOURNISSEUR */}
       {showAddQuoteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">
@@ -2776,7 +2710,7 @@ export default function ProcurementPage() {
       {/* MODAL REJET DG */}
       {showRejectModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-red-700 flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-red-600" />
@@ -2822,7 +2756,7 @@ export default function ProcurementPage() {
       {/* MODAL RÉEXAMEN / RENÉGOCIATION DG */}
       {showReexamineModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-amber-800 flex items-center gap-2">
                 <RotateCcw className="w-4 h-4 text-amber-700" />
@@ -2871,7 +2805,7 @@ export default function ProcurementPage() {
       {/* MODAL MODIFIER DEVIS / SAISIR VARIANTE */}
       {showEditQuoteModal && editingQuote && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-lg w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-xl max-w-lg w-full p-5 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">
                 <Edit className="w-4 h-4 text-[#0B207D]" />
@@ -2966,7 +2900,7 @@ export default function ProcurementPage() {
       {/* MODAL CONFIRMATION ACCUSÉ RÉCEPTION BON DE COMMANDE */}
       {showConfirmPoModal && confirmingPo && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-emerald-800 flex items-center gap-2">
                 <CheckCircle className="w-4 h-4 text-emerald-600" />

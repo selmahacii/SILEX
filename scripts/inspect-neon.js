@@ -6,26 +6,18 @@ const envContent = fs.readFileSync(path.resolve(__dirname, '../.env'), 'utf8');
 const match = envContent.match(/DIRECT_URL=["']([^"']+)["']/);
 const url = match ? match[1] : null;
 
-console.log('Connecting to Neon:', url.replace(/:[^:@]+@/, ':***@'));
 const prisma = new PrismaClient({ datasources: { db: { url } } });
 
 async function run() {
   try {
-    const tables = await prisma.$queryRawUnsafe(
-      "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name"
-    );
-    console.log(`\nFound ${tables.length} tables on Neon:`);
-    console.log(tables.map(t => t.table_name).join(', '));
-
-    try {
-      const migs = await prisma.$queryRawUnsafe('SELECT * FROM "_prisma_migrations" ORDER BY finished_at ASC');
-      console.log('\nMigrations recorded on Neon:');
-      console.table(migs);
-    } catch (e) {
-      console.log('\nNo "_prisma_migrations" table exists on Neon:', e.message);
-    }
+    const prjs = await prisma.project.findMany();
+    console.log('Projects on Neon:', prjs);
+    const opps = await prisma.opportunity.findMany();
+    console.log('Opps on Neon:', opps);
+    const css = await prisma.costSheet.findMany();
+    console.log('CostSheets on Neon:', css);
   } catch (err) {
-    console.error('Error querying Neon:', err);
+    console.error('Error:', err);
   } finally {
     await prisma.$disconnect();
   }

@@ -771,7 +771,7 @@ export default function InventoryPage() {
             {formatCurrencyDA(totalStockValuation, false)}
           </div>
           <div className="text-[10px] text-slate-500 mt-1">
-            Calculé sur {items.length} références actives dans PostgreSQL
+            Calculé sur {items.length} références actives au catalogue
           </div>
         </div>
 
@@ -1571,7 +1571,7 @@ export default function InventoryPage() {
               <History className="w-4 h-4 text-[#0B207D]" />
               Journal Immuable des Écritures de Stocks ({movements.length})
             </span>
-            <span className="text-[10px] text-slate-500">Traçabilité complète PostgreSQL</span>
+            <span className="text-[10px] text-slate-500">Traçabilité complète des mouvements</span>
           </div>
 
           <div className="overflow-x-auto">
@@ -2359,7 +2359,7 @@ export default function InventoryPage() {
       {/* ========================================================================= */}
       {showCreateWarehouseModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">
@@ -2443,7 +2443,7 @@ export default function InventoryPage() {
       {/* ========================================================================= */}
       {showCreateItemModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-lg max-w-lg w-full p-6 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-bold text-[#07164D] flex items-center gap-2">
@@ -2641,7 +2641,7 @@ export default function InventoryPage() {
                 <History className="w-5 h-5 text-amber-700" />
                 <div>
                   <h3 className="text-sm font-bold text-[#07164D]">Ajustement Physique & Régularisation de Stock</h3>
-                  <p className="text-[11px] text-slate-500">Mise à jour du comptage réel avec traçabilité d'audit immuable (PostgreSQL).</p>
+                  <p className="text-[11px] text-slate-500">Mise à jour du comptage réel avec traçabilité d'audit immuable.</p>
                 </div>
               </div>
               <button onClick={() => setShowAdjustModal(false)} className="text-slate-400 hover:text-slate-600 p-1">

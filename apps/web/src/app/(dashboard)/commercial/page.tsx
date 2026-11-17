@@ -1823,7 +1823,7 @@ export default function CommercialModulePage() {
                   rows={3}
                   value={revisionReason}
                   onChange={(e) => setRevisionReason(e.target.value)}
-                  placeholder="Ex : Révision des prix après soutenance technique avec la commission Sonatrach et ajustement du volume tuyauterie..."
+                  placeholder="Motif de la révision technique ou commerciale..."
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-[#07164D]"
                 />
               </div>
@@ -1922,7 +1922,7 @@ export default function CommercialModulePage() {
                         ...projectContribForm,
                         lines: [
                           ...projectContribForm.lines,
-                          { id: `csl-prj-${Date.now()}`, category: 'TRAVAUX', label: 'Nouveau lot de tuyauterie', quantity: 100, unit: 'ml', unitPrice: 0, totalAmount: 0, notes: '' },
+                          { id: `csl-prj-${Date.now()}`, category: 'TRAVAUX', label: '', quantity: 1, unit: 'U', unitPrice: 0, totalAmount: 0, notes: '' },
                         ],
                       });
                     }}
@@ -2078,7 +2078,7 @@ export default function CommercialModulePage() {
                         ...procurementContribForm,
                         lines: [
                           ...procurementContribForm.lines,
-                          { id: `csl-ach-${Date.now()}`, category: 'MATIERES', label: 'Tubes ASTM / Brides', quantity: 10, unit: 'ml', unitPrice: 20000, totalAmount: 200000, notes: '' },
+                          { id: `csl-ach-${Date.now()}`, category: 'MATIERES', label: '', quantity: 1, unit: 'U', unitPrice: 0, totalAmount: 0, notes: '' },
                         ],
                       });
                     }}
@@ -2237,7 +2237,7 @@ export default function CommercialModulePage() {
                         ...hrContribForm,
                         lines: [
                           ...hrContribForm.lines,
-                          { id: `csl-rh-${Date.now()}`, category: 'MAIN_DOEUVRE', label: 'Soudeurs TIG 6G ASME IX', quantity: 90, unit: 'H/J', unitPrice: 18000, totalAmount: 1620000, notes: '' },
+                          { id: `csl-rh-${Date.now()}`, category: 'MAIN_DOEUVRE', label: '', quantity: 1, unit: 'H/J', unitPrice: 0, totalAmount: 0, notes: '' },
                         ],
                       });
                     }}
@@ -2679,7 +2679,7 @@ export default function CommercialModulePage() {
                   rows={3}
                   value={arbitrageNotes}
                   onChange={(e) => setArbitrageNotes(e.target.value)}
-                  placeholder="Ex : Offre validée, respect strict du délai de 45 jours et mobilisation des soudeurs 6G agréés..."
+                  placeholder="Observations, conditions suspensives ou motifs de l'arbitrage Direction Générale..."
                   className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#07164D]"
                 />
               </div>

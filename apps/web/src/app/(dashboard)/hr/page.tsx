@@ -413,7 +413,7 @@ export default function HrPage() {
     }
   };
 
-  // Calcul dynamique de la paie à partir des pointages réels en base PostgreSQL
+  // Calcul dynamique de la paie à partir des pointages réels chantiers
   const payrollSummary = (Array.isArray(employees) ? employees : []).map(emp => {
     const empAtts = attendances.filter(a => a.employeeId === emp.id);
     const totalNormal = empAtts.reduce((acc, curr) => acc + Number(curr.hoursWorked || 0), 0) || 160;
@@ -880,7 +880,7 @@ export default function HrPage() {
           <div className="p-3 bg-teal-50 border border-teal-200 rounded text-xs text-teal-800 flex items-start gap-2">
             <CheckCircle className="w-4 h-4 text-[#0A7F7C] shrink-0 mt-0.5" />
             <div>
-              <strong>Agrégation Réelle des Pointages PostgreSQL :</strong> Les heures normales, heures supplémentaires et indemnités de déplacement sont consolidées directement à partir des pointages journaliers enregistrés.
+              <strong>Agrégation Réelle des Pointages Chantier :</strong> Les heures normales, heures supplémentaires et indemnités de déplacement sont consolidées directement à partir des pointages journaliers enregistrés.
             </div>
           </div>
 
@@ -1700,7 +1700,7 @@ export default function HrPage() {
         const initials = `${emp.firstName?.[0] || ''}${emp.lastName?.[0] || ''}`.toUpperCase();
 
         return (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-150">
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-3 sm:p-4 z-50">
             <div className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl max-h-[92vh] overflow-hidden border border-slate-200 flex flex-col text-slate-800 animate-in zoom-in-95 duration-150">
               
               {/* En-tête Dossier aux couleurs SILEX SERVICES */}

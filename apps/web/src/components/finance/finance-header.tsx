@@ -73,9 +73,9 @@ export function FinanceHeader({
                 <h1 className="text-lg font-bold tracking-tight text-[#07164D]">
                   Finance & Trésorerie Industrielle
                 </h1>
-                <span className="hidden sm:inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 border border-slate-200">
-                  <Database className="h-3 w-3 text-emerald-600" />
-                  PostgreSQL 16
+                <span className="hidden sm:inline-flex items-center gap-1 rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 border border-emerald-200">
+                  <ShieldCheck className="h-3 w-3 text-emerald-600" />
+                  Données Certifiées
                 </span>
               </div>
               <p className="text-xs text-[#697789]">

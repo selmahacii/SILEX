@@ -523,7 +523,7 @@ export default function ProjectsListPage() {
                   Nouveau Marché Industriel — Saisie Contractuelle & Technique
                 </h3>
                 <p className="text-[11px] text-slate-500">
-                  Enregistrement et persistance directe dans la base PostgreSQL via Prisma ORM.
+                  Enregistrement direct dans le registre central des chantiers.
                 </p>
               </div>
               <button

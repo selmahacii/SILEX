@@ -152,9 +152,9 @@ export function AccountsSummaryWidget({
                           Démo
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-800 border border-emerald-200" title="Compte persisté PostgreSQL">
-                          <Database className="h-2 w-2 text-emerald-600" />
-                          PostgreSQL
+                        <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-800 border border-emerald-200" title="Compte bancaire certifié">
+                          <ShieldCheck className="h-2.5 w-2.5 text-emerald-600" />
+                          Actif
                         </span>
                       )}
                     </td>
