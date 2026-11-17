@@ -261,7 +261,7 @@ export function ProjectDailyReportsTab({
                     </span>
                     <span className="text-[11px] text-slate-500 flex items-center gap-1 ml-2">
                       <CloudSun className="w-3.5 h-3.5 text-amber-500" />
-                      {rep.weatherCondition || 'Météo normale'} ({rep.temperature || 22}°C)
+                      {rep.weatherCondition || 'Non renseigné'}{rep.temperature !== undefined && rep.temperature !== null ? ` (${rep.temperature}°C)` : ''}
                     </span>
                   </div>
 
@@ -380,10 +380,10 @@ export function ProjectDailyReportsTab({
                 {/* Bas de carte : Signatures / Visas */}
                 <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between text-[11px] text-slate-500">
                   <div>
-                    Conducteur de Travaux : <strong className="text-slate-700">{rep.supervisorName || 'SILEX Services'}</strong>
+                    Conducteur de Travaux : <strong className="text-slate-700">{rep.supervisorName || 'Non renseigné'}</strong>
                   </div>
                   <div>
-                    Visa Client : <strong className="text-slate-700">{rep.clientRepresentative || 'Maître d’ouvrage'}</strong>
+                    Visa Client : <strong className="text-slate-700">{rep.clientRepresentative || 'Non renseigné'}</strong>
                   </div>
                   {isValidated && rep.validatedAt && (
                     <div className="text-emerald-700 font-semibold flex items-center gap-1">
@@ -456,7 +456,7 @@ export function ProjectDailyReportsTab({
                 </div>
                 <div>
                   <span className="font-bold text-slate-700">Conditions Météo : </span>
-                  <span>{selectedReport.weatherCondition || 'Normales'} ({selectedReport.temperature || 22}°C)</span>
+                  <span>{selectedReport.weatherCondition || 'Non renseigné'}{selectedReport.temperature !== undefined && selectedReport.temperature !== null ? ` (${selectedReport.temperature}°C)` : ''}</span>
                 </div>
               </div>
 
@@ -558,7 +558,7 @@ export function ProjectDailyReportsTab({
                   5. SÉCURITÉ & HSE CHANTIER
                 </div>
                 <div className="p-2 border border-slate-300 rounded text-[10px] flex items-center justify-between">
-                  <span>{selectedReport.hseNotes || 'Quart d’heure de sécurité réalisé. Respect strict des EPI et consignes.'}</span>
+                  <span>{selectedReport.hseNotes || 'Aucune observation enregistrée.'}</span>
                   <span className="font-bold text-emerald-700 shrink-0 ml-2">
                     Incidents signalés : {selectedReport.hseIncidentsCount}
                   </span>
@@ -573,7 +573,7 @@ export function ProjectDailyReportsTab({
                     <div className="text-[9px] font-normal text-slate-500">Conducteur de Travaux / Superviseur</div>
                   </div>
                   <div className="text-center font-bold text-[#0B207D] text-[11px] pt-4">
-                    {selectedReport.supervisorName || 'M. le Conducteur de Travaux'}
+                    {selectedReport.supervisorName || 'Non renseigné'}
                     <div className="text-[9px] text-slate-400 font-normal">Signature & Cachet Électronique Silex</div>
                   </div>
                 </div>
@@ -584,7 +584,7 @@ export function ProjectDailyReportsTab({
                     <div className="text-[9px] font-normal text-slate-500">Superviseur Chantier / Bureau de Contrôle</div>
                   </div>
                   <div className="text-center font-bold text-slate-800 text-[11px] pt-4">
-                    {selectedReport.clientRepresentative || 'Représentant Client'}
+                    {selectedReport.clientRepresentative || 'Non renseigné'}
                     <div className="text-[9px] text-slate-400 font-normal">Visa contradictoire</div>
                   </div>
                 </div>

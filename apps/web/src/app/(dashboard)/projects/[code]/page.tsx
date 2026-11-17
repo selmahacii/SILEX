@@ -921,7 +921,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-[#0B207D] text-[#0B207D] rounded-md hover:bg-blue-50 transition-colors shadow-2xs cursor-pointer"
             >
               <Gauge className="w-3.5 h-3.5" />
-              Ajuster Avancement ({project.physicalProgress}%)
+              Ajuster Avancement ({Number(project.physicalProgress || 0)}%)
             </button>
           )}
 
@@ -954,10 +954,10 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
         <div>
           <div className="text-[11px] font-semibold text-[#697789] uppercase tracking-wider flex items-center justify-between">
             <span>1. Avancement Physique Pondéré</span>
-            <span className="text-emerald-700 font-bold">{project.physicalProgress}%</span>
+            <span className="text-emerald-700 font-bold">{Number(project.physicalProgress || 0)}%</span>
           </div>
           <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mt-1.5">
-            <div className="bg-emerald-600 h-full rounded-full transition-all" style={{ width: `${project.physicalProgress}%` }} />
+            <div className="bg-emerald-600 h-full rounded-full transition-all" style={{ width: `${Number(project.physicalProgress || 0)}%` }} />
           </div>
           <div className="text-[10px] text-slate-500 mt-1 flex justify-between">
             <span>Jalons : {completedMilestones}/{project.milestones?.length || 0} validés</span>
@@ -1058,7 +1058,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-center">
                   <div className="text-[10px] text-slate-500 uppercase font-bold">1. Avanc. Physique</div>
-                  <div className="text-xl font-extrabold text-emerald-700 mt-1">{project.physicalProgress}%</div>
+                  <div className="text-xl font-extrabold text-emerald-700 mt-1">{Number(project.physicalProgress || 0)}%</div>
                   <div className="text-[10px] text-slate-500 mt-0.5">Métrés & Soudures</div>
                 </div>
 
@@ -1076,7 +1076,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
 
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-center">
                   <div className="text-[10px] text-slate-500 uppercase font-bold">4. Encaissement</div>
-                  <div className="text-xl font-extrabold text-amber-700 mt-1">{project.financialProgress || '20.0'}%</div>
+                  <div className="text-xl font-extrabold text-amber-700 mt-1">{collectedPct}%</div>
                   <div className="text-[10px] text-slate-500 mt-0.5">Règlements reçus</div>
                 </div>
               </div>
@@ -1168,7 +1168,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                     )}
                     <div className="text-[10px] text-slate-500 flex items-center gap-1">
                       <MapPin className="w-2.5 h-2.5 text-slate-400" />
-                      Base Opérationnelle : {project.siteLocation || 'Site Industriel Algérie'}
+                      Base Opérationnelle : {project.siteLocation || 'Non renseigné'}
                     </div>
                   </div>
                 </div>
@@ -1338,54 +1338,6 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
       {/* ========================================================================= */}
       {(activeTab === 'contract' || activeTab === 'ods') && (
         <div className="space-y-6">
-          {/* Synthèse Financière Contractuelle */}
-          <div className="bg-white p-5 rounded-lg border border-[#E1E6ED] shadow-2xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 flex-wrap gap-2">
-              <div>
-                <h2 className="text-xs font-bold text-[#07164D] uppercase tracking-wider flex items-center gap-1.5">
-                  <Receipt className="w-4 h-4 text-[#0B207D]" />
-                  Synthèse Contractuelle, Fiscalité & Retenues Réglementaires
-                </h2>
-                <p className="text-[11px] text-slate-500">
-                  Cadre financier légal selon le Code des Marchés : Retenue de garantie 5%, TVA 19%, Pénalités plafonnées.
-                </p>
-              </div>
-              <div className="text-right">
-                <span className="font-mono text-xs font-bold text-[#0B207D] bg-blue-50 px-2.5 py-1 rounded border border-blue-200">
-                  Réf: {project.contractReference || `CTR-${project.code}`}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs">
-              <div className="p-3 bg-slate-50 rounded border border-slate-200">
-                <div className="text-[10px] text-slate-500 uppercase font-semibold">Marché HT Vendu</div>
-                <div className="text-sm font-extrabold text-[#07164D] mt-1">{formatCurrencyDA(contractAmountNum, false)}</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Base d'engagement</div>
-              </div>
-              <div className="p-3 bg-slate-50 rounded border border-slate-200">
-                <div className="text-[10px] text-slate-500 uppercase font-semibold">TVA Réglementaire (19%)</div>
-                <div className="text-sm font-bold text-slate-800 mt-1">{formatCurrencyDA(contractAmountNum * 0.19, false)}</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">Taux légal algérien</div>
-              </div>
-              <div className="p-3 bg-slate-50 rounded border border-slate-200">
-                <div className="text-[10px] text-slate-500 uppercase font-semibold">Volume Global TTC</div>
-                <div className="text-sm font-extrabold text-[#0B207D] mt-1">{formatCurrencyDA(contractAmountNum * 1.19, false)}</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">TTC Contractuel</div>
-              </div>
-              <div className="p-3 bg-purple-50 rounded border border-purple-200">
-                <div className="text-[10px] text-purple-700 uppercase font-semibold">Retenue de Garantie (5%)</div>
-                <div className="text-sm font-extrabold text-purple-900 mt-1">{formatCurrencyDA(contractAmountNum * 0.05, false)}</div>
-                <div className="text-[10px] text-purple-600 mt-0.5">Déblocage à PVRD (12 mois)</div>
-              </div>
-              <div className="p-3 bg-amber-50 rounded border border-amber-200">
-                <div className="text-[10px] text-amber-700 uppercase font-semibold">Plafond Pénalités (10%)</div>
-                <div className="text-sm font-bold text-amber-900 mt-1">{formatCurrencyDA(contractAmountNum * 0.1, false)}</div>
-                <div className="text-[10px] text-amber-600 mt-0.5">Max contractuel retard</div>
-              </div>
-            </div>
-          </div>
-
           {/* Lots & Prestations Métrées Contractuelles */}
           <ProjectContractTab
             project={project}
@@ -1932,7 +1884,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                     </Link>{' '}
                     <span className="font-bold text-slate-900 ml-1">{al.item?.name || al.itemName}</span>
                     <div className="text-[11px] text-slate-500 mt-1">
-                      Magasin source : <strong>{al.warehouse?.name || 'Magasin Central Arzew'}</strong> • Zone / Iso : <strong>{al.workZone || 'Chantier Principal'}</strong> • Date : {formatDateDZ(al.allocatedAt)}
+                      Magasin source : <strong>{al.warehouse?.name || 'Magasin non assigné'}</strong> • Zone / Iso : <strong>{al.workZone || 'Zone non assignée'}</strong> • Date : {formatDateDZ(al.allocatedAt)}
                     </div>
                   </div>
                   <div className="text-right">
@@ -2241,7 +2193,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
                   <div className="space-y-0.5">
                     <div className="font-bold text-slate-900">{doc.name}</div>
                     <div className="text-[10px] text-slate-500">
-                      Type: <strong>{doc.type}</strong> • Taille: {doc.size || '1.8 MB'}
+                      Type: <strong>{doc.type}</strong>{doc.size ? <span> • Taille: {doc.size}</span> : null}
                     </div>
                   </div>
                   <span className="text-[10px] font-bold text-[#0B207D] bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
