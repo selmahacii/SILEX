@@ -1206,7 +1206,7 @@ export default function InventoryPage() {
                 { label: 'Coulée Coudes ASTM A234 (LOT-A234-WPB-44)', query: 'LOT-A234-WPB-44' },
                 { label: 'Certificat CCPU 3.1 Brides (CCPU-WN300-3.1-014)', query: 'CCPU-WN300-3.1-014' },
                 { label: 'Bon de Sortie BSM-2026-0001', query: 'BSM-2026-0001' },
-                { label: 'Raffinerie Skikda (PRJ-2026-001)', query: 'PRJ-2026-001' },
+                { label: 'Bon de Réception BRM-2026-0001', query: 'BRM-2026-0001' },
               ].map(chip => (
                 <button
                   key={chip.query}
