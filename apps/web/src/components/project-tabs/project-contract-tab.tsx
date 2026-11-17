@@ -291,7 +291,7 @@ export function ProjectContractTab({ project, onRefresh, isDG, isProjectManager 
                     </td>
                   </tr>
                 );
-              })}
+              }))}
             </tbody>
           </table>
         </div>
