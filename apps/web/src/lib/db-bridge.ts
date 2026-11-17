@@ -261,11 +261,12 @@ export const dbBridge = {
     }
   },
 
-  async isUserAssignedToProject(userId: string, projectCode: string): Promise<boolean> {
+  async isUserAssignedToProject(userId: string, projectIdOrCode: string | undefined | null): Promise<boolean> {
+    if (!projectIdOrCode) return false;
     if (!hasDb) return true;
     try {
       const count = await prisma.userProjectAssignment.count({
-        where: { userId, project: { code: projectCode } },
+        where: { userId, project: { OR: [{ id: projectIdOrCode }, { code: projectIdOrCode }] } },
       });
       return count > 0;
     } catch (err) {

@@ -258,14 +258,28 @@ export async function GET(
   // 5. Procurement (DA, BC, Fournisseurs)
   if (clean.includes('/procurement/purchase-requests/') && resolvedParams.path.length >= 3) {
     const prId = resolvedParams.path[2];
-    const pr = await dbBridge.getPurchaseRequest(prId);
+    const pr: any = await dbBridge.getPurchaseRequest(prId);
     if (!pr) {
       return NextResponse.json({ error: 'Demande d\'Achat introuvable' }, { status: 404, headers: corsHeaders() });
+    }
+    if (
+      gateUser.role === PROJECT_SCOPED_ROLE &&
+      !(await dbBridge.isUserAssignedToProject(gateUser.id, pr.project?.code || pr.projectCode || pr.projectId))
+    ) {
+      return NextResponse.json(
+        { error: 'Accès refusé : cette demande d\'achat ne concerne pas un chantier qui vous est affecté.' },
+        { status: 403, headers: corsHeaders() }
+      );
     }
     return NextResponse.json(pr, { headers: corsHeaders() });
   }
   if (clean.includes('/procurement/purchase-requests') || clean === '/procurement') {
-    const prs = await dbBridge.getPurchaseRequests();
+    const prs: any[] = await dbBridge.getPurchaseRequests();
+    if (gateUser.role === PROJECT_SCOPED_ROLE) {
+      const assignedCodes = new Set(await dbBridge.getAssignedProjectCodes(gateUser.id));
+      const scoped = prs.filter(pr => assignedCodes.has(pr.project?.code || pr.projectCode));
+      return NextResponse.json(scoped, { headers: corsHeaders() });
+    }
     return NextResponse.json(prs, { headers: corsHeaders() });
   }
   if (clean.includes('/procurement/purchase-orders') || clean.includes('/purchase-orders')) {
@@ -504,6 +518,23 @@ export async function POST(
       { error: 'Authentification requise.' },
       { status: 401, headers: corsHeaders() }
     );
+  }
+
+  // 0.1 Isolation projet (voir GET) : toute création sous /projects/:code/... (situations,
+  // ODS, coûts, jalons, tâches, rapports, DA depuis le chantier) exige que le Chef de
+  // Projet soit affecté à ce code. Les autres rôles (DG, Achats, Finance...) ne sont pas
+  // concernés par cette restriction.
+  if (clean.startsWith('/projects/') && resolvedParams.path.length >= 2) {
+    const scopedProjCode = resolvedParams.path[1];
+    if (
+      gateUser.role === PROJECT_SCOPED_ROLE &&
+      !(await dbBridge.isUserAssignedToProject(gateUser.id, scopedProjCode))
+    ) {
+      return NextResponse.json(
+        { error: 'Accès refusé : ce chantier ne vous est pas affecté.' },
+        { status: 403, headers: corsHeaders() }
+      );
+    }
   }
 
   // 1. Auth (Login) — délégué à /api/auth/login/route.ts qui vérifie réellement le mot de passe
@@ -853,6 +884,16 @@ export async function POST(
 
   // 5. Procurement
   if (clean.includes('/procurement/purchase-requests') || clean === '/procurement') {
+    const requestedProjectRef = body.projectCode || body.projectId;
+    if (
+      gateUser.role === PROJECT_SCOPED_ROLE &&
+      (!requestedProjectRef || !(await dbBridge.isUserAssignedToProject(gateUser.id, requestedProjectRef)))
+    ) {
+      return NextResponse.json(
+        { error: 'Accès refusé : vous ne pouvez créer une demande d\'achat que pour un chantier qui vous est affecté.' },
+        { status: 403, headers: corsHeaders() }
+      );
+    }
     const pr = await dbBridge.createPurchaseRequest(body);
     return NextResponse.json(pr, { status: 201, headers: corsHeaders() });
   }
@@ -1152,6 +1193,21 @@ export async function PATCH(
     );
   }
 
+  // 0.1 Isolation projet (voir GET/POST) : toute modification sous /projects/:code/...
+  // (jalons, tâches, situations, contrat...) exige l'affectation du Chef de Projet.
+  if (clean.startsWith('/projects/') && resolvedParams.path.length >= 2) {
+    const scopedProjCode = resolvedParams.path[1];
+    if (
+      gateUser.role === PROJECT_SCOPED_ROLE &&
+      !(await dbBridge.isUserAssignedToProject(gateUser.id, scopedProjCode))
+    ) {
+      return NextResponse.json(
+        { error: 'Accès refusé : ce chantier ne vous est pas affecté.' },
+        { status: 403, headers: corsHeaders() }
+      );
+    }
+  }
+
   // 0.5 Commercial PATCH actions
   if (clean.includes('/commercial/cost-sheets/') || clean.includes('/cost-sheets/')) {
     const sheetId = resolvedParams.path.find(p => p.startsWith('fc-') || p.startsWith('FC-')) || resolvedParams.path[2] || resolvedParams.path[1];
@@ -1298,6 +1354,20 @@ export async function DELETE(
       { error: 'Authentification requise.' },
       { status: 401, headers: corsHeaders() }
     );
+  }
+
+  // 0.1 Isolation projet (voir GET/POST/PATCH).
+  if (clean.startsWith('/projects/') && resolvedParams.path.length >= 2) {
+    const scopedProjCode = resolvedParams.path[1];
+    if (
+      gateUser.role === PROJECT_SCOPED_ROLE &&
+      !(await dbBridge.isUserAssignedToProject(gateUser.id, scopedProjCode))
+    ) {
+      return NextResponse.json(
+        { error: 'Accès refusé : ce chantier ne vous est pas affecté.' },
+        { status: 403, headers: corsHeaders() }
+      );
+    }
   }
 
   if (clean.includes('/members')) {
