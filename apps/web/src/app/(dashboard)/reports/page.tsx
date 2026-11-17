@@ -291,8 +291,10 @@ export default function ReportsPage() {
     const costRemainingToCommit = Math.max(0, totalEAC - totalCommitted);
 
     // Marges prévisionnelle et réalisée (RÉSOLUTION DE L'ANOMALIE DU RAPPORT À 94.4%)
-    // Si pas de marché contractuel ou projet en démarrage sans engagements, la marge est "Non calculable"
-    const isForecastCalculable = totalContractHT > 0 && totalEAC > 0;
+    // Si pas de marché contractuel ou projet en démarrage sans engagements, la marge est "Non calculable".
+    // totalEAC retombe sur le budget révisé quand aucun coût réel/engagé n'existe encore : ce n'est pas un
+    // coût prévisionnel à terminaison réel, donc on exige au moins un engagement ou une dépense réelle.
+    const isForecastCalculable = totalContractHT > 0 && totalEAC > 0 && (totalActual > 0 || totalCommitted > 0);
     const forecastMarginDA = isForecastCalculable ? totalContractHT - totalEAC : 0;
     const forecastMarginPct = isForecastCalculable ? ((forecastMarginDA / totalContractHT) * 100).toFixed(1) : null;
 

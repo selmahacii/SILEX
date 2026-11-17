@@ -234,9 +234,13 @@ export const dbBridge = {
             serviceOrders: true,
             workSituations: true,
             costEntries: true,
+            manager: { select: { id: true, name: true } },
           },
         });
-        return projects;
+        return projects.map((p: any) => ({
+          ...p,
+          managerName: p.manager?.name,
+        }));
       } catch (err) {
         console.warn('[DB Bridge] Fallback store for getProjects:', err);
       }
