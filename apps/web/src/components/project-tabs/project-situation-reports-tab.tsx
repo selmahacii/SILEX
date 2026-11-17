@@ -66,13 +66,13 @@ export function ProjectSituationReportsTab({
   const thirtyDaysAgoStr = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
   const [periodStart, setPeriodStart] = useState(thirtyDaysAgoStr);
   const [periodEnd, setPeriodEnd] = useState(todayStr);
-  const [physicalProgress, setPhysicalProgress] = useState<number>(currentPhysicalProgress || 45);
-  const [financialProgress, setFinancialProgress] = useState<number>(currentFinancialProgress || 40);
+  const [physicalProgress, setPhysicalProgress] = useState<number>(currentPhysicalProgress !== undefined && currentPhysicalProgress !== null ? currentPhysicalProgress : 0);
+  const [financialProgress, setFinancialProgress] = useState<number>(currentFinancialProgress !== undefined && currentFinancialProgress !== null ? currentFinancialProgress : 0);
   const [costVarianceDA, setCostVarianceDA] = useState<number>(0);
   const [scheduleVarianceDays, setScheduleVarianceDays] = useState<number>(0);
   const [executiveSummary, setExecutiveSummary] = useState('');
-  const [logisticsStatus, setLogisticsStatus] = useState('Approvisionnements sous contrôle. Commandes critiques émises.');
-  const [hrStatus, setHrStatus] = useState('Mobilisation complète. Productivité conforme aux objectifs.');
+  const [logisticsStatus, setLogisticsStatus] = useState('');
+  const [hrStatus, setHrStatus] = useState('');
   const [keyAchievementsText, setKeyAchievementsText] = useState('');
   const [criticalIssuesText, setCriticalIssuesText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -354,7 +354,7 @@ export function ProjectSituationReportsTab({
                     3. STATUT LOGISTIQUE & ACHATS
                   </div>
                   <div className="p-2 border border-slate-300 rounded text-[10px]">
-                    {selectedReport.logisticsStatus || 'Approvisionnements conformes.'}
+                    {selectedReport.logisticsStatus || 'Non renseigné'}
                   </div>
                 </div>
 
@@ -363,7 +363,7 @@ export function ProjectSituationReportsTab({
                     4. RESSOURCES HUMAINES & HSE
                   </div>
                   <div className="p-2 border border-slate-300 rounded text-[10px]">
-                    {selectedReport.hrStatus || 'Effectifs mobilisés stables.'}
+                    {selectedReport.hrStatus || 'Non renseigné'}
                   </div>
                 </div>
               </div>
