@@ -5,14 +5,10 @@ import { api } from '@/lib/api-client';
 import {
   Users,
   HardHat,
-  Clock,
   Plus,
-  Search,
   CheckCircle,
   Phone,
   Mail,
-  UserCheck,
-  Calendar,
   AlertCircle,
 } from 'lucide-react';
 
@@ -42,17 +38,7 @@ export function ProjectHrTab({
   const [submittingRenfort, setSubmittingRenfort] = useState(false);
   const [renfortSuccess, setRenfortSuccess] = useState(false);
 
-  // Équipes type mobilisées sur chantier industriel
-  const defaultWorkforceProfiles = [
-    { trade: 'Soudeurs Haute Pression (TIG/Arc 6G)', count: 4, certification: 'Homologation ASME IX valide', status: 'Actif sur site' },
-    { trade: 'Tuyauteurs Industriels & Traceurs', count: 6, certification: 'Habilitation travail en hauteur', status: 'Actif sur site' },
-    { trade: 'Monteurs Mécaniques & Élingueurs', count: 5, certification: 'CACES R489 / Pont roulant', status: 'Actif sur site' },
-    { trade: 'Échafaudeurs Monteurs R408', count: 3, certification: 'Agrément R408 réception', status: 'Actif sur site' },
-    { trade: 'Superviseur Qualité & CND', count: 1, certification: 'COFREND Niveau II (RT/PT)', status: 'Actif sur site' },
-    { trade: 'Superviseur Sécurité HSE', count: 1, certification: 'NEBOSH / Habilitation Sonatrach', status: 'Actif sur site' },
-  ];
-
-  const totalHeadcount = defaultWorkforceProfiles.reduce((acc, p) => acc + p.count, 0) + (members?.length || 0);
+  const totalHeadcount = members?.length || 0;
 
   const handleRequestRenfort = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,26 +63,18 @@ export function ProjectHrTab({
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-white p-3.5 rounded-lg border border-[#E1E6ED] shadow-2xs">
-          <div className="text-[11px] font-semibold text-slate-500 uppercase">Effectif Total Présent</div>
-          <div className="text-xl font-bold text-slate-900 mt-1">{totalHeadcount} intervenants</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Mobilisés sur base de vie & chantier</div>
-        </div>
-        <div className="bg-white p-3.5 rounded-lg border border-[#E1E6ED] shadow-2xs">
-          <div className="text-[11px] font-semibold text-blue-700 uppercase">Soudeurs & Tuyauteurs</div>
-          <div className="text-xl font-bold text-blue-700 mt-1">10 spécialistes</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Corps d&apos;état critiques</div>
-        </div>
-        <div className="bg-white p-3.5 rounded-lg border border-[#E1E6ED] shadow-2xs">
-          <div className="text-[11px] font-semibold text-emerald-700 uppercase">Habilitations & Visas</div>
-          <div className="text-xl font-bold text-emerald-700 mt-1">100% à jour</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Badges d&apos;accès site actifs</div>
-        </div>
-        <div className="bg-white p-3.5 rounded-lg border border-[#E1E6ED] shadow-2xs">
-          <div className="text-[11px] font-semibold text-purple-700 uppercase">Taux de Présence</div>
-          <div className="text-xl font-bold text-purple-700 mt-1">98.5%</div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Pointages réguliers PC Paie</div>
+          <div className="text-[11px] font-semibold text-slate-500 uppercase">Effectif Affecté au Projet</div>
+          <div className="text-xl font-bold text-slate-900 mt-1">{totalHeadcount} intervenant{totalHeadcount > 1 ? 's' : ''}</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">Collaborateurs SILEX affectés à ce chantier</div>
         </div>
       </div>
+      {totalHeadcount === 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-[11px] text-amber-800 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          Aucun collaborateur affecté à ce chantier pour l&apos;instant. Les qualifications, habilitations et
+          pointages se gèrent collaborateur par collaborateur depuis le module Ressources Humaines.
+        </div>
+      )}
 
       {/* Header bar */}
       <div className="bg-white p-3.5 rounded-lg border border-[#E1E6ED] shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -130,40 +108,6 @@ export function ProjectHrTab({
               <span>Demande de Renfort RH</span>
             </button>
           )}
-        </div>
-      </div>
-
-      {/* Tableau des Métiers et Qualifications */}
-      <div className="bg-white rounded-lg border border-[#E1E6ED] shadow-2xs overflow-hidden">
-        <div className="p-3 bg-slate-50 border-b border-slate-200 font-bold text-xs text-slate-700 flex items-center justify-between">
-          <span>Corps d&apos;état & Effectifs Actifs sur le Chantier</span>
-          <span className="text-[11px] font-normal text-slate-500">Mise à jour via pointages journaliers</span>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs text-left">
-            <thead className="bg-[#F8FAFC] text-slate-600 font-semibold border-b border-slate-200">
-              <tr>
-                <th className="py-2 px-3">Qualification / Profil</th>
-                <th className="py-2 px-3 text-center">Effectif</th>
-                <th className="py-2 px-3">Certification / Habilitation Requise</th>
-                <th className="py-2 px-3 text-center">Statut Mobilisation</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
-              {defaultWorkforceProfiles.map((p, idx) => (
-                <tr key={idx} className="hover:bg-slate-50">
-                  <td className="py-2.5 px-3 font-semibold text-slate-900">{p.trade}</td>
-                  <td className="py-2.5 px-3 text-center font-bold text-[#0B207D]">{p.count}</td>
-                  <td className="py-2.5 px-3 text-slate-600">{p.certification}</td>
-                  <td className="py-2.5 px-3 text-center">
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                      {p.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
 

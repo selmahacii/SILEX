@@ -824,7 +824,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
     { id: 'budget', label: '4. Budget & Rentabilité WBS' },
     { id: 'procurement', label: `5. Achats & Commandes (${(project.purchaseOrders?.length || 0) + (project.purchaseRequests?.length || 0)})` },
     { id: 'materials', label: `6. Stocks & Consommations (${project.allocations?.length || 0})` },
-    { id: 'hr', label: `7. RH & Équipes (${project.members?.length || 0})` },
+    { id: 'hr', label: `7. RH & Équipes (${project.assignedUsers?.length || 0})` },
     { id: 'timesheets', label: `8. Pointages & Main-d’Œuvre (${project.timesheets?.length || 0})` },
     { id: 'quality-hse', label: `9. Qualité & Sécurité (${(project.hseIncidents?.length || 0) + (project.nonConformities?.length || 0)})` },
     { id: 'documents', label: `10. Documents & RJC (${project.dailyReports?.length || 0})` },
@@ -1580,15 +1580,31 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs">
               <div className="text-[10px] uppercase font-bold text-slate-500">Coût Prévisionnel à Terminaison (EAC)</div>
-              <div className="text-base font-extrabold text-[#07164D] mt-1">
-                {formatCurrencyDA(project.eacCost || (actualCostNum + Math.max(0, budgetAmountNum - actualCostNum)), false)}
-              </div>
+              {(() => {
+                // Un EAC fiable exige un coût réel ou engagé constaté : avant ça, "reste à faire = budget"
+                // n'est qu'un budget non consommé, pas une projection de coût à terminaison.
+                const hasCostBasis = actualCostNum > 0 || committedCostNum > 0;
+                if (!hasCostBasis) {
+                  return <div className="text-sm font-bold text-amber-700 mt-1">Non calculable</div>;
+                }
+                const eac = project.eacCost || (actualCostNum + Math.max(0, budgetAmountNum - actualCostNum));
+                return <div className="text-base font-extrabold text-[#07164D] mt-1">{formatCurrencyDA(eac, false)}</div>;
+              })()}
               <div className="text-[10px] text-slate-400 mt-1">Projection Coûts Réels + Reste à Faire</div>
             </div>
 
             <div className="bg-white p-4 rounded-lg border border-[#E1E6ED] shadow-2xs">
               <div className="text-[10px] uppercase font-bold text-slate-500">Marge Prévisionnelle (CA - EAC)</div>
               {(() => {
+                const hasCostBasis = actualCostNum > 0 || committedCostNum > 0;
+                if (!hasCostBasis) {
+                  return (
+                    <>
+                      <div className="text-sm font-bold text-amber-700 mt-1">Non calculable</div>
+                      <div className="text-[10px] text-slate-400 mt-1">Aucun coût réel ou engagé constaté</div>
+                    </>
+                  );
+                }
                 const eac = project.eacCost || (actualCostNum + Math.max(0, budgetAmountNum - actualCostNum));
                 const prevMargin = contractAmountNum - eac;
                 const prevMarginPct = contractAmountNum > 0 ? ((prevMargin / contractAmountNum) * 100).toFixed(1) : '0';
@@ -1905,7 +1921,7 @@ export default function ProjectDetailsPage({ params }: { params: Promise<{ code:
         <ProjectHrTab
           projectCode={project.code}
           projectName={project.name}
-          members={project.members || []}
+          members={project.assignedUsers || []}
           canManage={canManageMembers}
           onRefresh={async () => { await fetchProject(true); }}
           onOpenAddMember={() => setShowAddMemberModal(true)}
