@@ -41,8 +41,8 @@ export default function SettingsPage() {
 
         <div className="flex justify-between py-2">
           <span className="text-slate-500 font-medium">Mode Système :</span>
-          <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[10px]">
-            DÉMONSTRATION ACTIVE
+          <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+            PRODUCTION — DONNÉES RÉELLES
           </span>
         </div>
       </div>

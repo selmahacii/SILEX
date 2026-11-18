@@ -623,6 +623,11 @@ export default function AdminPage() {
               <p className="text-xs text-slate-500 mt-0.5">
                 Cochez ou décochez les permissions d’action (Lecture, Création, Modification, Suppression, Visa SoD, Export).
               </p>
+              <p className="text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                ⚠ Cette matrice est informative : elle est enregistrée mais n'est pas encore appliquée par le
+                serveur pour autoriser ou refuser une action. Les restrictions réellement en vigueur (accès projet,
+                comptes, audit, finance…) sont câblées directement dans le code côté serveur.
+              </p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
