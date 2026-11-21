@@ -68,6 +68,19 @@ interface ProjectReportItem {
   isDemo?: boolean;
 }
 
+function resolveWilaya(p: any): string {
+  if (p.wilaya && p.wilaya !== 'Alger') return p.wilaya;
+  const loc = `${p.siteLocation || ''} ${p.name || ''}`.toLowerCase();
+  if (loc.includes('kais') || loc.includes('khenchela')) return 'Khenchela';
+  if (loc.includes('skikda')) return 'Skikda';
+  if (loc.includes('arzew') || loc.includes('oran')) return 'Oran';
+  if (loc.includes('annaba') || loc.includes('hadjar')) return 'Annaba';
+  if (loc.includes('batna')) return 'Batna';
+  if (loc.includes('ouargla') || loc.includes('hassi')) return 'Ouargla';
+  if (loc.includes('alger')) return 'Alger';
+  return 'Khenchela';
+}
+
 export default function ReportsPage() {
   const { activeRole } = useAuth();
   const [projects, setProjects] = useState<ProjectReportItem[]>([]);
@@ -153,8 +166,7 @@ export default function ReportsPage() {
   const uniqueWilayas = useMemo(() => {
     const set = new Set<string>();
     projects.forEach(p => {
-      const w = p.wilaya || (p.siteLocation?.includes('Skikda') ? 'Skikda' : p.siteLocation?.includes('Kais') || p.siteLocation?.includes('Khenchela') ? 'Khenchela' : p.siteLocation?.includes('Arzew') || p.siteLocation?.includes('Oran') ? 'Oran' : p.siteLocation?.includes('Hadjar') || p.siteLocation?.includes('Annaba') ? 'Annaba' : p.siteLocation?.includes('Batna') ? 'Batna' : 'Alger');
-      set.add(w);
+      set.add(resolveWilaya(p));
     });
     return Array.from(set).sort();
   }, [projects]);
@@ -207,7 +219,7 @@ export default function ReportsPage() {
 
       // 9. Wilaya
       if (wilayaFilter !== 'ALL') {
-        const w = p.wilaya || (p.siteLocation?.includes('Skikda') ? 'Skikda' : p.siteLocation?.includes('Kais') || p.siteLocation?.includes('Khenchela') ? 'Khenchela' : p.siteLocation?.includes('Arzew') || p.siteLocation?.includes('Oran') ? 'Oran' : p.siteLocation?.includes('Hadjar') || p.siteLocation?.includes('Annaba') ? 'Annaba' : p.siteLocation?.includes('Batna') ? 'Batna' : 'Alger');
+        const w = resolveWilaya(p);
         if (w !== wilayaFilter) return false;
       }
 
@@ -217,9 +229,8 @@ export default function ReportsPage() {
         if (ct !== contractTypeFilter) return false;
       }
 
-      // 11. Données Persistées / Démo
-      if (dataSourceFilter === 'PERSISTED' && p.isDemo) return false;
-      if (dataSourceFilter === 'DEMO' && !p.isDemo) return false;
+      // 11. Données Persistées (Exclusion stricte des flags démo)
+      if (p.isDemo) return false;
 
       return true;
     });
@@ -392,9 +403,10 @@ export default function ReportsPage() {
       const comm = Number(p.committedCost || p.committedBudget || 0);
       const act = Number(p.actualCost || p.spentBudget || 0);
       const eac = p.eacCost || Math.max(bRev, act + Math.max(0, comm - act));
-      const marginDA = contract - eac;
-      const marginPct = contract > 0 ? ((marginDA / contract) * 100).toFixed(1) : 'Non calculable';
-      const wilaya = p.wilaya || (p.siteLocation?.includes('Skikda') ? 'Skikda' : p.siteLocation?.includes('Kais') || p.siteLocation?.includes('Khenchela') ? 'Khenchela' : p.siteLocation?.includes('Arzew') || p.siteLocation?.includes('Oran') ? 'Oran' : p.siteLocation?.includes('Annaba') ? 'Annaba' : p.siteLocation?.includes('Batna') ? 'Batna' : 'Alger');
+      const hasActivity = comm > 0 || act > 0;
+      const marginDA = hasActivity ? contract - eac : 0;
+      const marginPct = (hasActivity && contract > 0) ? ((marginDA / contract) * 100).toFixed(1) : 'Non calculable';
+      const wilaya = resolveWilaya(p);
       const pole = p.pole || (p.sector === 'OIL_AND_GAS' || p.sector === 'ENERGIE' ? 'Tuyauterie & Chaudronnerie' : p.sector === 'CHIMIE' ? 'HVAC & Climatisation Industrielle' : 'Maintenance Industrielle & Mécanique');
 
       return [
@@ -461,7 +473,8 @@ export default function ReportsPage() {
       const comm = Number(p.committedCost || p.committedBudget || 0);
       const act = Number(p.actualCost || p.spentBudget || 0);
       const eac = p.eacCost || Math.max(bRev, act + Math.max(0, comm - act));
-      const margin = contract - eac;
+      const hasActivity = comm > 0 || act > 0;
+      const margin = hasActivity ? contract - eac : 0;
       const progress = Number(p.physicalProgress || 0) / 100;
 
       return {
@@ -469,7 +482,7 @@ export default function ReportsPage() {
         name: p.name,
         clientName: p.clientName,
         siteLocation: p.siteLocation,
-        wilaya: p.wilaya || 'Alger',
+        wilaya: resolveWilaya(p),
         sector: p.sector,
         managerName: p.managerName || 'Non assigné',
         status: p.status,
@@ -752,20 +765,15 @@ export default function ReportsPage() {
               </select>
             </div>
 
-            {/* Données Persistées / Démo */}
+            {/* Source de Données */}
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                 Source de Données :
               </label>
-              <select
-                value={dataSourceFilter}
-                onChange={e => setDataSourceFilter(e.target.value as any)}
-                className="w-full p-1.5 rounded border border-slate-200 text-xs focus:outline-none focus:border-[#0B207D] bg-white"
-              >
-                <option value="ALL">Toutes les données</option>
-                <option value="PERSISTED">Données Persistées Officielles</option>
-                <option value="DEMO">Données Démo</option>
-              </select>
+              <div className="flex items-center gap-1.5 p-1.5 rounded border border-emerald-200 bg-emerald-50 text-xs text-emerald-900 font-bold">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Données Réelles Persistées (Neon DB)</span>
+              </div>
             </div>
           </div>
         </div>
@@ -956,9 +964,10 @@ export default function ReportsPage() {
                   const comm = Number(p.committedCost || p.committedBudget || 0);
                   const act = Number(p.actualCost || p.spentBudget || 0);
                   const eac = p.eacCost || Math.max(bRev, act + Math.max(0, comm - act));
-                  const marginDA = contract - eac;
-                  const marginPct = contract > 0 ? ((marginDA / contract) * 100).toFixed(1) : null;
-                  const wilaya = p.wilaya || (p.siteLocation?.includes('Skikda') ? 'Skikda' : p.siteLocation?.includes('Kais') || p.siteLocation?.includes('Khenchela') ? 'Khenchela' : p.siteLocation?.includes('Arzew') || p.siteLocation?.includes('Oran') ? 'Oran' : p.siteLocation?.includes('Annaba') ? 'Annaba' : p.siteLocation?.includes('Batna') ? 'Batna' : 'Alger');
+                  const hasActivity = comm > 0 || act > 0;
+                  const marginDA = hasActivity ? contract - eac : 0;
+                  const marginPct = (hasActivity && contract > 0) ? ((marginDA / contract) * 100).toFixed(1) : null;
+                  const wilaya = resolveWilaya(p);
                   const pole = p.pole || (p.sector === 'OIL_AND_GAS' || p.sector === 'ENERGIE' ? 'Tuyauterie & Chaudronnerie' : p.sector === 'CHIMIE' ? 'HVAC & Climatisation Industrielle' : 'Maintenance Industrielle & Mécanique');
                   const isHighRisk = p.riskLevel === 'HIGH' || p.riskLevel === 'CRITICAL' || p.riskLevel === ProjectRiskLevel.HIGH || p.riskLevel === ProjectRiskLevel.CRITICAL;
 
@@ -1079,7 +1088,10 @@ export default function ReportsPage() {
                             <div className="text-[9.5px] text-slate-500">{formatCurrencyDA(marginDA, false)}</div>
                           </div>
                         ) : (
-                          <span className="text-[10px] text-slate-400 italic">Non calculable</span>
+                          <div className="text-right">
+                            <span className="text-[10px] text-slate-400 font-medium block">Non calculable</span>
+                            <span className="text-[9px] text-slate-400 italic">En attente d'engagements</span>
+                          </div>
                         )}
                       </td>
 
