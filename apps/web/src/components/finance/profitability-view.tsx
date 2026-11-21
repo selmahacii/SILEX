@@ -88,8 +88,9 @@ export interface ProjectDetailedPnl {
   projectedFinalCost: number;
   grossMarginDA: number;
   grossMarginPercent: number;
+  isMarginCalculable?: boolean;
   budgetVarianceDA: number;
-  isProfitable: boolean;
+  isProfitable: boolean | null;
 }
 
 interface ProfitabilityViewProps {
@@ -201,9 +202,12 @@ export function ProfitabilityView({
       totalWarranty += Number(p.warrantyHeld || 0);
     });
 
-    const portfolioGrossMarginDA = Math.max(0, totalContract - totalActualCost);
-    const portfolioMarginRate = totalContract > 0
-      ? Number(((portfolioGrossMarginDA / totalContract) * 100).toFixed(1))
+    // La marge "réalisée" ne peut se baser que sur ce qui a été réellement facturé (situations
+    // de travaux), jamais sur la valeur totale du marché : sans facturation, rien n'est réalisé.
+    const isPortfolioMarginCalculable = totalBilled > 0;
+    const portfolioGrossMarginDA = isPortfolioMarginCalculable ? Math.max(0, totalBilled - totalActualCost) : 0;
+    const portfolioMarginRate = isPortfolioMarginCalculable
+      ? Number(((portfolioGrossMarginDA / totalBilled) * 100).toFixed(1))
       : 0;
 
     const overallCollectionRate = totalBilled > 0
@@ -220,6 +224,7 @@ export function ProfitabilityView({
       totalWarranty,
       portfolioGrossMarginDA,
       portfolioMarginRate,
+      isPortfolioMarginCalculable,
       overallCollectionRate,
       projectCount: projects.length,
     };
@@ -429,10 +434,15 @@ export function ProfitabilityView({
             <TrendingUp className="h-4 w-4 text-emerald-600" />
           </div>
           <div className="mt-2 font-mono text-lg font-bold text-emerald-700">
-            {formatCurrencyDA(portfolioMetrics.portfolioGrossMarginDA, false)}
+            {portfolioMetrics.isPortfolioMarginCalculable
+              ? formatCurrencyDA(portfolioMetrics.portfolioGrossMarginDA, false)
+              : <span className="text-amber-700 text-sm">Non calculable</span>}
           </div>
           <div className="mt-1 flex items-center justify-between text-[11px]">
-            <span className="text-slate-500">Taux de marge moyen</span>
+            <span className="text-slate-500">
+              {portfolioMetrics.isPortfolioMarginCalculable ? 'Taux de marge moyen' : 'Aucune situation facturée'}
+            </span>
+            {portfolioMetrics.isPortfolioMarginCalculable && (
             <span
               className={`font-mono font-bold px-1.5 py-0.2 rounded ${
                 portfolioMetrics.portfolioMarginRate >= 20
@@ -444,6 +454,7 @@ export function ProfitabilityView({
             >
               +{portfolioMetrics.portfolioMarginRate}%
             </span>
+            )}
           </div>
         </div>
 
@@ -978,10 +989,14 @@ export function ProfitabilityView({
                     </div>
                     <div className="p-3 bg-slate-50 border border-slate-200 rounded">
                       <div className="text-[10px] uppercase text-slate-500 font-semibold">Marge Réalisée</div>
-                      <div className="mt-1 font-mono font-bold text-emerald-700 text-sm flex items-center justify-between">
-                        <span>{formatCurrencyDA(detailedPnl.grossMarginDA, false)}</span>
-                        <span className="text-xs">+{detailedPnl.grossMarginPercent}%</span>
-                      </div>
+                      {detailedPnl.isMarginCalculable === false ? (
+                        <div className="mt-1 font-mono font-bold text-amber-700 text-sm">Non calculable</div>
+                      ) : (
+                        <div className="mt-1 font-mono font-bold text-emerald-700 text-sm flex items-center justify-between">
+                          <span>{formatCurrencyDA(detailedPnl.grossMarginDA, false)}</span>
+                          <span className="text-xs">+{detailedPnl.grossMarginPercent}%</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

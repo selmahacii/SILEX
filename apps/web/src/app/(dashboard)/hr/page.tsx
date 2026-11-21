@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
-import { formatDateDZ, formatCurrencyDA, SystemRole } from '@silex/shared';
+import { formatDateDZ, formatCurrencyDA, SystemRole, COMPANY_NAME } from '@silex/shared';
 import {
   Users,
   Award,
@@ -37,6 +37,11 @@ import {
   UserPlus,
   Send,
   FileCheck,
+  Printer,
+  Scale,
+  FileSignature,
+  Receipt,
+  HeartPulse,
 } from 'lucide-react';
 
 export default function HrPage() {
@@ -51,7 +56,7 @@ export default function HrPage() {
   const [attendances, setAttendances] = useState<any[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<
-    'employees' | 'certs' | 'attendance' | 'payroll' | 'leaves' | 'missions' | 'recruitments' | 'rotations'
+    'employees' | 'certs' | 'attendance' | 'payroll' | 'leaves' | 'missions' | 'recruitments' | 'rotations' | 'contracts' | 'social'
   >('employees');
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState<string | null>(null);
@@ -62,8 +67,65 @@ export default function HrPage() {
   const [missions, setMissions] = useState<any[]>([]);
   const [recruitments, setRecruitments] = useState<any[]>([]);
   const [rotations, setRotations] = useState<any[]>([]);
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [socialDeclarations, setSocialDeclarations] = useState<any[]>([]);
   const [kpis, setKpis] = useState<any | null>(null);
   const [selectedPayslip, setSelectedPayslip] = useState<any | null>(null);
+
+  // Modales d'impression normalisées (Contrats, Actes Loi 90-11, CNAS)
+  const [selectedContractForPrint, setSelectedContractForPrint] = useState<any | null>(null);
+  const [selectedSocialDocForPrint, setSelectedSocialDocForPrint] = useState<any | null>(null);
+  const [selectedActeForPrint, setSelectedActeForPrint] = useState<{
+    type: 'ATTESTATION' | 'CERTIFICAT' | 'RELEVE';
+    employee: any;
+    date: string;
+    annualGross?: number;
+    annualCNAS?: number;
+    annualIRG?: number;
+  } | null>(null);
+
+  // Modales d'actions rapides
+  const [showContractModal, setShowContractModal] = useState(false);
+  const [showSocialModal, setShowSocialModal] = useState(false);
+  const [showActeModal, setShowActeModal] = useState(false);
+
+  // Formulaires Contrats & Déclarations
+  const [contractForm, setContractForm] = useState({
+    employeeId: '',
+    contractType: 'CDD_CHANTIER' as 'CDI' | 'CDD_CHANTIER' | 'STAGIAIRE' | 'FIDELITE',
+    title: '',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
+    trialPeriodMonths: 3,
+    monthlyBaseSalaryDA: 75000,
+    dailyAllowanceDA: 1500,
+    loyaltyBonusDA: 0,
+    projectCode: '0102',
+    siteLocation: 'Chantier Kais (Sonelgaz)',
+    workRegime: '4x4',
+    specificClauses: 'Respect impératif des protocoles de sécurité en zone ATEX et des critères de soudage ASME IX.',
+  });
+
+  const [socialForm, setSocialForm] = useState({
+    type: 'BORDEREAU_CNAS' as 'ATS' | 'ACCIDENT_TRAVAIL' | 'BORDEREAU_CNAS' | 'DAS_ANNUELLE',
+    period: '2026-T1',
+    employeeId: '',
+    declarationDate: new Date().toISOString().split('T')[0],
+    grossBaseDA: 1250000,
+    accidentDate: new Date().toISOString().split('T')[0],
+    accidentTime: '10:30',
+    accidentSite: 'Atelier de Préfabrication Tuyauterie Kais',
+    accidentCircumstances: 'Brûlure superficielle lors du meulage sans contact direct haute pression. Soins infirmerie immédiats.',
+    accidentWitness: 'Ali Haddad (Chef d’Équipe)',
+    atsReason: 'Arrêt Maladie Ordinaire (Prise en charge CNAS)',
+    atsDaysOff: 5,
+  });
+
+  const [acteForm, setActeForm] = useState({
+    type: 'ATTESTATION' as 'ATTESTATION' | 'CERTIFICAT' | 'RELEVE',
+    employeeId: '',
+    date: new Date().toISOString().split('T')[0],
+  });
 
   // Modales d'actions rapides
   const [showLeaveModal, setShowLeaveModal] = useState(false);
@@ -132,7 +194,7 @@ export default function HrPage() {
   const loadHrData = async () => {
     try {
       setLoading(true);
-      const [emps, certs, atts, prjs, lvs, mis, recs, rots, hrKpis] = await Promise.all([
+      const [emps, certs, atts, prjs, lvs, mis, recs, rots, hrKpis, ctrs, socs] = await Promise.all([
         api.get<any[]>('/hr/employees'),
         api.get<any[]>('/hr/certifications'),
         api.get<any[]>('/hr/attendances'),
@@ -142,6 +204,8 @@ export default function HrPage() {
         api.get<any[]>('/hr/recruitments').catch(() => []),
         api.get<any[]>('/hr/rotations').catch(() => []),
         api.get<any>('/hr/kpis').catch(() => null),
+        api.get<any[]>('/hr/contracts').catch(() => []),
+        api.get<any[]>('/hr/social-declarations').catch(() => []),
       ]);
       setEmployees(Array.isArray(emps) ? emps : []);
       setCertifications(Array.isArray(certs) ? certs : []);
@@ -152,6 +216,8 @@ export default function HrPage() {
       setRecruitments(Array.isArray(recs) ? recs : []);
       setRotations(Array.isArray(rots) ? rots : []);
       setKpis(hrKpis);
+      setContracts(Array.isArray(ctrs) ? ctrs : []);
+      setSocialDeclarations(Array.isArray(socs) ? socs : []);
 
       if (emps.length > 0) {
         if (!certEmployeeId) setCertEmployeeId(emps[0].id);
@@ -159,6 +225,20 @@ export default function HrPage() {
         if (!medEmployeeId) setMedEmployeeId(emps[0].id);
         if (!lvEmployeeId) setLvEmployeeId(emps[0].id);
         if (!misEmployeeId) setMisEmployeeId(emps[0].id);
+        if (!contractForm.employeeId) {
+          setContractForm(prev => ({
+            ...prev,
+            employeeId: emps[0].id,
+            title: emps[0].title || 'Technicien Supérieur',
+            monthlyBaseSalaryDA: emps[0].dailyBaseRate ? emps[0].dailyBaseRate * 22 : 75000,
+          }));
+        }
+        if (!socialForm.employeeId) {
+          setSocialForm(prev => ({ ...prev, employeeId: emps[0].id }));
+        }
+        if (!acteForm.employeeId) {
+          setActeForm(prev => ({ ...prev, employeeId: emps[0].id }));
+        }
       }
       if (prjs.length > 0 && !attProjectId) {
         setAttProjectId(prjs[0].id);
@@ -168,6 +248,63 @@ export default function HrPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateContract = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const emp = employees.find(x => x.id === contractForm.employeeId);
+      const payload = {
+        ...contractForm,
+        employeeMatricule: emp?.matricule,
+        employeeName: emp ? `${emp.firstName} ${emp.lastName}` : undefined,
+        title: contractForm.title || emp?.title || 'Technicien Supérieur',
+      };
+      await api.post('/hr/contracts', payload);
+      setShowContractModal(false);
+      await loadHrData();
+      setNotification('Contrat de travail normalisé enregistré et validé avec succès !');
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err: any) {
+      setNotification(err?.message || 'Erreur lors de la création du contrat');
+    }
+  };
+
+  const handleCreateSocial = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const emp = employees.find(x => x.id === socialForm.employeeId);
+      const payload = {
+        ...socialForm,
+        employeeMatricule: emp?.matricule,
+        employeeName: emp ? `${emp.firstName} ${emp.lastName}` : undefined,
+      };
+      await api.post('/hr/social-declarations', payload);
+      setShowSocialModal(false);
+      await loadHrData();
+      setNotification('Déclaration sociale / CNAS enregistrée et horodatée avec succès !');
+      setTimeout(() => setNotification(null), 5000);
+    } catch (err: any) {
+      setNotification(err?.message || 'Erreur lors de la déclaration sociale');
+    }
+  };
+
+  const handleGenerateActe = (type: 'ATTESTATION' | 'CERTIFICAT' | 'RELEVE', empId: string) => {
+    const emp = employees.find(x => x.id === empId);
+    if (!emp) return;
+    const base = emp.dailyBaseRate ? emp.dailyBaseRate * 22 : 65000;
+    const annualGross = base * 12;
+    const annualCNAS = Math.round(annualGross * 0.09);
+    const taxable = annualGross - annualCNAS;
+    const annualIRG = Math.round(taxable * 0.15);
+    setSelectedActeForPrint({
+      type,
+      employee: emp,
+      date: new Date().toISOString().split('T')[0],
+      annualGross,
+      annualCNAS,
+      annualIRG,
+    });
   };
 
   const handleCreateLeave = async (e: React.FormEvent) => {
@@ -572,6 +709,24 @@ export default function HrPage() {
           }`}
         >
           Moteur Paie & Débours 2026
+        </button>
+        <button
+          onClick={() => setActiveTab('contracts')}
+          className={`py-2 px-3 border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'contracts' ? 'border-[#0A7F7C] text-[#0A7F7C]' : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Scale className="w-3.5 h-3.5 text-[#0A7F7C]" />
+          <span>Contrats & Actes RH (Loi 90-11) ({contracts.length})</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('social')}
+          className={`py-2 px-3 border-b-2 transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+            activeTab === 'social' ? 'border-[#0A7F7C] text-[#0A7F7C]' : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Receipt className="w-3.5 h-3.5 text-[#0A7F7C]" />
+          <span>Déclarations Sociales & CNAS ({socialDeclarations.length})</span>
         </button>
       </div>
 
@@ -1261,6 +1416,449 @@ export default function HrPage() {
         </div>
       )}
 
+      {/* Tab 9: Contrats de Travail & Actes RH (Loi 90-11) */}
+      {activeTab === 'contracts' && (
+        <div className="space-y-6">
+          {/* Header & KPI Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Total Contrats</span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-2xl font-black text-[#07164D]">{contracts.length}</span>
+                <Scale className="w-6 h-6 text-indigo-600" />
+              </div>
+              <p className="text-[10.5px] text-slate-500 mt-1">Tous types confondus</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">CDD de Chantier</span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-2xl font-black text-amber-700">
+                  {contracts.filter(c => c.contractType === 'CDD_CHANTIER').length}
+                </span>
+                <Briefcase className="w-6 h-6 text-amber-500" />
+              </div>
+              <p className="text-[10.5px] text-slate-500 mt-1">Liés à l'achèvement du projet</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Contrats de Fidélité</span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-2xl font-black text-emerald-700">
+                  {contracts.filter(c => c.contractType === 'FIDELITE').length}
+                </span>
+                <Award className="w-6 h-6 text-emerald-500" />
+              </div>
+              <p className="text-[10.5px] text-slate-500 mt-1">Personnel clé avec prime</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">CDI Permanents</span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-2xl font-black text-blue-700">
+                  {contracts.filter(c => c.contractType === 'CDI').length}
+                </span>
+                <BadgeCheck className="w-6 h-6 text-blue-500" />
+              </div>
+              <p className="text-[10.5px] text-slate-500 mt-1">Cadres & encadrement fixe</p>
+            </div>
+          </div>
+
+          {/* Section 1: Table des Contrats */}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <Scale className="w-4 h-4 text-[#0A7F7C]" />
+                  Registre des Contrats de Travail Normalisés (Cahier des Charges Page 11/14)
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  CDI, CDD de Chantier, Conventions de Stage et Contrats de Fidélité avec régimes de rotation Sud
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowActeModal(true)}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-300"
+                >
+                  <FileText className="w-3.5 h-3.5 text-slate-600" />
+                  <span>+ Acte Loi 90-11</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowContractModal(true)}
+                  className="px-3.5 py-1.5 bg-[#0B207D] hover:bg-[#07164D] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ Nouveau Contrat</span>
+                </button>
+              </div>
+            </div>
+
+            {contracts.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="w-14 h-14 bg-indigo-50 text-indigo-700 rounded-full flex items-center justify-center mx-auto mb-3 border border-indigo-200">
+                  <Scale className="w-7 h-7" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-800">Aucun contrat individualisé enregistré</h4>
+                <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-5">
+                  Les contrats formalisent l'affectation de chaque salarié (CDI, CDD lié au chantier Sonelgaz/Sonatrach, ou Fidélité soudeur 6G)
+                  avec les clauses réglementaires algériennes et le régime horaire applicable.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowContractModal(true)}
+                  className="px-4 py-2 bg-[#0B207D] hover:bg-[#07164D] text-white rounded-lg text-xs font-bold inline-flex items-center gap-2 shadow-xs cursor-pointer transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Formaliser un Premier Contrat</span>
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#07164D] text-white font-bold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="p-3">Réf & Début</th>
+                      <th className="p-3">Collaborateur</th>
+                      <th className="p-3">Type Contrat</th>
+                      <th className="p-3">Affectation & Régime</th>
+                      <th className="p-3 text-right">Salaire Base DA</th>
+                      <th className="p-3 text-right">Avantages / Primes</th>
+                      <th className="p-3 text-center">Période Essai</th>
+                      <th className="p-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {contracts.map(c => (
+                      <tr key={c.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-3 align-top">
+                          <span className="font-mono font-bold text-slate-900 block">{c.reference}</span>
+                          <span className="text-[10px] text-slate-500">{new Date(c.startDate).toLocaleDateString('fr-FR')}</span>
+                        </td>
+                        <td className="p-3 align-top">
+                          <strong className="text-slate-900 block">{c.employeeName}</strong>
+                          <span className="text-[10px] font-mono text-slate-500">{c.employeeMatricule}</span>
+                          <span className="text-[10.5px] text-slate-600 block">{c.title}</span>
+                        </td>
+                        <td className="p-3 align-top">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold inline-block ${
+                              c.contractType === 'CDI'
+                                ? 'bg-blue-100 text-blue-800'
+                                : c.contractType === 'CDD_CHANTIER'
+                                ? 'bg-amber-100 text-amber-800'
+                                : c.contractType === 'FIDELITE'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-purple-100 text-purple-800'
+                            }`}
+                          >
+                            {c.contractType.replace(/_/g, ' ')}
+                          </span>
+                          {c.endDate && (
+                            <span className="block text-[9.5px] text-slate-500 mt-1">
+                              Terme : {new Date(c.endDate).toLocaleDateString('fr-FR')}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 align-top">
+                          <span className="font-bold text-slate-800 block text-[11px]">{c.siteLocation || 'Base / Chantiers'}</span>
+                          <span className="text-[10px] text-indigo-700 font-mono">
+                            Projet : {c.projectCode || 'Multi-chantiers'}
+                          </span>
+                        </td>
+                        <td className="p-3 align-top text-right font-black text-slate-900">
+                          {formatCurrencyDA(c.monthlyBaseSalaryDA, false)}
+                        </td>
+                        <td className="p-3 align-top text-right text-[10.5px]">
+                          {c.dailyAllowanceDA ? (
+                            <span className="block text-slate-700">Paniers : +{formatCurrencyDA(c.dailyAllowanceDA, false)}/j</span>
+                          ) : null}
+                          {c.loyaltyBonusDA ? (
+                            <span className="block font-bold text-emerald-700">Prime Fidélité : +{formatCurrencyDA(c.loyaltyBonusDA, false)}</span>
+                          ) : null}
+                        </td>
+                        <td className="p-3 align-top text-center">
+                          <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                            {c.trialPeriodMonths} mois
+                          </span>
+                        </td>
+                        <td className="p-3 align-top text-right">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedContractForPrint(c)}
+                            className="px-2.5 py-1 bg-[#07164D] hover:bg-[#0B207D] text-white rounded text-xs font-bold flex items-center gap-1.5 ml-auto transition-colors cursor-pointer"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>Contrat A4</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Générateur d'Actes RH Loi 90-11 */}
+          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-2xs space-y-4">
+            <div>
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                <FileText className="w-4 h-4 text-emerald-600" />
+                Délivrance Immédiate d'Actes RH Réglementaires (Loi 90-11)
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Documents officiels générés avec en-tête d'entreprise, mentions obligatoires du droit du travail algérien et visa RH.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <FileCheck className="w-4 h-4 text-teal-600" />
+                    <h4 className="text-xs font-bold text-slate-900">Attestation de Travail</h4>
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    Certifie que le collaborateur est actuellement en activité au sein de l'entreprise avec mention de la date de recrutement et du poste.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActeForm({ ...acteForm, type: 'ATTESTATION' });
+                    setShowActeModal(true);
+                  }}
+                  className="w-full py-1.5 bg-[#0B207D] hover:bg-[#07164D] text-white rounded text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Émettre une Attestation</span>
+                </button>
+              </div>
+
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <BadgeCheck className="w-4 h-4 text-purple-600" />
+                    <h4 className="text-xs font-bold text-slate-900">Certificat de Travail</h4>
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    Délivré à l'expiration de la relation de travail avec mention légale obligatoire : « libre de tout engagement envers SARL SILEX SERVICES ».
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActeForm({ ...acteForm, type: 'CERTIFICAT' });
+                    setShowActeModal(true);
+                  }}
+                  className="w-full py-1.5 bg-purple-700 hover:bg-purple-800 text-white rounded text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Émettre un Certificat</span>
+                </button>
+              </div>
+
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 flex flex-col justify-between space-y-3">
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <DollarSign className="w-4 h-4 text-emerald-600" />
+                    <h4 className="text-xs font-bold text-slate-900">Relevé des Émoluments</h4>
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    Récapitulatif annuel certifié des rémunérations brutes, cotisations CNAS retenues (9%) et retenues d'impôt sur le revenu (IRG barème).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActeForm({ ...acteForm, type: 'RELEVE' });
+                    setShowActeModal(true);
+                  }}
+                  className="w-full py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Émettre un Relevé</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 10: Déclarations Sociales & CNAS */}
+      {activeTab === 'social' && (
+        <div className="space-y-6">
+          {/* Header & KPI Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Taux Cotisation CNAS</span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-2xl font-black text-[#07164D]">35.0%</span>
+                <Receipt className="w-6 h-6 text-indigo-600" />
+              </div>
+              <p className="text-[10.5px] text-slate-500 mt-1">9% Ouvrier + 26% Patronal</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Bordereaux CNAS</span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-2xl font-black text-emerald-700">
+                  {socialDeclarations.filter(d => d.type === 'BORDEREAU_CNAS').length}
+                </span>
+                <CheckCircle className="w-6 h-6 text-emerald-500" />
+              </div>
+              <p className="text-[10.5px] text-slate-500 mt-1">Déclarations trimestrielles</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">ATS Émises</span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-2xl font-black text-blue-700">
+                  {socialDeclarations.filter(d => d.type === 'ATS').length}
+                </span>
+                <FileSpreadsheet className="w-6 h-6 text-blue-500" />
+              </div>
+              <p className="text-[10.5px] text-slate-500 mt-1">Attestations de salaire CNAS</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Déclarations Accident</span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-2xl font-black text-amber-700">
+                  {socialDeclarations.filter(d => d.type === 'ACCIDENT_TRAVAIL').length}
+                </span>
+                <HeartPulse className="w-6 h-6 text-amber-500" />
+              </div>
+              <p className="text-[10.5px] text-slate-500 mt-1">Formulaire CNAS réglementaire</p>
+            </div>
+          </div>
+
+          {/* Table des Déclarations Sociales */}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-[#0A7F7C]" />
+                  Registre des Déclarations Sociales & Fiscales Obligatoires (Page 12/14)
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Bordereaux de cotisations CNAS, Déclarations réglementaires d'accidents, Attestations ATS et DAS annuelle
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowSocialModal(true)}
+                className="px-3.5 py-1.5 bg-[#0B207D] hover:bg-[#07164D] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Nouvelle Déclaration CNAS / ATS</span>
+              </button>
+            </div>
+
+            {socialDeclarations.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="w-14 h-14 bg-teal-50 text-teal-700 rounded-full flex items-center justify-center mx-auto mb-3 border border-teal-200">
+                  <Receipt className="w-7 h-7" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-800">Aucune déclaration sociale enregistrée</h4>
+                <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-5">
+                  Émettez les bordereaux récapitulatifs CNAS (35%), les déclarations d'accident de travail ou les attestations
+                  de travail et de salaire (ATS) directement au format réglementaire algérien.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowSocialModal(true)}
+                  className="px-4 py-2 bg-[#0B207D] hover:bg-[#07164D] text-white rounded-lg text-xs font-bold inline-flex items-center gap-2 shadow-xs cursor-pointer transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Émettre une Première Déclaration</span>
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#07164D] text-white font-bold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="p-3">Réf & Date</th>
+                      <th className="p-3">Type Document</th>
+                      <th className="p-3">Période / Salarié</th>
+                      <th className="p-3 text-right">Assiette Brute DA</th>
+                      <th className="p-3 text-right">Part Ouvrière (9%)</th>
+                      <th className="p-3 text-right">Part Patronale (26%)</th>
+                      <th className="p-3 text-right">Total Cotisation (35%)</th>
+                      <th className="p-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {socialDeclarations.map(d => (
+                      <tr key={d.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-3 align-top">
+                          <span className="font-mono font-bold text-slate-900 block">{d.reference}</span>
+                          <span className="text-[10px] text-slate-500">{new Date(d.declarationDate).toLocaleDateString('fr-FR')}</span>
+                        </td>
+                        <td className="p-3 align-top">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold inline-block ${
+                              d.type === 'BORDEREAU_CNAS'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : d.type === 'ATS'
+                                ? 'bg-blue-100 text-blue-800'
+                                : d.type === 'ACCIDENT_TRAVAIL'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-purple-100 text-purple-800'
+                            }`}
+                          >
+                            {d.type.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td className="p-3 align-top">
+                          <span className="font-bold text-slate-800 block text-[11px]">Période : {d.period}</span>
+                          {d.employeeName && (
+                            <span className="text-[10.5px] text-slate-600 block">
+                              {d.employeeName} ({d.employeeMatricule})
+                            </span>
+                          )}
+                          {d.accidentSite && (
+                            <span className="text-[10px] text-red-600 block">
+                              Site accident : {d.accidentSite}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 align-top text-right font-black text-slate-900">
+                          {d.grossBaseDA ? formatCurrencyDA(d.grossBaseDA, false) : '-'}
+                        </td>
+                        <td className="p-3 align-top text-right text-slate-700">
+                          {d.employeeContributionDA ? formatCurrencyDA(d.employeeContributionDA, false) : '-'}
+                        </td>
+                        <td className="p-3 align-top text-right text-slate-700">
+                          {d.employerContributionDA ? formatCurrencyDA(d.employerContributionDA, false) : '-'}
+                        </td>
+                        <td className="p-3 align-top text-right font-bold text-emerald-700">
+                          {d.totalContributionDA ? formatCurrencyDA(d.totalContributionDA, false) : '-'}
+                        </td>
+                        <td className="p-3 align-top text-right">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSocialDocForPrint(d)}
+                            className="px-2.5 py-1 bg-[#07164D] hover:bg-[#0B207D] text-white rounded text-xs font-bold flex items-center gap-1.5 ml-auto transition-colors cursor-pointer"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>Imprimer A4</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* MODAL CRÉATION COLLABORATEUR */}
       {showEmployeeModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -1822,6 +2420,53 @@ export default function HrPage() {
                   >
                     <Award className="w-3.5 h-3.5 text-amber-600" />
                     <span>+ Ajouter Habilitation CQS</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setContractForm(prev => ({
+                        ...prev,
+                        employeeId: emp.id,
+                        title: emp.title || 'Technicien Supérieur',
+                        monthlyBaseSalaryDA: emp.dailyBaseRate ? emp.dailyBaseRate * 22 : 75000,
+                      }));
+                      setSelectedEmployeeForDetail(null);
+                      setShowContractModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200 text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <FileSignature className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>+ Éditer Contrat</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      handleGenerateActe('ATTESTATION', emp.id);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-900 border border-teal-200 text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-teal-600" />
+                    <span>Attestation Travail</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      handleGenerateActe('CERTIFICAT', emp.id);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <BadgeCheck className="w-3.5 h-3.5 text-purple-600" />
+                    <span>Certificat Fin Contrat</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      handleGenerateActe('RELEVE', emp.id);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Relevé Émoluments</span>
                   </button>
                 </div>
               </div>
@@ -2518,6 +3163,858 @@ export default function HrPage() {
                 <button type="submit" className="px-4 py-1.5 bg-[#0B207D] text-white font-bold rounded">Transmettre à la DG</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL CRÉATION CONTRAT DE TRAVAIL NORMALISÉ */}
+      {/* ======================================================== */}
+      {showContractModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-2xl w-full border border-slate-300 shadow-2xl overflow-hidden my-8">
+            <div className="bg-[#07164D] p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Scale className="w-5 h-5 text-indigo-400" />
+                <h3 className="text-sm font-black">
+                  Établissement d'un Contrat de Travail Normalisé (Page 11/14)
+                </h3>
+              </div>
+              <button onClick={() => setShowContractModal(false)} className="text-slate-300 hover:text-white cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateContract} className="p-6 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Collaborateur Salarié *</label>
+                  <select
+                    value={contractForm.employeeId}
+                    onChange={(e) => {
+                      const emp = employees.find(x => x.id === e.target.value);
+                      setContractForm({
+                        ...contractForm,
+                        employeeId: e.target.value,
+                        title: emp?.title || contractForm.title,
+                        monthlyBaseSalaryDA: emp?.dailyBaseRate ? emp.dailyBaseRate * 22 : contractForm.monthlyBaseSalaryDA,
+                      });
+                    }}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-medium text-xs"
+                    required
+                  >
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.registrationNumber || emp.matricule} • {emp.firstName} {emp.lastName} ({emp.title})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Type de Contrat *</label>
+                  <select
+                    value={contractForm.contractType}
+                    onChange={(e: any) => setContractForm({ ...contractForm, contractType: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-bold text-xs"
+                    required
+                  >
+                    <option value="CDD_CHANTIER">CDD de Chantier (Lié au Marché Industriel)</option>
+                    <option value="FIDELITE">Contrat de Fidélité (Clause Exclusivité + Prime)</option>
+                    <option value="CDI">CDI (Contrat à Durée Indéterminée Standard)</option>
+                    <option value="STAGIAIRE">Convention de Stage Professionnel</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Poste / Métier Contractuel *</label>
+                  <input
+                    type="text"
+                    required
+                    value={contractForm.title}
+                    onChange={(e) => setContractForm({ ...contractForm, title: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Chantier / Base d'Affectation *</label>
+                  <input
+                    type="text"
+                    required
+                    value={contractForm.siteLocation}
+                    onChange={(e) => setContractForm({ ...contractForm, siteLocation: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Date d'Effet *</label>
+                  <input
+                    type="date"
+                    required
+                    value={contractForm.startDate}
+                    onChange={(e) => setContractForm({ ...contractForm, startDate: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Date d'Échéance (si CDD)</label>
+                  <input
+                    type="date"
+                    value={contractForm.endDate}
+                    onChange={(e) => setContractForm({ ...contractForm, endDate: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Période d'Essai (Mois)</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={6}
+                    value={contractForm.trialPeriodMonths}
+                    onChange={(e) => setContractForm({ ...contractForm, trialPeriodMonths: Number(e.target.value) })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-bold text-center"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 grid grid-cols-3 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Salaire de Base Brut (DA) *</label>
+                  <input
+                    type="number"
+                    required
+                    min={20000}
+                    step={1000}
+                    value={contractForm.monthlyBaseSalaryDA}
+                    onChange={(e) => setContractForm({ ...contractForm, monthlyBaseSalaryDA: Number(e.target.value) })}
+                    className="w-full p-2 bg-white border border-slate-300 rounded font-bold text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Panier / Déplacement (DA/j)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={100}
+                    value={contractForm.dailyAllowanceDA}
+                    onChange={(e) => setContractForm({ ...contractForm, dailyAllowanceDA: Number(e.target.value) })}
+                    className="w-full p-2 bg-white border border-slate-300 rounded"
+                  />
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Prime de Fidélité (DA/mois)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={500}
+                    value={contractForm.loyaltyBonusDA}
+                    onChange={(e) => setContractForm({ ...contractForm, loyaltyBonusDA: Number(e.target.value) })}
+                    className="w-full p-2 bg-white border border-slate-300 rounded font-bold text-emerald-700"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Clauses Particulières & Engagements HSE / ATEX</label>
+                <textarea
+                  rows={2}
+                  value={contractForm.specificClauses}
+                  onChange={(e) => setContractForm({ ...contractForm, specificClauses: e.target.value })}
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowContractModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#0B207D] hover:bg-[#07164D] text-white rounded text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                >
+                  Valider & Enregistrer le Contrat
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL NOUVELLE DÉCLARATION SOCIALE & CNAS */}
+      {/* ======================================================== */}
+      {showSocialModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-2xl w-full border border-slate-300 shadow-2xl overflow-hidden my-8">
+            <div className="bg-[#07164D] p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-teal-400" />
+                <h3 className="text-sm font-black">
+                  Nouvelle Déclaration Sociale & CNAS (Page 12/14)
+                </h3>
+              </div>
+              <button onClick={() => setShowSocialModal(false)} className="text-slate-300 hover:text-white cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSocial} className="p-6 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Type de Document CNAS *</label>
+                  <select
+                    value={socialForm.type}
+                    onChange={(e: any) => setSocialForm({ ...socialForm, type: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-bold"
+                  >
+                    <option value="BORDEREAU_CNAS">Bordereau Récapitulatif des Cotisations (35%)</option>
+                    <option value="ACCIDENT_TRAVAIL">Déclaration Réglementaire d'Accident de Travail CNAS</option>
+                    <option value="ATS">Attestation de Travail et de Salaire CNAS (ATS)</option>
+                    <option value="DAS_ANNUELLE">État Préparatoire DAS Annuelle</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Période Déclarative *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: 2026-T1 ou 2026-M11"
+                    value={socialForm.period}
+                    onChange={(e) => setSocialForm({ ...socialForm, period: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-mono font-bold"
+                  />
+                </div>
+              </div>
+
+              {socialForm.type !== 'BORDEREAU_CNAS' && socialForm.type !== 'DAS_ANNUELLE' && (
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Salarié Concerné *</label>
+                  <select
+                    value={socialForm.employeeId}
+                    onChange={(e) => setSocialForm({ ...socialForm, employeeId: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-medium"
+                  >
+                    {employees.map(emp => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.registrationNumber || emp.matricule} • {emp.firstName} {emp.lastName} ({emp.title})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {(socialForm.type === 'BORDEREAU_CNAS' || socialForm.type === 'DAS_ANNUELLE') && (
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="font-bold text-slate-700">Masse Salariale Brute Soumise à Cotisation (DA) *</label>
+                    <span className="font-black text-[#07164D] text-sm">
+                      {formatCurrencyDA(socialForm.grossBaseDA, false)}
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    step={1000}
+                    value={socialForm.grossBaseDA}
+                    onChange={(e) => setSocialForm({ ...socialForm, grossBaseDA: Number(e.target.value) })}
+                    className="w-full p-2 bg-white border border-slate-300 rounded font-bold"
+                  />
+                  <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-slate-200 text-[11px]">
+                    <div className="bg-white p-2 rounded border border-slate-200">
+                      <span className="text-slate-500 block">Part Ouvrière (9%)</span>
+                      <strong className="text-slate-800">{formatCurrencyDA(Math.round(socialForm.grossBaseDA * 0.09), false)}</strong>
+                    </div>
+                    <div className="bg-white p-2 rounded border border-slate-200">
+                      <span className="text-slate-500 block">Part Patronale (26%)</span>
+                      <strong className="text-slate-800">{formatCurrencyDA(Math.round(socialForm.grossBaseDA * 0.26), false)}</strong>
+                    </div>
+                    <div className="bg-emerald-50 p-2 rounded border border-emerald-200">
+                      <span className="text-emerald-700 block font-bold">Total Cotisation (35%)</span>
+                      <strong className="text-emerald-900">{formatCurrencyDA(Math.round(socialForm.grossBaseDA * 0.35), false)}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {socialForm.type === 'ACCIDENT_TRAVAIL' && (
+                <div className="bg-red-50/50 p-4 rounded-xl border border-red-200 space-y-3">
+                  <h4 className="font-bold text-red-900 uppercase text-[10.5px]">Constat Réglementaire de l'Accident</h4>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Date Accident *</label>
+                      <input
+                        type="date"
+                        value={socialForm.accidentDate}
+                        onChange={(e) => setSocialForm({ ...socialForm, accidentDate: e.target.value })}
+                        className="w-full p-2 bg-white border border-slate-300 rounded"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Heure de Survenance *</label>
+                      <input
+                        type="time"
+                        value={socialForm.accidentTime}
+                        onChange={(e) => setSocialForm({ ...socialForm, accidentTime: e.target.value })}
+                        className="w-full p-2 bg-white border border-slate-300 rounded"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Témoin Présent</label>
+                      <input
+                        type="text"
+                        value={socialForm.accidentWitness}
+                        onChange={(e) => setSocialForm({ ...socialForm, accidentWitness: e.target.value })}
+                        className="w-full p-2 bg-white border border-slate-300 rounded"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Lieu Exact / Chantier *</label>
+                    <input
+                      type="text"
+                      value={socialForm.accidentSite}
+                      onChange={(e) => setSocialForm({ ...socialForm, accidentSite: e.target.value })}
+                      className="w-full p-2 bg-white border border-slate-300 rounded"
+                    />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Circonstances & Nature des Lésions *</label>
+                    <textarea
+                      rows={2}
+                      value={socialForm.accidentCircumstances}
+                      onChange={(e) => setSocialForm({ ...socialForm, accidentCircumstances: e.target.value })}
+                      className="w-full p-2 bg-white border border-slate-300 rounded"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowSocialModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#0B207D] hover:bg-[#07164D] text-white rounded text-xs font-bold transition-colors shadow-xs cursor-pointer"
+                >
+                  Émettre la Déclaration
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL GÉNÉRATION ACTE RH LOI 90-11 */}
+      {/* ======================================================== */}
+      {showActeModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full border border-slate-300 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+              <h3 className="text-sm font-black text-[#07164D] flex items-center gap-2">
+                <FileText className="w-4 h-4 text-emerald-600" />
+                Édition d'un Acte RH Réglementaire
+              </h3>
+              <button onClick={() => setShowActeModal(false)} className="text-slate-400 hover:text-slate-600">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Type d'Acte Réglementaire *</label>
+                <select
+                  value={acteForm.type}
+                  onChange={(e: any) => setActeForm({ ...acteForm, type: e.target.value })}
+                  className="w-full p-2 border border-slate-300 rounded bg-slate-50 font-bold"
+                >
+                  <option value="ATTESTATION">Attestation de Travail (Loi 90-11)</option>
+                  <option value="CERTIFICAT">Certificat de Travail (Libre de tout engagement)</option>
+                  <option value="RELEVE">Relevé Individuel des Émoluments Annuel</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Collaborateur Salarié *</label>
+                <select
+                  value={acteForm.employeeId}
+                  onChange={(e) => setActeForm({ ...acteForm, employeeId: e.target.value })}
+                  className="w-full p-2 border border-slate-300 rounded bg-slate-50 font-medium"
+                >
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.registrationNumber || emp.matricule} • {emp.firstName} {emp.lastName} ({emp.title})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Date d'Établissement *</label>
+                <input
+                  type="date"
+                  value={acteForm.date}
+                  onChange={(e) => setActeForm({ ...acteForm, date: e.target.value })}
+                  className="w-full p-2 border border-slate-300 rounded"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <button
+                  type="button"
+                  onClick={() => setShowActeModal(false)}
+                  className="px-3 py-1.5 border rounded"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleGenerateActe(acteForm.type, acteForm.employeeId);
+                    setShowActeModal(false);
+                  }}
+                  className="px-4 py-1.5 bg-[#0B207D] hover:bg-[#07164D] text-white font-bold rounded cursor-pointer"
+                >
+                  Générer & Afficher A4
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL CONTRAT DE TRAVAIL IMPRIMABLE A4 */}
+      {/* ======================================================== */}
+      {selectedContractForPrint && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full border border-slate-300 overflow-hidden text-slate-900 my-8">
+            <div className="bg-[#07164D] p-3 text-white flex items-center justify-between px-6">
+              <span className="text-xs font-bold tracking-wide">
+                CONTRAT DE TRAVAIL OFFICIEL • {selectedContractForPrint.reference}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded text-xs font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimer A4</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedContractForPrint(null)}
+                  className="text-white/80 hover:text-white cursor-pointer ml-2"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8 space-y-6 text-xs bg-white">
+              {/* En-tête */}
+              <div className="flex justify-between items-start border-b-2 border-[#07164D] pb-4">
+                <div>
+                  <h1 className="text-xl font-black text-[#07164D] tracking-tight">{COMPANY_NAME}</h1>
+                  <p className="text-[10px] text-slate-600 font-medium">Société à Responsabilité Limitée au Capital Social de 10 000 000 DZD</p>
+                  <p className="text-[10px] text-slate-500">Maintenance & Construction Industrielle • Réglementation Loi 90-11</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">CONTRAT DE TRAVAIL</span>
+                  <strong className="text-sm font-mono text-[#07164D] block">{selectedContractForPrint.reference}</strong>
+                  <span className="text-[10px] text-slate-500">Réf. Normative Page 11/14</span>
+                </div>
+              </div>
+
+              {/* Titre Contrat */}
+              <div className="text-center bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <h2 className="text-sm font-black uppercase text-slate-900 tracking-wider">
+                  CONTRAT DE TRAVAIL {selectedContractForPrint.contractType === 'CDD_CHANTIER' ? 'À DURÉE DÉTERMINÉE DE CHANTIER' : selectedContractForPrint.contractType === 'FIDELITE' ? 'DE FIDÉLITÉ & D’EXCLUSIVITÉ TECHNIQUE' : selectedContractForPrint.contractType === 'CDI' ? 'À DURÉE INDÉTERMINÉE (CDI)' : 'CONVENTION DE STAGE'}
+                </h2>
+                <p className="text-[10.5px] text-slate-600 mt-0.5">
+                  Conclu conformément aux dispositions de la Loi N° 90-11 du 21 avril 1990 relative aux relations de travail en Algérie
+                </p>
+              </div>
+
+              {/* Parties Contractantes */}
+              <div className="space-y-2">
+                <p><strong>ENTRE LES SOUSSIGNÉS :</strong></p>
+                <div className="bg-slate-50 p-3 rounded border border-slate-200 text-[11px] space-y-1">
+                  <p><strong>1. La SARL SILEX SERVICES</strong>, représentée par sa Direction Générale, ci-après dénommée <em>« L'Employeur »</em>,</p>
+                  <p><strong>2. Monsieur/Madame :</strong> <strong>{selectedContractForPrint.employeeName}</strong>, Matricule interne : <strong>{selectedContractForPrint.employeeMatricule}</strong>, ci-après dénommé(e) <em>« Le Salarié »</em>.</p>
+                </div>
+              </div>
+
+              {/* Clauses Contractuelles */}
+              <div className="space-y-3 text-[11px] leading-relaxed">
+                <div>
+                  <h4 className="font-bold text-slate-900">ARTICLE 1 — OBJET & QUALIFICATION PROFESSIONNELLE</h4>
+                  <p className="text-slate-700">
+                    Le Salarié est engagé en qualité de <strong>{selectedContractForPrint.title}</strong>. Il s'engage à exécuter avec diligence les tâches techniques inhérentes à sa fonction et à respecter les consignes professionnelles.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-slate-900">ARTICLE 2 — LIEU D'AFFECTATION & RÉGIME DE TRAVAIL</h4>
+                  <p className="text-slate-700">
+                    Le Salarié est principalement affecté à : <strong>{selectedContractForPrint.siteLocation || 'Base Opérationnelle & Chantiers Nationaux'}</strong>, dans le cadre du projet <strong>{selectedContractForPrint.projectCode || 'Interventions Multi-Sites'}</strong>. Il sera soumis aux régimes de chantier sahariens (rotation 4×4 ou 6×2) selon les impératifs des opérations.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-slate-900">ARTICLE 3 — RÉMUNÉRATION & AVANTAGES</h4>
+                  <p className="text-slate-700">
+                    En contrepartie de ses prestations, le Salarié percevra un salaire mensuel de base de <strong>{formatCurrencyDA(selectedContractForPrint.monthlyBaseSalaryDA, false)}</strong>, soumis aux retenues légales de sécurité sociale (CNAS 9%) et fiscales (IRG progressif).
+                    {selectedContractForPrint.dailyAllowanceDA ? ` Une indemnité journalière de déplacement/panier de ${formatCurrencyDA(selectedContractForPrint.dailyAllowanceDA, false)} est allouée pour chaque jour de présence sur chantier.` : ''}
+                    {selectedContractForPrint.loyaltyBonusDA ? ` En vertu de sa qualification clé, une prime mensuelle de fidélité de ${formatCurrencyDA(selectedContractForPrint.loyaltyBonusDA, false)} est accordée.` : ''}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-slate-900">ARTICLE 4 — DURÉE DU CONTRAT & PÉRIODE D'ESSAI</h4>
+                  <p className="text-slate-700">
+                    Le présent contrat prend effet à compter du <strong>{new Date(selectedContractForPrint.startDate).toLocaleDateString('fr-FR')}</strong>
+                    {selectedContractForPrint.endDate ? ` et prendra fin de plein droit le ${new Date(selectedContractForPrint.endDate).toLocaleDateString('fr-FR')}, correspondant à l'achèvement des phases de travaux assignées.` : ' pour une durée indéterminée.'}
+                    {' '}Une période d'essai de <strong>{selectedContractForPrint.trialPeriodMonths} mois</strong> est convenue conformément à la législation.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-slate-900">ARTICLE 5 — HYGIÈNE, SÉCURITÉ & PROTOCOLES ATEX</h4>
+                  <p className="text-slate-700">
+                    {selectedContractForPrint.specificClauses || 'Le Salarié s’engage à observer scrupuleusement les règles de sécurité industrielle, le port obligatoire des EPI et les protocoles de permis de travail en zone ATEX.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Signatures */}
+              <div className="grid grid-cols-2 gap-8 pt-6 border-t border-slate-300 text-[10.5px]">
+                <div className="text-center border border-slate-200 p-3 rounded-lg bg-slate-50/50">
+                  <span className="font-bold text-slate-800 block uppercase mb-1">Pour SARL SILEX SERVICES</span>
+                  <span className="text-slate-500 block text-[9.5px]">La Direction Générale</span>
+                  <div className="h-14 flex items-center justify-center font-mono text-emerald-700 font-bold text-xs">
+                    [VISA NUMÉRIQUE DIRECTION RH & DG]
+                  </div>
+                  <span className="text-[8.5px] text-slate-400">Cachet & Signature Électronique</span>
+                </div>
+
+                <div className="text-center border border-slate-200 p-3 rounded-lg bg-slate-50/50">
+                  <span className="font-bold text-slate-800 block uppercase mb-1">Le Salarié Contractant</span>
+                  <span className="text-slate-500 block text-[9.5px]">{selectedContractForPrint.employeeName}</span>
+                  <div className="h-14 flex items-center justify-center font-mono text-slate-600 font-bold text-xs">
+                    [LU ET APPROUVÉ — BON POUR ACCORD]
+                  </div>
+                  <span className="text-[8.5px] text-slate-400">Mention manuscrite et signature</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL DÉCLARATION SOCIALE CNAS / ATS IMPRIMABLE A4 */}
+      {/* ======================================================== */}
+      {selectedSocialDocForPrint && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full border border-slate-300 overflow-hidden text-slate-900 my-8">
+            <div className="bg-[#07164D] p-3 text-white flex items-center justify-between px-6">
+              <span className="text-xs font-bold tracking-wide">
+                DOCUMENT OFFICIEL CNAS • {selectedSocialDocForPrint.reference}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded text-xs font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimer A4</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSocialDocForPrint(null)}
+                  className="text-white/80 hover:text-white cursor-pointer ml-2"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8 space-y-6 text-xs bg-white">
+              {/* En-tête CNAS */}
+              <div className="flex justify-between items-start border-b-2 border-[#07164D] pb-4">
+                <div>
+                  <h1 className="text-base font-black text-[#07164D] uppercase">
+                    RÉPUBLIQUE ALGÉRIENNE DÉMOCRATIQUE ET POPULAIRE
+                  </h1>
+                  <p className="text-xs font-bold text-slate-700 mt-0.5">
+                    CAISSE NATIONALE DES ASSURANCES SOCIALES DES TRAVAILLEURS SALARIÉS (CNAS)
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    Employeur : {COMPANY_NAME} • N° Employeur CNAS : 16/98765432-01
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">RÉFÉRENCE CNAS</span>
+                  <strong className="text-sm font-mono text-[#07164D] block">{selectedSocialDocForPrint.reference}</strong>
+                  <span className="text-[10px] text-slate-500">Date : {new Date(selectedSocialDocForPrint.declarationDate).toLocaleDateString('fr-FR')}</span>
+                </div>
+              </div>
+
+              {/* Titre Formulaire */}
+              <div className="text-center bg-slate-50 p-3 rounded border border-slate-200">
+                <h2 className="text-sm font-black uppercase text-slate-900">
+                  {selectedSocialDocForPrint.type === 'BORDEREAU_CNAS'
+                    ? `BORDEREAU RÉCAPITULATIF DES COTISATIONS SOCIALES — PÉRIODE ${selectedSocialDocForPrint.period}`
+                    : selectedSocialDocForPrint.type === 'ACCIDENT_TRAVAIL'
+                    ? 'DÉCLARATION RÉGLEMENTAIRE D’ACCIDENT DU TRAVAIL (LOI 83-13)'
+                    : selectedSocialDocForPrint.type === 'ATS'
+                    ? 'ATTESTATION DE TRAVAIL ET DE SALAIRE (ATS CNAS)'
+                    : `ÉTAT PRÉPARATOIRE DAS ANNUELLE ${selectedSocialDocForPrint.period}`}
+                </h2>
+              </div>
+
+              {/* Données selon Type */}
+              {selectedSocialDocForPrint.type === 'BORDEREAU_CNAS' && (
+                <div className="space-y-4">
+                  <div className="border border-slate-300 rounded overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#07164D] text-white font-bold uppercase text-[10px]">
+                        <tr>
+                          <th className="p-3">Désignation des Cotisations</th>
+                          <th className="p-3 text-right">Assiette Brute (DZD)</th>
+                          <th className="p-3 text-center">Taux</th>
+                          <th className="p-3 text-right">Montant Exigible (DZD)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        <tr>
+                          <td className="p-3 font-medium">Cotisation Part Ouvrière (Précomptée sur salaire)</td>
+                          <td className="p-3 text-right">{formatCurrencyDA(selectedSocialDocForPrint.grossBaseDA || 0, false)}</td>
+                          <td className="p-3 text-center font-bold">9.00%</td>
+                          <td className="p-3 text-right font-bold text-slate-900">{formatCurrencyDA(selectedSocialDocForPrint.employeeContributionDA || 0, false)}</td>
+                        </tr>
+                        <tr>
+                          <td className="p-3 font-medium">Cotisation Part Patronale (À la charge de l'employeur)</td>
+                          <td className="p-3 text-right">{formatCurrencyDA(selectedSocialDocForPrint.grossBaseDA || 0, false)}</td>
+                          <td className="p-3 text-center font-bold">26.00%</td>
+                          <td className="p-3 text-right font-bold text-slate-900">{formatCurrencyDA(selectedSocialDocForPrint.employerContributionDA || 0, false)}</td>
+                        </tr>
+                        <tr className="bg-emerald-50 font-black text-emerald-950">
+                          <td className="p-3 uppercase">Total Général Exigible CNAS</td>
+                          <td className="p-3 text-right">{formatCurrencyDA(selectedSocialDocForPrint.grossBaseDA || 0, false)}</td>
+                          <td className="p-3 text-center">35.00%</td>
+                          <td className="p-3 text-right text-sm text-emerald-700">{formatCurrencyDA(selectedSocialDocForPrint.totalContributionDA || 0, false)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {selectedSocialDocForPrint.type === 'ACCIDENT_TRAVAIL' && (
+                <div className="space-y-3 bg-slate-50 p-4 rounded border border-slate-200 text-xs">
+                  <p><strong>Salarié Victime :</strong> {selectedSocialDocForPrint.employeeName} (Matricule : {selectedSocialDocForPrint.employeeMatricule})</p>
+                  <p><strong>Date & Heure :</strong> {selectedSocialDocForPrint.accidentDate} à {selectedSocialDocForPrint.accidentTime || '10:00'}</p>
+                  <p><strong>Lieu de Survenance :</strong> {selectedSocialDocForPrint.accidentSite || 'Chantier Industriel'}</p>
+                  <p><strong>Témoins :</strong> {selectedSocialDocForPrint.accidentWitness || 'Équipe de quart'}</p>
+                  <p><strong>Circonstances :</strong> {selectedSocialDocForPrint.accidentCircumstances || 'Incident de chantier pris en charge immédiatement par les services de premiers secours.'}</p>
+                </div>
+              )}
+
+              {/* Visa */}
+              <div className="grid grid-cols-2 gap-8 pt-6 border-t border-slate-300 text-[10.5px]">
+                <div className="text-center border border-slate-200 p-3 rounded bg-slate-50/50">
+                  <span className="font-bold text-slate-800 block uppercase mb-1">Pour SARL SILEX SERVICES</span>
+                  <span className="text-slate-500 block text-[9.5px]">Direction des Ressources Humaines</span>
+                  <div className="h-14 flex items-center justify-center font-mono text-emerald-700 font-bold text-xs">
+                    [VISA DÉCLARATION CNAS CERTIFIÉ]
+                  </div>
+                </div>
+                <div className="text-center border border-slate-200 p-3 rounded bg-slate-50/50">
+                  <span className="font-bold text-slate-800 block uppercase mb-1">Caisse CNAS Compétente</span>
+                  <span className="text-slate-500 block text-[9.5px]">Guichet Unique Déclarations</span>
+                  <div className="h-14 flex items-center justify-center font-mono text-slate-500 font-bold text-xs">
+                    [ACCUSÉ DE RÉCEPTION ÉLECTRONIQUE]
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL ACTE RH REGLEMENTAIRE LOI 90-11 IMPRIMABLE A4 */}
+      {/* ======================================================== */}
+      {selectedActeForPrint && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full border border-slate-300 overflow-hidden text-slate-900 my-8">
+            <div className="bg-[#07164D] p-3 text-white flex items-center justify-between px-6">
+              <span className="text-xs font-bold tracking-wide">
+                ACTE RÉGLEMENTAIRE LOI 90-11 • {selectedActeForPrint.type}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded text-xs font-bold flex items-center gap-1 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimer A4</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedActeForPrint(null)}
+                  className="text-white/80 hover:text-white cursor-pointer ml-2"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8 space-y-6 text-xs bg-white">
+              {/* En-tête Silex */}
+              <div className="flex justify-between items-start border-b-2 border-[#07164D] pb-4">
+                <div>
+                  <h1 className="text-xl font-black text-[#07164D] tracking-tight">{COMPANY_NAME}</h1>
+                  <p className="text-[10px] text-slate-600 font-medium">Direction des Ressources Humaines</p>
+                  <p className="text-[10px] text-slate-500">Conformité Loi N° 90-11 relative aux relations de travail</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">DATE D'ÉTABLISSEMENT</span>
+                  <strong className="text-sm font-mono text-[#07164D] block">{new Date(selectedActeForPrint.date).toLocaleDateString('fr-FR')}</strong>
+                </div>
+              </div>
+
+              {/* Titre */}
+              <div className="text-center py-4 bg-slate-50 rounded border border-slate-200">
+                <h2 className="text-base font-black uppercase text-[#07164D] tracking-wider">
+                  {selectedActeForPrint.type === 'ATTESTATION'
+                    ? 'ATTESTATION DE TRAVAIL'
+                    : selectedActeForPrint.type === 'CERTIFICAT'
+                    ? 'CERTIFICAT DE TRAVAIL'
+                    : 'RELEVÉ INDIVIDUEL DES ÉMOLUMENTS ANNUEL'}
+                </h2>
+              </div>
+
+              {/* Corps selon le document */}
+              {selectedActeForPrint.type === 'ATTESTATION' && (
+                <div className="space-y-4 text-xs leading-relaxed text-slate-800">
+                  <p>
+                    La Direction des Ressources Humaines de la société <strong>{COMPANY_NAME}</strong> atteste par la présente que :
+                  </p>
+                  <div className="bg-slate-50 p-4 rounded border border-slate-200 space-y-2">
+                    <p>Monsieur/Madame : <strong>{selectedActeForPrint.employee.firstName} {selectedActeForPrint.employee.lastName}</strong></p>
+                    <p>Matricule interne : <strong>{selectedActeForPrint.employee.registrationNumber || selectedActeForPrint.employee.matricule}</strong></p>
+                    <p>Fonction occupée : <strong>{selectedActeForPrint.employee.title}</strong></p>
+                    <p>Date d'embauche : <strong>{formatDateDZ(selectedActeForPrint.employee.hireDate || '2024-01-15')}</strong></p>
+                  </div>
+                  <p>
+                    Est actuellement employé(e) au sein de notre entreprise dans le cadre d'un contrat de travail régulièrement déclaré auprès des services de sécurité sociale (CNAS).
+                  </p>
+                  <p>
+                    La présente attestation lui est délivrée sur sa demande pour servir et valoir ce que de droit.
+                  </p>
+                </div>
+              )}
+
+              {selectedActeForPrint.type === 'CERTIFICAT' && (
+                <div className="space-y-4 text-xs leading-relaxed text-slate-800">
+                  <p>
+                    La société <strong>{COMPANY_NAME}</strong> certifie que :
+                  </p>
+                  <div className="bg-slate-50 p-4 rounded border border-slate-200 space-y-2">
+                    <p>Monsieur/Madame : <strong>{selectedActeForPrint.employee.firstName} {selectedActeForPrint.employee.lastName}</strong></p>
+                    <p>Matricule interne : <strong>{selectedActeForPrint.employee.registrationNumber || selectedActeForPrint.employee.matricule}</strong></p>
+                    <p>Fonction : <strong>{selectedActeForPrint.employee.title}</strong></p>
+                    <p>Période d'activité : Du <strong>{formatDateDZ(selectedActeForPrint.employee.hireDate || '2024-01-15')}</strong> au <strong>{new Date().toLocaleDateString('fr-FR')}</strong></p>
+                  </div>
+                  <div className="p-3 bg-emerald-50 rounded border border-emerald-200 font-bold text-emerald-900 text-center">
+                    Monsieur/Madame {selectedActeForPrint.employee.firstName} {selectedActeForPrint.employee.lastName} quitte notre établissement libre de tout engagement envers la SARL SILEX SERVICES.
+                  </div>
+                  <p>
+                    En foi de quoi, ce certificat lui est délivré conformément aux dispositions de l'article 67 de la Loi N° 90-11 du 21 avril 1990.
+                  </p>
+                </div>
+              )}
+
+              {selectedActeForPrint.type === 'RELEVE' && (
+                <div className="space-y-4 text-xs">
+                  <p>
+                    État récapitulatif annuel certifié des rémunérations versées à <strong>{selectedActeForPrint.employee.firstName} {selectedActeForPrint.employee.lastName}</strong> pour l'exercice fiscal 2026 :
+                  </p>
+                  <div className="border border-slate-300 rounded overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#07164D] text-white font-bold uppercase text-[10px]">
+                        <tr>
+                          <th className="p-2.5">Rubrique Fiscale & Sociale</th>
+                          <th className="p-2.5 text-right">Montant Cumulé (DZD)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200">
+                        <tr>
+                          <td className="p-2.5 font-bold">Rémunération Brute Globale Soumise à Cotisation</td>
+                          <td className="p-2.5 text-right font-black text-slate-900">{formatCurrencyDA(selectedActeForPrint.annualGross || 0, false)}</td>
+                        </tr>
+                        <tr>
+                          <td className="p-2.5 text-slate-700">Cotisation Sécurité Sociale CNAS Retenue (9%)</td>
+                          <td className="p-2.5 text-right text-red-700 font-bold">-{formatCurrencyDA(selectedActeForPrint.annualCNAS || 0, false)}</td>
+                        </tr>
+                        <tr>
+                          <td className="p-2.5 font-bold">Revenu Net Imposable soumis à l'IRG</td>
+                          <td className="p-2.5 text-right font-bold text-slate-800">{formatCurrencyDA((selectedActeForPrint.annualGross || 0) - (selectedActeForPrint.annualCNAS || 0), false)}</td>
+                        </tr>
+                        <tr>
+                          <td className="p-2.5 text-slate-700">Impôt sur le Revenu Global Retenu à la Source (IRG Barème)</td>
+                          <td className="p-2.5 text-right text-red-700 font-bold">-{formatCurrencyDA(selectedActeForPrint.annualIRG || 0, false)}</td>
+                        </tr>
+                        <tr className="bg-emerald-50 font-black text-emerald-950">
+                          <td className="p-2.5 uppercase">Salaire Net Global Décaissé</td>
+                          <td className="p-2.5 text-right text-emerald-700 text-sm">
+                            {formatCurrencyDA((selectedActeForPrint.annualGross || 0) - (selectedActeForPrint.annualCNAS || 0) - (selectedActeForPrint.annualIRG || 0), false)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Signature */}
+              <div className="pt-8 border-t border-slate-300 flex justify-end">
+                <div className="text-center w-64 border border-slate-200 p-3 rounded bg-slate-50/50 text-[10px]">
+                  <span className="font-bold text-slate-800 block uppercase mb-1">Pour la Direction des RH</span>
+                  <span className="text-slate-500 block text-[9.5px]">SARL SILEX SERVICES</span>
+                  <div className="h-16 flex items-center justify-center font-mono text-emerald-700 font-bold text-xs">
+                    [CACHE & SIGNATURE RH CERTIFIÉE]
+                  </div>
+                  <span className="text-[8.5px] text-slate-400">Mention "Certifié conforme aux registres"</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}

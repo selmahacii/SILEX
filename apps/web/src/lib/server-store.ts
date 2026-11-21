@@ -668,6 +668,28 @@ export interface StoredCustomerQuote {
   createdAt: string;
 }
 
+export interface StoredClientSatisfactionSurvey {
+  id: string;
+  reference: string; // SAT-YYYY-NNN
+  clientName: string;
+  projectCode?: string;
+  projectName?: string;
+  contactName: string;
+  contactEmail?: string;
+  surveyDate: string;
+  qualityScore: number;       // 1-10
+  scheduleScore: number;      // 1-10
+  hseScore: number;           // 1-10
+  responsivenessScore: number;// 1-10
+  recommendationScore: number;// 1-10
+  overallScorePercent: number;// Moyenne / 10 * 100
+  appreciation: 'EXCELLENT' | 'SATISFAISANT' | 'MOYEN' | 'A_AMELIORER';
+  comments?: string;
+  clientSignatory?: string;
+  recordedBy?: string;
+  createdAt: string;
+}
+
 
 // ============================================================================
 // PHASE 4: TYPES ET INTERFACES ACHATS, APPROVISIONNEMENT & STOCKS
@@ -993,6 +1015,53 @@ export interface StoredIndustrialCertification {
   verifiedAt?: string;
   rejectionReason?: string;
   attachmentUrl?: string;
+}
+
+export interface StoredEmploymentContract {
+  id: string;
+  reference: string; // CTR-RH-YYYY-NNN
+  employeeId: string;
+  employeeMatricule: string;
+  employeeName: string;
+  contractType: 'CDI' | 'CDD_CHANTIER' | 'STAGIAIRE' | 'FIDELITE';
+  title: string;
+  startDate: string;
+  endDate?: string;
+  trialPeriodMonths: number;
+  monthlyBaseSalaryDA: number;
+  dailyAllowanceDA?: number;
+  loyaltyBonusDA?: number;
+  projectCode?: string;
+  siteLocation?: string;
+  specialClauses?: string;
+  status: 'ACTIF' | 'ECHU' | 'RESILIE';
+  signedByEmployee: boolean;
+  signedByDG: boolean;
+  createdAt: string;
+}
+
+export interface StoredSocialDeclaration {
+  id: string;
+  reference: string; // DEC-CNAS-YYYY-NNN
+  type: 'ATS' | 'ACCIDENT_TRAVAIL' | 'BORDEREAU_CNAS' | 'DAS_ANNUELLE';
+  period: string; // ex: 2026-T1, 2026-M11
+  employeeId?: string;
+  employeeMatricule?: string;
+  employeeName?: string;
+  declarationDate: string;
+  grossBaseDA?: number;
+  employeeContributionDA?: number; // 9%
+  employerContributionDA?: number; // 26%
+  totalContributionDA?: number; // 35%
+  accidentDate?: string;
+  accidentTime?: string;
+  accidentSite?: string;
+  injuryDescription?: string;
+  witnesses?: string;
+  workStoppageDays?: number;
+  status: 'BROUILLON' | 'TRANSMIS' | 'VALIDE_CNAS';
+  notes?: string;
+  createdAt: string;
 }
 
 export interface StoredLeaveRequest {
@@ -1432,6 +1501,7 @@ class ServerStore {
   private opportunities: StoredOpportunity[] = [];
   private costSheets: StoredCostSheet[] = [];
   private customerQuotes: StoredCustomerQuote[] = [];
+  private clientSatisfactionSurveys: StoredClientSatisfactionSurvey[] = [];
   private purchaseRequests: any[] = [];
   private purchaseOrders: any[] = [];
   private suppliers: any[] = [];
@@ -1479,6 +1549,8 @@ class ServerStore {
   private leaveRequests: StoredLeaveRequest[] = [];
   private missionOrders: StoredMissionOrder[] = [];
   private recruitmentRequests: StoredRecruitmentRequest[] = [];
+  private employmentContracts: StoredEmploymentContract[] = [];
+  private socialDeclarations: StoredSocialDeclaration[] = [];
   private rotationCycles: StoredRotationCycle[] = [];
   private salaryRubrics: StoredSalaryRubricConfig[] = [];
 
@@ -2078,6 +2150,7 @@ class ServerStore {
     this.opportunities = [];
     this.costSheets = [];
     this.customerQuotes = [];
+    this.clientSatisfactionSurveys = [];
     this.initQualityBaseline();
   }
 
@@ -4324,6 +4397,9 @@ class ServerStore {
         createdAt: '2026-11-07T10:00:00.000Z',
       },
     ];
+
+    this.employmentContracts = [];
+    this.socialDeclarations = [];
   }
 
 
@@ -4780,6 +4856,93 @@ class ServerStore {
       pendingLeavesCount,
       openRecruitmentsCount,
     };
+  }
+
+  // --- CONTRATS DE TRAVAIL NORMALISÉS (CDI, CDD, STAGIAIRE, FIDÉLITÉ) ---
+  getEmploymentContracts(employeeId?: string): StoredEmploymentContract[] {
+    if (employeeId) {
+      return this.employmentContracts.filter(c => c.employeeId === employeeId);
+    }
+    return this.employmentContracts;
+  }
+
+  createEmploymentContract(data: any, user?: any): StoredEmploymentContract {
+    const emp = this.employees.find(e => e.id === data.employeeId || e.matricule === data.employeeMatricule);
+    const num = String(this.employmentContracts.length + 1).padStart(3, '0');
+    const ref = `CTR-RH-${new Date().getFullYear()}-${num}`;
+
+    const newContract: StoredEmploymentContract = {
+      id: `ctr-${Date.now()}`,
+      reference: ref,
+      employeeId: emp ? emp.id : (data.employeeId || 'EMP-001'),
+      employeeMatricule: emp ? emp.matricule : (data.employeeMatricule || 'MAT-001'),
+      employeeName: emp ? (emp.name || `${emp.firstName} ${emp.lastName}`) : (data.employeeName || 'Collaborateur'),
+      contractType: data.contractType || 'CDI',
+      title: data.title || (emp ? emp.title : 'Technicien Supérieur'),
+      startDate: data.startDate || new Date().toISOString().split('T')[0],
+      endDate: data.endDate,
+      trialPeriodMonths: Number(data.trialPeriodMonths ?? 3),
+      monthlyBaseSalaryDA: Number(data.monthlyBaseSalaryDA || (emp ? (emp.dailyBaseRate || 5000) * 22 : 60000)),
+      dailyAllowanceDA: Number(data.dailyAllowanceDA || 1500),
+      loyaltyBonusDA: Number(data.loyaltyBonusDA || 0),
+      projectCode: data.projectCode,
+      siteLocation: data.siteLocation || 'Base Opérationnelle & Chantiers Nationaux',
+      specialClauses: data.specialClauses || '',
+      status: 'ACTIF',
+      signedByEmployee: true,
+      signedByDG: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.employmentContracts.unshift(newContract);
+    this.addAuditLog('CREATE_EMPLOYMENT_CONTRACT', 'HR', ref, `Contrat ${newContract.contractType} établi pour ${newContract.employeeName}`, user);
+    return newContract;
+  }
+
+  // --- DÉCLARATIONS SOCIALES & FISCALES (CNAS, CASNOS, ATS, ACCIDENTS) ---
+  getSocialDeclarations(type?: string): StoredSocialDeclaration[] {
+    if (type) {
+      return this.socialDeclarations.filter(d => d.type === type);
+    }
+    return this.socialDeclarations;
+  }
+
+  createSocialDeclaration(data: any, user?: any): StoredSocialDeclaration {
+    const num = String(this.socialDeclarations.length + 1).padStart(3, '0');
+    const ref = `DEC-CNAS-${new Date().getFullYear()}-${num}`;
+
+    const gross = Number(data.grossBaseDA || 0);
+    const empContrib = Math.round(gross * 0.09);
+    const emplContrib = Math.round(gross * 0.26);
+    const totContrib = empContrib + emplContrib;
+
+    const newDec: StoredSocialDeclaration = {
+      id: `dec-${Date.now()}`,
+      reference: ref,
+      type: data.type || 'ATS',
+      period: data.period || `${new Date().getFullYear()}-M${String(new Date().getMonth() + 1).padStart(2, '0')}`,
+      employeeId: data.employeeId,
+      employeeMatricule: data.employeeMatricule,
+      employeeName: data.employeeName,
+      declarationDate: data.declarationDate || new Date().toISOString().split('T')[0],
+      grossBaseDA: gross,
+      employeeContributionDA: empContrib,
+      employerContributionDA: emplContrib,
+      totalContributionDA: totContrib,
+      accidentDate: data.accidentDate,
+      accidentTime: data.accidentTime,
+      accidentSite: data.accidentSite,
+      injuryDescription: data.injuryDescription,
+      witnesses: data.witnesses,
+      workStoppageDays: Number(data.workStoppageDays || 0),
+      status: data.status || 'TRANSMIS',
+      notes: data.notes || '',
+      createdAt: new Date().toISOString(),
+    };
+
+    this.socialDeclarations.unshift(newDec);
+    this.addAuditLog('SOCIAL_DECLARATION', 'HR', ref, `Déclaration sociale ${newDec.type} enregistrée pour la période ${newDec.period}`, user);
+    return newDec;
   }
 
 
@@ -7281,6 +7444,61 @@ class ServerStore {
 
   getCustomerQuote(id: string) {
     return this.customerQuotes.find(q => q.id === id || q.quoteNumber === id);
+  }
+
+  // --- ENQUÊTES DE SATISFACTION CLIENT (COM-12 / PAGE 5/14) ---
+  getClientSatisfactionSurveys(projectCode?: string): StoredClientSatisfactionSurvey[] {
+    if (projectCode) {
+      return this.clientSatisfactionSurveys.filter(s => s.projectCode === projectCode);
+    }
+    return this.clientSatisfactionSurveys;
+  }
+
+  createClientSatisfactionSurvey(data: any, user?: any): StoredClientSatisfactionSurvey {
+    const num = String(this.clientSatisfactionSurveys.length + 1).padStart(3, '0');
+    const ref = `SAT-${new Date().getFullYear()}-${num}`;
+
+    const qScore = Math.max(1, Math.min(10, Number(data.qualityScore || 8)));
+    const sScore = Math.max(1, Math.min(10, Number(data.scheduleScore || 8)));
+    const hScore = Math.max(1, Math.min(10, Number(data.hseScore || 9)));
+    const rScore = Math.max(1, Math.min(10, Number(data.responsivenessScore || 8)));
+    const recScore = Math.max(1, Math.min(10, Number(data.recommendationScore || 9)));
+
+    // Moyenne pondérée sur 10 -> %
+    const avgScore = (qScore * 0.25) + (sScore * 0.25) + (hScore * 0.20) + (rScore * 0.15) + (recScore * 0.15);
+    const overallScorePercent = Number((avgScore * 10).toFixed(1));
+
+    let appreciation: 'EXCELLENT' | 'SATISFAISANT' | 'MOYEN' | 'A_AMELIORER' = 'SATISFAISANT';
+    if (overallScorePercent >= 85) appreciation = 'EXCELLENT';
+    else if (overallScorePercent >= 70) appreciation = 'SATISFAISANT';
+    else if (overallScorePercent >= 50) appreciation = 'MOYEN';
+    else appreciation = 'A_AMELIORER';
+
+    const newSurvey: StoredClientSatisfactionSurvey = {
+      id: `sat-${Date.now()}`,
+      reference: ref,
+      clientName: data.clientName || 'Client Industriel',
+      projectCode: data.projectCode,
+      projectName: data.projectName,
+      contactName: data.contactName || 'Responsable Client',
+      contactEmail: data.contactEmail,
+      surveyDate: data.surveyDate || new Date().toISOString().split('T')[0],
+      qualityScore: qScore,
+      scheduleScore: sScore,
+      hseScore: hScore,
+      responsivenessScore: rScore,
+      recommendationScore: recScore,
+      overallScorePercent,
+      appreciation,
+      comments: data.comments || '',
+      clientSignatory: data.clientSignatory || data.contactName || '',
+      recordedBy: user?.name || 'Service Commercial',
+      createdAt: new Date().toISOString(),
+    };
+
+    this.clientSatisfactionSurveys.unshift(newSurvey);
+    this.addAuditLog('CLIENT_SATISFACTION_SURVEY', 'COMMERCIAL', ref, `Enquête de satisfaction client enregistrée pour ${newSurvey.clientName} (Note: ${overallScorePercent}%)`, user);
+    return newSurvey;
   }
 
   convertCostSheetToProject(costSheetId: string, user?: any) {

@@ -3229,9 +3229,12 @@ export const dbBridge = {
           const actualCost = Number(dbProj.actualCost || 0);
           const committedCost = Number(dbProj.committedCost || 0);
 
-          const grossMarginDA = Math.max(0, (billedSituationsHT > 0 ? billedSituationsHT : contractAmount) - actualCost);
-          const grossMarginPercent = (billedSituationsHT > 0 ? billedSituationsHT : contractAmount) > 0
-            ? Number(((grossMarginDA / (billedSituationsHT > 0 ? billedSituationsHT : contractAmount)) * 100).toFixed(2))
+          // La marge réalisée exige une base de facturation réelle (situations de travaux) : sans
+          // facturation, le contrat entier ne doit jamais être présenté comme marge déjà acquise.
+          const isMarginCalculable = billedSituationsHT > 0;
+          const grossMarginDA = isMarginCalculable ? Math.max(0, billedSituationsHT - actualCost) : 0;
+          const grossMarginPercent = isMarginCalculable
+            ? Number(((grossMarginDA / billedSituationsHT) * 100).toFixed(2))
             : 0;
 
           return {
@@ -3253,8 +3256,9 @@ export const dbBridge = {
             projectedFinalCost: actualCost + committedCost,
             grossMarginDA,
             grossMarginPercent,
+            isMarginCalculable,
             budgetVarianceDA: estimatedBudget - (actualCost + committedCost),
-            isProfitable: grossMarginDA >= 0,
+            isProfitable: isMarginCalculable ? grossMarginDA >= 0 : null,
           };
         }
       } catch (err) {
@@ -3773,6 +3777,14 @@ export const dbBridge = {
     return serverStore.getCustomerQuote(id);
   },
 
+  async getClientSatisfactionSurveys(projectCode?: string) {
+    return serverStore.getClientSatisfactionSurveys(projectCode);
+  },
+
+  async createClientSatisfactionSurvey(data: any, user?: any) {
+    return serverStore.createClientSatisfactionSurvey(data, user);
+  },
+
   async convertCostSheetToProject(costSheetId: string, user?: any) {
     if (hasDb) {
       try {
@@ -4197,6 +4209,22 @@ export const dbBridge = {
 
   async getHrKpis() {
     return serverStore.getHrKpis();
+  },
+
+  async getEmploymentContracts(employeeId?: string) {
+    return serverStore.getEmploymentContracts(employeeId);
+  },
+
+  async createEmploymentContract(data: any, user?: any) {
+    return serverStore.createEmploymentContract(data, user);
+  },
+
+  async getSocialDeclarations(type?: string) {
+    return serverStore.getSocialDeclarations(type);
+  },
+
+  async createSocialDeclaration(data: any, user?: any) {
+    return serverStore.createSocialDeclaration(data, user);
   },
 
 

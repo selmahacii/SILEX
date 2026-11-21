@@ -120,6 +120,11 @@ export async function GET(
     const quotes = await dbBridge.getCustomerQuotes();
     return NextResponse.json(quotes, { headers: corsHeaders() });
   }
+  if (clean === '/commercial/satisfaction') {
+    const projCode = req.nextUrl.searchParams.get('projectCode') || undefined;
+    const surveys = await dbBridge.getClientSatisfactionSurveys(projCode);
+    return NextResponse.json(surveys, { headers: corsHeaders() });
+  }
 
   // 3. Projects
   if (clean === '/projects/kpis') {
@@ -356,6 +361,16 @@ export async function GET(
     const hs100 = req.nextUrl.searchParams.get('hs100') ? Number(req.nextUrl.searchParams.get('hs100')) : undefined;
     const slip = await dbBridge.calculatePayslipDemo(empId, { periodMonth: month, periodYear: year, overtimeHours50: hs50, overtimeHours100: hs100 });
     return NextResponse.json(slip, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/contracts')) {
+    const empId = req.nextUrl.searchParams.get('employeeId') || undefined;
+    const contracts = await dbBridge.getEmploymentContracts(empId);
+    return NextResponse.json(contracts, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/social-declarations')) {
+    const type = req.nextUrl.searchParams.get('type') || undefined;
+    const decs = await dbBridge.getSocialDeclarations(type);
+    return NextResponse.json(decs, { headers: corsHeaders() });
   }
 
   // 7. HR
@@ -659,6 +674,12 @@ export async function POST(
     const user = await parseUserFromToken(authHeader);
     const quote = await dbBridge.createCustomerQuote(body.costSheetId, user);
     return NextResponse.json(quote, { status: 201, headers: corsHeaders() });
+  }
+  if (clean === '/commercial/satisfaction') {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const survey = await dbBridge.createClientSatisfactionSurvey(body, user);
+    return NextResponse.json(survey, { status: 201, headers: corsHeaders() });
   }
 
   // 2.8 Module 02 Project POST subactions (Phase 3)
@@ -1009,6 +1030,18 @@ export async function POST(
     const user = await parseUserFromToken(authHeader);
     const res = await dbBridge.assignEmployeeToRotation(rotId, body.employeeId, user);
     return NextResponse.json(res, { headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/contracts')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const contract = await dbBridge.createEmploymentContract(body, user);
+    return NextResponse.json(contract, { status: 201, headers: corsHeaders() });
+  }
+  if (clean.includes('/hr/social-declarations')) {
+    const authHeader = req.headers.get('Authorization') || req.headers.get('authorization') || '';
+    const user = await parseUserFromToken(authHeader);
+    const dec = await dbBridge.createSocialDeclaration(body, user);
+    return NextResponse.json(dec, { status: 201, headers: corsHeaders() });
   }
 
   // 7. HR

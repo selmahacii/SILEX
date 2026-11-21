@@ -43,6 +43,10 @@ import {
   Unlock,
   ChevronDown,
   Info,
+  Award,
+  Star,
+  ThumbsUp,
+  MessageSquare,
 } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
@@ -65,18 +69,40 @@ const PIPELINE_STAGES = [
 
 export default function CommercialModulePage() {
   const { user, activeRole } = useAuth();
-  const [activeTab, setActiveTab] = useState<'costSheets' | 'pipeline' | 'opportunities' | 'quotes'>('costSheets');
+  const [activeTab, setActiveTab] = useState<'costSheets' | 'pipeline' | 'opportunities' | 'quotes' | 'satisfaction'>('costSheets');
 
   // Données
   const [kpis, setKpis] = useState<any>(null);
   const [opportunities, setOpportunities] = useState<any[]>([]);
   const [costSheets, setCostSheets] = useState<any[]>([]);
   const [quotes, setQuotes] = useState<any[]>([]);
+  const [surveys, setSurveys] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Fiche active
   const [selectedCostSheet, setSelectedCostSheet] = useState<any | null>(null);
   const [selectedQuoteForPrint, setSelectedQuoteForPrint] = useState<any | null>(null);
+  const [selectedSurveyForPrint, setSelectedSurveyForPrint] = useState<any | null>(null);
+
+  // Enquête de satisfaction client (COM-12 / Cahier des Charges Page 5/14)
+  const [showNewSurveyModal, setShowNewSurveyModal] = useState(false);
+  const [surveySubmitting, setSurveySubmitting] = useState(false);
+  const initialSurveyForm = {
+    clientName: '',
+    projectCode: '',
+    projectName: '',
+    contactName: '',
+    contactEmail: '',
+    surveyDate: new Date().toISOString().split('T')[0],
+    qualityScore: 9,
+    scheduleScore: 8,
+    hseScore: 10,
+    responsivenessScore: 9,
+    recommendationScore: 9,
+    comments: '',
+    clientSignatory: '',
+  };
+  const [newSurveyForm, setNewSurveyForm] = useState(initialSurveyForm);
 
   // Modals
   const [showNewOppModal, setShowNewOppModal] = useState(false);
@@ -139,17 +165,19 @@ export default function CommercialModulePage() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [kpisRes, oppsRes, sheetsRes, quotesRes] = await Promise.all([
+      const [kpisRes, oppsRes, sheetsRes, quotesRes, surveysRes] = await Promise.all([
         api.get<any>('/commercial/kpis').catch(() => null),
         api.get<any[]>('/commercial/opportunities').catch(() => []),
         api.get<any[]>('/commercial/cost-sheets').catch(() => []),
         api.get<any[]>('/commercial/quotes').catch(() => []),
+        api.get<any[]>('/commercial/satisfaction').catch(() => []),
       ]);
 
       setKpis(kpisRes);
       setOpportunities(Array.isArray(oppsRes) ? oppsRes : []);
       setCostSheets(Array.isArray(sheetsRes) ? sheetsRes : []);
       setQuotes(Array.isArray(quotesRes) ? quotesRes : []);
+      setSurveys(Array.isArray(surveysRes) ? surveysRes : []);
 
       if (selectedCostSheet) {
         const updated = (sheetsRes || []).find((s: any) => s.id === selectedCostSheet.id);
@@ -249,6 +277,22 @@ export default function CommercialModulePage() {
       showNotification(err?.message || 'Erreur lors de la génération du devis', true);
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleCreateSurvey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSurveySubmitting(true);
+      await api.post('/commercial/satisfaction', newSurveyForm);
+      showNotification('Enquête de satisfaction client enregistrée avec succès !');
+      setShowNewSurveyModal(false);
+      setNewSurveyForm(initialSurveyForm);
+      await loadData();
+    } catch (err: any) {
+      showNotification(err?.message || 'Erreur lors de l’enregistrement de l’enquête', true);
+    } finally {
+      setSurveySubmitting(false);
     }
   };
 
@@ -613,6 +657,22 @@ export default function CommercialModulePage() {
           <span>Devis & Éditions A4</span>
           <span className="px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-700 text-[10px]">
             {quotes.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('satisfaction')}
+          className={`pb-3 px-4 text-xs font-bold transition-all relative flex items-center gap-2 cursor-pointer ${
+            activeTab === 'satisfaction'
+              ? 'text-[#07164D] border-b-2 border-[#07164D]'
+              : 'text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Award className="w-4 h-4 text-amber-600" />
+          <span>Satisfaction Client (COM-12)</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-slate-100 text-slate-700 text-[10px]">
+            {surveys.length}
           </span>
         </button>
       </div>
@@ -1624,6 +1684,201 @@ export default function CommercialModulePage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* ONGLET 5 : ENQUÊTES DE SATISFACTION CLIENT (COM-12) */}
+      {/* ======================================================== */}
+      {activeTab === 'satisfaction' && (
+        <div className="space-y-6">
+          {/* Header & KPI Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Total Évaluations</span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-2xl font-black text-[#07164D]">{surveys.length}</span>
+                <Award className="w-6 h-6 text-amber-500" />
+              </div>
+              <p className="text-[10.5px] text-slate-500 mt-1">Évaluations post-chantier</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Score Global Moyen</span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-2xl font-black text-emerald-600">
+                  {surveys.length > 0
+                    ? `${(surveys.reduce((acc, s) => acc + (s.overallScore || 0), 0) / surveys.length).toFixed(1)}%`
+                    : 'N/A'}
+                </span>
+                <Star className="w-6 h-6 text-amber-400 fill-amber-400" />
+              </div>
+              <p className="text-[10.5px] text-slate-500 mt-1">Objectif qualité &gt; 85%</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Score HSE Moyen</span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-2xl font-black text-indigo-700">
+                  {surveys.length > 0
+                    ? `${(surveys.reduce((acc, s) => acc + (s.hseScore || 0), 0) / surveys.length).toFixed(1)} / 10`
+                    : 'N/A'}
+                </span>
+                <ShieldCheck className="w-6 h-6 text-indigo-500" />
+              </div>
+              <p className="text-[10.5px] text-slate-500 mt-1">Sécurité & procédures ATEX</p>
+            </div>
+
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <span className="text-[10px] font-black uppercase text-slate-500 tracking-wider">Taux Recommandation</span>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-2xl font-black text-emerald-700">
+                  {surveys.length > 0
+                    ? `${(surveys.reduce((acc, s) => acc + (s.recommendationScore || 0), 0) / surveys.length * 10).toFixed(0)}%`
+                    : 'N/A'}
+                </span>
+                <ThumbsUp className="w-6 h-6 text-emerald-600" />
+              </div>
+              <p className="text-[10.5px] text-slate-500 mt-1">Fidélité & renouvellement</p>
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-2xs">
+            <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <Award className="w-4 h-4 text-amber-600" />
+                  Registre des Enquêtes de Satisfaction Client (COM-12)
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  Évaluation post-chantier formalisée sur 5 critères industriels selon le Cahier des Charges Page 5/14
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewSurveyModal(true)}
+                className="px-3.5 py-1.5 bg-[#07164D] hover:bg-[#0B207D] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Nouvelle Enquête Client</span>
+              </button>
+            </div>
+
+            {surveys.length === 0 ? (
+              <div className="p-12 text-center">
+                <div className="w-14 h-14 bg-amber-50 text-amber-700 rounded-full flex items-center justify-center mx-auto mb-3 border border-amber-200">
+                  <Award className="w-7 h-7" />
+                </div>
+                <h4 className="text-sm font-bold text-slate-800">Aucune enquête enregistrée pour le moment</h4>
+                <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 mb-5">
+                  Les enquêtes de satisfaction (COM-12) sont déclenchées lors des réceptions provisoires ou définitives de travaux
+                  afin de mesurer la conformité technique, le respect des plannings et l’excellence HSE.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowNewSurveyModal(true)}
+                  className="px-4 py-2 bg-[#07164D] hover:bg-[#0B207D] text-white rounded-lg text-xs font-bold inline-flex items-center gap-2 shadow-xs cursor-pointer transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Enregistrer une Première Évaluation</span>
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#07164D] text-white font-bold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="p-3">Réf & Date</th>
+                      <th className="p-3">Client & Contact</th>
+                      <th className="p-3">Chantier / Projet</th>
+                      <th className="p-3 text-center">Score Global</th>
+                      <th className="p-3">Critères Détaillés (/10)</th>
+                      <th className="p-3">Appréciation</th>
+                      <th className="p-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {surveys.map((s) => (
+                      <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-3 align-top">
+                          <span className="font-mono font-bold text-slate-900 block">{s.reference}</span>
+                          <span className="text-[10px] text-slate-500">{new Date(s.surveyDate).toLocaleDateString('fr-FR')}</span>
+                        </td>
+                        <td className="p-3 align-top">
+                          <strong className="text-slate-900 block">{s.clientName}</strong>
+                          <span className="text-[10.5px] text-slate-600 block">{s.contactName}</span>
+                          {s.contactEmail && <span className="text-[10px] text-slate-400 font-mono">{s.contactEmail}</span>}
+                        </td>
+                        <td className="p-3 align-top">
+                          <span className="font-mono text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                            {s.projectCode}
+                          </span>
+                          <p className="text-[11px] text-slate-700 mt-1 line-clamp-2">{s.projectName}</p>
+                        </td>
+                        <td className="p-3 align-top text-center">
+                          <div className="inline-flex flex-col items-center">
+                            <span className="text-base font-black text-emerald-700">{s.overallScore}%</span>
+                            <div className="flex gap-0.5 mt-0.5">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <Star
+                                  key={i}
+                                  className={`w-3 h-3 ${
+                                    i < Math.round((s.overallScore || 0) / 20)
+                                      ? 'text-amber-400 fill-amber-400'
+                                      : 'text-slate-200'
+                                  }`}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3 align-top">
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[10px]">
+                            <span className="text-slate-600">Qualité : <strong className="text-slate-900">{s.qualityScore}/10</strong></span>
+                            <span className="text-slate-600">Délais : <strong className="text-slate-900">{s.scheduleScore}/10</strong></span>
+                            <span className="text-slate-600">HSE : <strong className="text-slate-900">{s.hseScore}/10</strong></span>
+                            <span className="text-slate-600">Réactivité : <strong className="text-slate-900">{s.responsivenessScore}/10</strong></span>
+                            <span className="text-slate-600 col-span-2">Recommandation : <strong className="text-slate-900">{s.recommendationScore}/10</strong></span>
+                          </div>
+                        </td>
+                        <td className="p-3 align-top">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-bold inline-block ${
+                              s.appreciation === 'EXCELLENT'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : s.appreciation === 'TRES_SATISFAISANT'
+                                ? 'bg-blue-100 text-blue-800'
+                                : s.appreciation === 'SATISFAISANT'
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {s.appreciation.replace(/_/g, ' ')}
+                          </span>
+                          {s.clientSignatory && (
+                            <span className="block text-[9.5px] text-slate-500 mt-1 italic">
+                              Signé par : {s.clientSignatory}
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 align-top text-right">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSurveyForPrint(s)}
+                            className="px-2.5 py-1 bg-[#07164D] hover:bg-[#0B207D] text-white rounded text-xs font-bold flex items-center gap-1.5 ml-auto transition-colors cursor-pointer"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                            <span>Certificat A4</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -2980,6 +3235,416 @@ export default function CommercialModulePage() {
                     [VISA NUMÉRIQUE DG VALIDÉ]
                   </div>
                   <span className="text-[9px] text-slate-400">Cachet & Signature Électronique</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL NOUVELLE ENQUÊTE DE SATISFACTION (COM-12) */}
+      {/* ======================================================== */}
+      {showNewSurveyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden text-slate-900 my-8">
+            <div className="bg-[#07164D] p-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Award className="w-5 h-5 text-amber-400" />
+                <h3 className="text-sm font-black">
+                  Nouvelle Enquête de Satisfaction Client • Processus COM-12
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewSurveyModal(false)}
+                className="text-slate-300 hover:text-white cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSurvey} className="p-6 space-y-5 text-xs">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Raison Sociale Client *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Sonatrach / Sonelgaz..."
+                    value={newSurveyForm.clientName}
+                    onChange={(e) => setNewSurveyForm({ ...newSurveyForm, clientName: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Date d'Évaluation *</label>
+                  <input
+                    type="date"
+                    required
+                    value={newSurveyForm.surveyDate}
+                    onChange={(e) => setNewSurveyForm({ ...newSurveyForm, surveyDate: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Code Projet / Marché *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: 0102 ou PRJ-2026-..."
+                    value={newSurveyForm.projectCode}
+                    onChange={(e) => setNewSurveyForm({ ...newSurveyForm, projectCode: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-mono font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Intitulé du Chantier / Objet *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Rénovation tuyauterie HP..."
+                    value={newSurveyForm.projectName}
+                    onChange={(e) => setNewSurveyForm({ ...newSurveyForm, projectName: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Nom du Contact Client *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: M. Bouzid (Chef de Département)"
+                    value={newSurveyForm.contactName}
+                    onChange={(e) => setNewSurveyForm({ ...newSurveyForm, contactName: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Email Contact</label>
+                  <input
+                    type="email"
+                    placeholder="contact.technique@client.dz"
+                    value={newSurveyForm.contactEmail}
+                    onChange={(e) => setNewSurveyForm({ ...newSurveyForm, contactEmail: e.target.value })}
+                    className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* 5 Critères Réglementaires */}
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3.5">
+                <h4 className="text-[11px] font-black uppercase text-slate-700 tracking-wider flex items-center justify-between">
+                  <span>Évaluation des 5 Critères Métier (Échelle 1 à 10)</span>
+                  <span className="text-emerald-700 font-black text-xs">
+                    Score Global Calculé : {Math.round(
+                      ((newSurveyForm.qualityScore +
+                        newSurveyForm.scheduleScore +
+                        newSurveyForm.hseScore +
+                        newSurveyForm.responsivenessScore +
+                        newSurveyForm.recommendationScore) /
+                        50) *
+                        100
+                    )}%
+                  </span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                      <span>1. Qualité & Conformité technique :</span>
+                      <span className="text-indigo-700">{newSurveyForm.qualityScore} / 10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={newSurveyForm.qualityScore}
+                      onChange={(e) => setNewSurveyForm({ ...newSurveyForm, qualityScore: Number(e.target.value) })}
+                      className="w-full cursor-pointer accent-[#07164D]"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                      <span>2. Respect des délais & jalons :</span>
+                      <span className="text-indigo-700">{newSurveyForm.scheduleScore} / 10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={newSurveyForm.scheduleScore}
+                      onChange={(e) => setNewSurveyForm({ ...newSurveyForm, scheduleScore: Number(e.target.value) })}
+                      className="w-full cursor-pointer accent-[#07164D]"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                      <span>3. Sécurité & Protocoles HSE :</span>
+                      <span className="text-indigo-700">{newSurveyForm.hseScore} / 10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={newSurveyForm.hseScore}
+                      onChange={(e) => setNewSurveyForm({ ...newSurveyForm, hseScore: Number(e.target.value) })}
+                      className="w-full cursor-pointer accent-[#07164D]"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                      <span>4. Réactivité & Capacité d'arbitrage :</span>
+                      <span className="text-indigo-700">{newSurveyForm.responsivenessScore} / 10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={newSurveyForm.responsivenessScore}
+                      onChange={(e) => setNewSurveyForm({ ...newSurveyForm, responsivenessScore: Number(e.target.value) })}
+                      className="w-full cursor-pointer accent-[#07164D]"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <div className="flex justify-between font-bold text-slate-700 mb-1">
+                      <span>5. Taux de Recommandation globale :</span>
+                      <span className="text-indigo-700">{newSurveyForm.recommendationScore} / 10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={newSurveyForm.recommendationScore}
+                      onChange={(e) => setNewSurveyForm({ ...newSurveyForm, recommendationScore: Number(e.target.value) })}
+                      className="w-full cursor-pointer accent-[#07164D]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Signataire Client (Nom & Fonction)</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Ingénieur Superviseur Client..."
+                  value={newSurveyForm.clientSignatory}
+                  onChange={(e) => setNewSurveyForm({ ...newSurveyForm, clientSignatory: e.target.value })}
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Commentaires & Remarques du Client</label>
+                <textarea
+                  rows={2}
+                  placeholder="Appréciation générale du client, points forts constatés ou axes d'amélioration..."
+                  value={newSurveyForm.comments}
+                  onChange={(e) => setNewSurveyForm({ ...newSurveyForm, comments: e.target.value })}
+                  className="w-full p-2 bg-slate-50 border border-slate-300 rounded font-medium"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowNewSurveyModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={surveySubmitting}
+                  className="px-4 py-2 bg-[#07164D] hover:bg-[#0B207D] text-white rounded text-xs font-bold transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                >
+                  {surveySubmitting ? 'Enregistrement...' : 'Valider & Enregistrer l’Enquête'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* MODAL CERTIFICAT A4 SATISFACTION CLIENT IMPRIMABLE */}
+      {/* ======================================================== */}
+      {selectedSurveyForPrint && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-2xl max-w-3xl w-full border border-slate-300 overflow-hidden text-slate-900 my-8">
+            <div className="bg-[#07164D] p-3 text-white flex items-center justify-between px-6">
+              <span className="text-xs font-bold tracking-wide">
+                CERTIFICAT DE SATISFACTION CLIENT • {selectedSurveyForPrint.reference}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="px-3 py-1 bg-white/20 hover:bg-white/30 rounded text-xs font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Imprimer A4</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSurveyForPrint(null)}
+                  className="text-white/80 hover:text-white cursor-pointer ml-2"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-8 space-y-6 text-xs bg-white" id="printable-survey">
+              {/* En-tête officiel */}
+              <div className="flex justify-between items-start border-b-2 border-[#07164D] pb-4">
+                <div>
+                  <h1 className="text-xl font-black text-[#07164D] tracking-tight">{COMPANY_NAME}</h1>
+                  <p className="text-[10px] text-slate-600 font-medium">Maintenance & Construction Industrielle</p>
+                  <p className="text-[10px] text-slate-500">Réf. Normative : ISO 9001:2015 • Processus COM-12</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">FICHE D'ÉVALUATION POST-CHANTIER</span>
+                  <strong className="text-sm font-mono text-[#07164D] block">{selectedSurveyForPrint.reference}</strong>
+                  <span className="text-[10px] text-slate-500">
+                    Date : {new Date(selectedSurveyForPrint.surveyDate).toLocaleDateString('fr-FR')}
+                  </span>
+                </div>
+              </div>
+
+              {/* Bloc Coordonnées Client & Projet */}
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <div>
+                  <span className="text-[9.5px] font-black uppercase text-slate-500 block mb-1">Client Évaluateur</span>
+                  <p className="text-sm font-bold text-slate-900">{selectedSurveyForPrint.clientName}</p>
+                  <p className="text-xs text-slate-700 mt-0.5">Contact : {selectedSurveyForPrint.contactName}</p>
+                  {selectedSurveyForPrint.contactEmail && (
+                    <p className="text-[10px] text-slate-500 font-mono">{selectedSurveyForPrint.contactEmail}</p>
+                  )}
+                </div>
+                <div>
+                  <span className="text-[9.5px] font-black uppercase text-slate-500 block mb-1">Chantier / Projet Évalué</span>
+                  <p className="text-xs font-mono font-bold text-indigo-700">{selectedSurveyForPrint.projectCode}</p>
+                  <p className="text-xs font-medium text-slate-800 mt-0.5">{selectedSurveyForPrint.projectName}</p>
+                </div>
+              </div>
+
+              {/* Grille d'Évaluation des 5 Critères */}
+              <div className="border border-slate-300 rounded-lg overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-[#07164D] text-white font-bold uppercase text-[10px]">
+                    <tr>
+                      <th className="p-2.5">Axe d'Évaluation Industriel</th>
+                      <th className="p-2.5 text-center w-28">Note Attribuée</th>
+                      <th className="p-2.5 text-center w-28">Pondération</th>
+                      <th className="p-2.5 text-right w-28">Appréciation</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    <tr>
+                      <td className="p-2.5">
+                        <strong className="block text-slate-900">1. Qualité Technique & Conformité des Travaux</strong>
+                        <span className="text-[10px] text-slate-500">Respect des spécifications, PV d'épreuves, contrôles CND et traçabilité Weld Book.</span>
+                      </td>
+                      <td className="p-2.5 text-center font-bold text-slate-900">{selectedSurveyForPrint.qualityScore} / 10</td>
+                      <td className="p-2.5 text-center text-slate-600">20%</td>
+                      <td className="p-2.5 text-right font-bold text-emerald-700">{selectedSurveyForPrint.qualityScore >= 8 ? 'Très Satisfaisant' : 'Satisfaisant'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5">
+                        <strong className="block text-slate-900">2. Respect des Délais & Jalons Contractuels</strong>
+                        <span className="text-[10px] text-slate-500">Ponctualité des mobilisations, respect des plannings d'arrêts et des jalons ODS.</span>
+                      </td>
+                      <td className="p-2.5 text-center font-bold text-slate-900">{selectedSurveyForPrint.scheduleScore} / 10</td>
+                      <td className="p-2.5 text-center text-slate-600">20%</td>
+                      <td className="p-2.5 text-right font-bold text-emerald-700">{selectedSurveyForPrint.scheduleScore >= 8 ? 'Très Satisfaisant' : 'Satisfaisant'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5">
+                        <strong className="block text-slate-900">3. Sécurité, Environnement & Procédures HSE</strong>
+                        <span className="text-[10px] text-slate-500">Conformité réglementaire ATEX, port des EPI, causeries sécurité et zéro accident.</span>
+                      </td>
+                      <td className="p-2.5 text-center font-bold text-slate-900">{selectedSurveyForPrint.hseScore} / 10</td>
+                      <td className="p-2.5 text-center text-slate-600">20%</td>
+                      <td className="p-2.5 text-right font-bold text-emerald-700">{selectedSurveyForPrint.hseScore >= 8 ? 'Exemplaire' : 'Conforme'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5">
+                        <strong className="block text-slate-900">4. Réactivité & Capacité d'Arbitrage des Équipes</strong>
+                        <span className="text-[10px] text-slate-500">Disponibilité de l'encadrement, communication de chantier et gestion des imprévus.</span>
+                      </td>
+                      <td className="p-2.5 text-center font-bold text-slate-900">{selectedSurveyForPrint.responsivenessScore} / 10</td>
+                      <td className="p-2.5 text-center text-slate-600">20%</td>
+                      <td className="p-2.5 text-right font-bold text-emerald-700">{selectedSurveyForPrint.responsivenessScore >= 8 ? 'Très Réactif' : 'Satisfaisant'}</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5">
+                        <strong className="block text-slate-900">5. Taux de Recommandation & Renouvellement</strong>
+                        <span className="text-[10px] text-slate-500">Propension à reconduire l'entreprise pour de futurs projets ou arrêts majeurs.</span>
+                      </td>
+                      <td className="p-2.5 text-center font-bold text-slate-900">{selectedSurveyForPrint.recommendationScore} / 10</td>
+                      <td className="p-2.5 text-center text-slate-600">20%</td>
+                      <td className="p-2.5 text-right font-bold text-emerald-700">{selectedSurveyForPrint.recommendationScore >= 8 ? 'Hautement Recommandé' : 'Favorable'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Synthèse finale du score */}
+              <div className="flex justify-between items-center bg-slate-50 p-4 rounded-lg border border-slate-300">
+                <div>
+                  <span className="text-[10px] font-black uppercase text-slate-500 block">Appréciation Globale Attribuée</span>
+                  <span className="text-sm font-black text-[#07164D] uppercase">
+                    {selectedSurveyForPrint.appreciation.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] font-black uppercase text-slate-500 block">Score Global Pondéré</span>
+                  <span className="text-2xl font-black text-emerald-700">{selectedSurveyForPrint.overallScore}%</span>
+                </div>
+              </div>
+
+              {selectedSurveyForPrint.comments && (
+                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <span className="text-[9.5px] font-black uppercase text-slate-600 block mb-1">Commentaires et Observations du Client :</span>
+                  <p className="text-xs text-slate-700 italic">« {selectedSurveyForPrint.comments} »</p>
+                </div>
+              )}
+
+              {/* Cadre de validation contradictoire */}
+              <div className="grid grid-cols-2 gap-8 pt-4 border-t border-slate-300 text-[10px]">
+                <div className="text-center border border-slate-200 p-3 rounded-lg bg-slate-50/50">
+                  <span className="font-bold text-slate-800 block uppercase mb-1">
+                    Pour SARL SILEX SERVICES
+                  </span>
+                  <span className="text-slate-500 block text-[9.5px]">Département Commercial & Direction Qualité</span>
+                  <div className="h-16 flex items-center justify-center font-mono text-emerald-700 font-bold text-xs">
+                    [VISA CONTRÔLE QUALITÉ & DIRECTION]
+                  </div>
+                  <span className="text-[8.5px] text-slate-400">Signature Électronique Certifiée</span>
+                </div>
+
+                <div className="text-center border border-slate-200 p-3 rounded-lg bg-slate-50/50">
+                  <span className="font-bold text-slate-800 block uppercase mb-1">
+                    Pour le Client Évaluateur
+                  </span>
+                  <span className="text-slate-500 block text-[9.5px]">
+                    {selectedSurveyForPrint.clientSignatory || selectedSurveyForPrint.contactName || 'Représentant Mandaté'}
+                  </span>
+                  <div className="h-16 flex items-center justify-center font-mono text-slate-600 font-bold text-xs">
+                    [CACHE ET SIGNATURE DU CLIENT]
+                  </div>
+                  <span className="text-[8.5px] text-slate-400">Mention manuscrite "Bon pour acceptation"</span>
                 </div>
               </div>
             </div>
