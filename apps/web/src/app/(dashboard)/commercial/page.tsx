@@ -51,6 +51,7 @@ import {
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
 import { formatCurrencyDA, SystemRole, COMPANY_NAME } from '@silex/shared';
+import { PrintCostSheet } from '@/components/print/print-cost-sheet';
 import { StatusBadge } from '@/components/shared/status-badge';
 
 // Configuration des 10 étapes du Pipeline Industriel SILEX
@@ -83,6 +84,7 @@ export default function CommercialModulePage() {
   const [selectedCostSheet, setSelectedCostSheet] = useState<any | null>(null);
   const [selectedQuoteForPrint, setSelectedQuoteForPrint] = useState<any | null>(null);
   const [selectedSurveyForPrint, setSelectedSurveyForPrint] = useState<any | null>(null);
+  const [showPrintCostSheetModal, setShowPrintCostSheetModal] = useState(false);
 
   // Enquête de satisfaction client (COM-12 / Cahier des Charges Page 5/14)
   const [showNewSurveyModal, setShowNewSurveyModal] = useState(false);
@@ -801,6 +803,17 @@ export default function CommercialModulePage() {
                         >
                           <History className="w-3.5 h-3.5" />
                           <span>Créer Révision V{selectedCostSheet.version + 1}</span>
+                        </button>
+
+                        {/* Exporter PDF / Imprimer Fiche A4 */}
+                        <button
+                          type="button"
+                          onClick={() => setShowPrintCostSheetModal(true)}
+                          className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                          title="Exporter en PDF / Imprimer la Fiche de Coût officielle A4"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-blue-200" />
+                          <span>Exporter PDF / Imprimer</span>
                         </button>
 
                         {/* Action Soumettre à la DG */}
@@ -3650,6 +3663,13 @@ export default function CommercialModulePage() {
             </div>
           </div>
         </div>
+      )}
+      {/* MODAL IMPRESSION OFFICIELLE FICHE DE COÛT A4 */}
+      {showPrintCostSheetModal && selectedCostSheet && (
+        <PrintCostSheet
+          sheet={selectedCostSheet}
+          onClose={() => setShowPrintCostSheetModal(false)}
+        />
       )}
     </div>
   );

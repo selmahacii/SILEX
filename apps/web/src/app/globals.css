@@ -39,13 +39,18 @@
   background: #94A3B8;
 }
 
-/* Impression PDF nette */
+/* Impression PDF officielle A4 */
 @media print {
-  .no-print {
+  .no-print, header, aside, nav, .sticky, [role="navigation"] {
     display: none !important;
   }
   body {
-    background: white;
+    background: white !important;
+    color: black !important;
+  }
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
   }
 }
 

@@ -6,6 +6,7 @@ import { api } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
 import { formatCurrencyDA, formatDateDZ, SystemRole, COMPANY_NAME, COMPANY_ESTABLISHED } from '@silex/shared';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { PrintTco } from '@/components/print/print-tco';
 import {
   ShoppingCart,
   Plus,
@@ -106,6 +107,7 @@ export default function ProcurementPage() {
   const [selectedPR, setSelectedPR] = useState<any | null>(null);
   const [activeTab, setActiveTab] = useState<'requests' | 'orders' | 'suppliers'>('requests');
   const [notification, setNotification] = useState<string | null>(null);
+  const [showPrintTcoModal, setShowPrintTcoModal] = useState(false);
 
   // Search and filters
   const [searchPR, setSearchPR] = useState('');
@@ -1248,25 +1250,36 @@ export default function ProcurementPage() {
                       <TrendingDown className="w-4 h-4 text-[#0B207D]" />
                       Matrice Comparative des Variantes & Offres Fournisseurs ({selectedPR.quotes?.length || 0})
                     </h3>
-                    {selectedPR.status !== 'APPROVED' && selectedPR.status !== 'PURCHASE_ORDER' && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setShowAddQuoteModal(true)}
-                          className="text-xs px-2.5 py-1 bg-white border border-[#0B207D] text-[#0B207D] font-semibold rounded hover:bg-blue-50 transition-colors shadow-2xs cursor-pointer flex items-center gap-1"
-                        >
-                          <Plus className="w-3 h-3" />
-                          Ajouter Variante / Devis
-                        </button>
-                        {(!selectedPR.quotes || selectedPR.quotes.length === 0) && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowPrintTcoModal(true)}
+                        className="text-xs px-2.5 py-1 bg-white border border-slate-300 text-slate-800 font-bold rounded hover:bg-slate-100 transition-colors shadow-2xs cursor-pointer flex items-center gap-1"
+                        title="Imprimer ou Exporter le Tableau Comparatif des Offres (TCO) au format officiel A4"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-[#0B207D]" />
+                        <span>Exporter TCO (A4)</span>
+                      </button>
+                      {selectedPR.status !== 'APPROVED' && selectedPR.status !== 'PURCHASE_ORDER' && (
+                        <>
                           <button
-                            onClick={handleAddQuotesAndSubmitToDG}
-                            className="text-xs px-3 py-1 bg-[#0B207D] text-white font-semibold rounded hover:bg-[#07164D] transition-colors shadow-xs cursor-pointer"
+                            onClick={() => setShowAddQuoteModal(true)}
+                            className="text-xs px-2.5 py-1 bg-white border border-[#0B207D] text-[#0B207D] font-semibold rounded hover:bg-blue-50 transition-colors shadow-2xs cursor-pointer flex items-center gap-1"
                           >
-                            Mise en concurrence auto
+                            <Plus className="w-3 h-3" />
+                            Ajouter Variante / Devis
                           </button>
-                        )}
-                      </div>
-                    )}
+                          {(!selectedPR.quotes || selectedPR.quotes.length === 0) && (
+                            <button
+                              onClick={handleAddQuotesAndSubmitToDG}
+                              className="text-xs px-3 py-1 bg-[#0B207D] text-white font-semibold rounded hover:bg-[#07164D] transition-colors shadow-xs cursor-pointer"
+                            >
+                              Mise en concurrence auto
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {selectedPR.quotes && selectedPR.quotes.length > 0 ? (
@@ -3131,6 +3144,14 @@ export default function ProcurementPage() {
             </div>
           </div>
         </div>
+      )}
+      {/* MODAL IMPRESSION OFFICIELLE DU TABLEAU COMPARATIF DES OFFRES (TCO) A4 */}
+      {showPrintTcoModal && selectedPR && (
+        <PrintTco
+          purchaseRequest={selectedPR}
+          quotes={selectedPR.quotes || []}
+          onClose={() => setShowPrintTcoModal(false)}
+        />
       )}
     </div>
   );

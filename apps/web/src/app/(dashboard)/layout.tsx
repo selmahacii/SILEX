@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Header } from '@/components/layout/header';
+import { DemoRoleSwitcher } from '@/components/layout/demo-role-switcher';
 import { Loader2 } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -55,6 +56,8 @@ export default function DashboardLayout({
 
       {/* Main Workspace Column with lg:pl-64 offset for the fixed sidebar */}
       <div className="lg:pl-64 flex flex-col min-h-screen min-w-0 max-w-full">
+        {/* Fixed Demo Live Role Switcher (Top of the workspace) */}
+        <DemoRoleSwitcher />
         <Header
           onToggleMobileMenu={() => setMobileMenuOpen((prev) => !prev)}
         />

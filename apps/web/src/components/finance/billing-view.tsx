@@ -25,7 +25,9 @@ import {
   ChevronRight,
   Eye,
   Info,
+  Printer,
 } from 'lucide-react';
+import { PrintInvoice } from '@/components/print/print-invoice';
 import { formatCurrencyDA } from '@silex/shared';
 import { api } from '@/lib/api-client';
 import { FinancialAccountSummary } from './accounts-summary-widget';
@@ -94,6 +96,7 @@ export function BillingView({
   const [showWarrantyModal, setShowWarrantyModal] = useState<boolean>(false);
   const [selectedInvoice, setSelectedInvoice] = useState<CustomerInvoiceItem | null>(null);
   const [showDetailModal, setShowDetailModal] = useState<boolean>(false);
+  const [showPrintInvoiceModal, setShowPrintInvoiceModal] = useState<boolean>(false);
 
   // Create Invoice Form State
   const [createProjectId, setCreateProjectId] = useState<string>('');
@@ -1652,6 +1655,14 @@ export function BillingView({
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
               <button
                 type="button"
+                onClick={() => setShowPrintInvoiceModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#0B207D] hover:bg-[#07164D] text-white text-xs font-bold rounded-lg transition-colors cursor-pointer shadow-xs"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Imprimer / Exporter Facture A4</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setShowDetailModal(false)}
                 className="px-4 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors"
               >
@@ -1660,6 +1671,14 @@ export function BillingView({
             </div>
           </div>
         </div>
+      )}
+
+      {/* MODAL IMPRESSION OFFICIELLE FACTURE CLIENT A4 */}
+      {showPrintInvoiceModal && selectedInvoice && (
+        <PrintInvoice
+          invoice={selectedInvoice}
+          onClose={() => setShowPrintInvoiceModal(false)}
+        />
       )}
     </div>
   );

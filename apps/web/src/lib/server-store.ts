@@ -7225,6 +7225,41 @@ class ServerStore {
 
     if (isApproved) {
       sheet.status = 'VALIDEE';
+      // FIL ROUGE DÉMO : Création automatique immédiate du Projet Chantier
+      const projectCode = 'PRJ-' + (sheet.reference || '2026-001').replace('FC-', '');
+      let linkedProject = this.projects.find(p => p.code === projectCode || (p as any).costSheetId === sheet.id);
+      if (!linkedProject) {
+        linkedProject = {
+          id: 'proj-' + sheet.id,
+          code: projectCode,
+          name: sheet.title || `Chantier ${sheet.clientName}`,
+          description: `Projet issu de la Fiche de Coût ${sheet.reference} validée par la Direction Générale.`,
+          clientName: sheet.clientName,
+          sector: (sheet.sector as any) || 'OIL_AND_GAS',
+          managerId: 'usr-rp-001',
+          managerName: sheet.projectContribution?.responsibleName || 'Karim Mansouri',
+          siteLocation: sheet.siteLocation || 'Zone Industrielle Skikda RA1K',
+          wilaya: 'Skikda',
+          startDate: new Date().toISOString().split('T')[0],
+          endDate: new Date(Date.now() + 60 * 86400000).toISOString().split('T')[0],
+          contractAmountHT: Number(sheet.proposedSellingPrice || 38700000),
+          budgetAllocatedHT: Number(sheet.totalEstimatedCost || 29220800),
+          budgetRevision: Number(sheet.totalEstimatedCost || 29220800),
+          committedCost: 0,
+          actualCost: 0,
+          eacCost: Number(sheet.totalEstimatedCost || 29220800),
+          physicalProgress: 0,
+          financialProgress: 0,
+          status: 'MOBILIZATION' as any,
+          riskLevel: 'LOW' as any,
+          costSheetId: sheet.id,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as any;
+        if (linkedProject) {
+          this.projects.unshift(linkedProject);
+        }
+      }
     } else if (isRejected) {
       sheet.status = 'REJETEE';
     } else {

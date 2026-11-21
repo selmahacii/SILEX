@@ -3712,6 +3712,43 @@ export const dbBridge = {
               isImmutable: decision === 'APPROVED',
             },
           });
+
+          // FIL ROUGE DÉMO : Si approuvé, création automatique du Projet en base Prisma
+          if (decision === 'APPROVED') {
+            const projectCode = 'PRJ-' + (dbSheet.reference || '2026-001').replace('FC-', '');
+            const existingPrj = await (prisma as any).project.findFirst({
+              where: { OR: [{ code: projectCode }, { name: dbSheet.title }] }
+            });
+            if (!existingPrj) {
+              const rpUser = await (prisma as any).user.findFirst({
+                where: { role: 'RESPONSABLE_PROJET' }
+              });
+              await (prisma as any).project.create({
+                data: {
+                  code: projectCode,
+                  name: dbSheet.title || `Chantier ${dbSheet.clientName}`,
+                  description: `Projet issu de la Fiche de Coût ${dbSheet.reference} validée par la Direction Générale.`,
+                  clientName: dbSheet.clientName,
+                  sector: dbSheet.sector || 'OIL_AND_GAS',
+                  managerId: rpUser?.id || user?.id || 'usr-rp-001',
+                  siteLocation: dbSheet.siteLocation || 'Zone Industrielle Skikda RA1K',
+                  startDate: new Date(),
+                  contractEndDate: new Date(Date.now() + 60 * 86400000),
+                  contractAmount: dbSheet.proposedSellingPrice || dbSheet.totalEstimatedCost,
+                  budgetAmount: dbSheet.totalEstimatedCost,
+                  committedCost: 0,
+                  actualCost: 0,
+                  physicalProgress: 0,
+                  financialProgress: 0,
+                  status: 'IN_PROGRESS',
+                  riskLevel: 'LOW',
+                  priority: 'NORMAL',
+                  objectives: 'Démarrage et mobilisation immédiate suite à la validation DG.',
+                }
+              });
+            }
+          }
+
           await this.logAudit('ARBITRATE_COST_SHEET', 'COMMERCIAL', dbSheet.reference, `Arbitrage DG : ${decision} (${notes})`, user);
         }
       } catch (err) {
