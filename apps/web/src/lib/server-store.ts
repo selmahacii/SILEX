@@ -683,6 +683,7 @@ export interface StoredClientSatisfactionSurvey {
   responsivenessScore: number;// 1-10
   recommendationScore: number;// 1-10
   overallScorePercent: number;// Moyenne / 10 * 100
+  overallScore?: number;
   appreciation: 'EXCELLENT' | 'SATISFAISANT' | 'MOYEN' | 'A_AMELIORER';
   comments?: string;
   clientSignatory?: string;
@@ -7489,6 +7490,7 @@ class ServerStore {
       responsivenessScore: rScore,
       recommendationScore: recScore,
       overallScorePercent,
+      overallScore: overallScorePercent,
       appreciation,
       comments: data.comments || '',
       clientSignatory: data.clientSignatory || data.contactName || '',

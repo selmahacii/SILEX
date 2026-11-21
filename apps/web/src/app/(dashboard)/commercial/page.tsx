@@ -1709,7 +1709,7 @@ export default function CommercialModulePage() {
               <div className="flex items-center justify-between mt-1">
                 <span className="text-2xl font-black text-emerald-600">
                   {surveys.length > 0
-                    ? `${(surveys.reduce((acc, s) => acc + (s.overallScore || 0), 0) / surveys.length).toFixed(1)}%`
+                    ? `${(surveys.reduce((acc, s) => acc + (s.overallScore ?? s.overallScorePercent ?? 0), 0) / surveys.length).toFixed(1)}%`
                     : 'N/A'}
                 </span>
                 <Star className="w-6 h-6 text-amber-400 fill-amber-400" />
@@ -1819,13 +1819,13 @@ export default function CommercialModulePage() {
                         </td>
                         <td className="p-3 align-top text-center">
                           <div className="inline-flex flex-col items-center">
-                            <span className="text-base font-black text-emerald-700">{s.overallScore}%</span>
+                            <span className="text-base font-black text-emerald-700">{s.overallScore ?? s.overallScorePercent}%</span>
                             <div className="flex gap-0.5 mt-0.5">
                               {Array.from({ length: 5 }).map((_, i) => (
                                 <Star
                                   key={i}
                                   className={`w-3 h-3 ${
-                                    i < Math.round((s.overallScore || 0) / 20)
+                                    i < Math.round((s.overallScore ?? s.overallScorePercent ?? 0) / 20)
                                       ? 'text-amber-400 fill-amber-400'
                                       : 'text-slate-200'
                                   }`}
@@ -3610,7 +3610,7 @@ export default function CommercialModulePage() {
                 </div>
                 <div className="text-right">
                   <span className="text-[10px] font-black uppercase text-slate-500 block">Score Global Pondéré</span>
-                  <span className="text-2xl font-black text-emerald-700">{selectedSurveyForPrint.overallScore}%</span>
+                  <span className="text-2xl font-black text-emerald-700">{selectedSurveyForPrint.overallScore ?? selectedSurveyForPrint.overallScorePercent}%</span>
                 </div>
               </div>
 
