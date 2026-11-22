@@ -1723,11 +1723,13 @@ export default function CommercialModulePage() {
                 <span className="text-2xl font-black text-emerald-600">
                   {surveys.length > 0
                     ? `${(surveys.reduce((acc, s) => acc + (s.overallScore ?? s.overallScorePercent ?? 0), 0) / surveys.length).toFixed(1)}%`
-                    : 'N/A'}
+                    : '0.0%'}
                 </span>
                 <Star className="w-6 h-6 text-amber-400 fill-amber-400" />
               </div>
-              <p className="text-[10.5px] text-slate-500 mt-1">Objectif qualité &gt; 85%</p>
+              <p className="text-[10.5px] text-slate-500 mt-1">
+                {surveys.length > 0 ? 'Objectif qualité > 85%' : '0 enquête enregistrée'}
+              </p>
             </div>
 
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
@@ -1736,11 +1738,13 @@ export default function CommercialModulePage() {
                 <span className="text-2xl font-black text-indigo-700">
                   {surveys.length > 0
                     ? `${(surveys.reduce((acc, s) => acc + (s.hseScore || 0), 0) / surveys.length).toFixed(1)} / 10`
-                    : 'N/A'}
+                    : '0.0 / 10'}
                 </span>
                 <ShieldCheck className="w-6 h-6 text-indigo-500" />
               </div>
-              <p className="text-[10.5px] text-slate-500 mt-1">Sécurité & procédures ATEX</p>
+              <p className="text-[10.5px] text-slate-500 mt-1">
+                {surveys.length > 0 ? 'Sécurité & procédures ATEX' : 'Conformité règles de sécurité'}
+              </p>
             </div>
 
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
@@ -1748,12 +1752,14 @@ export default function CommercialModulePage() {
               <div className="flex items-center justify-between mt-1">
                 <span className="text-2xl font-black text-emerald-700">
                   {surveys.length > 0
-                    ? `${(surveys.reduce((acc, s) => acc + (s.recommendationScore || 0), 0) / surveys.length * 10).toFixed(0)}%`
-                    : 'N/A'}
+                    ? `${((surveys.reduce((acc, s) => acc + (s.recommendationScore || 0), 0) / surveys.length) * 10).toFixed(0)}%`
+                    : '0%'}
                 </span>
                 <ThumbsUp className="w-6 h-6 text-emerald-600" />
               </div>
-              <p className="text-[10.5px] text-slate-500 mt-1">Fidélité & renouvellement</p>
+              <p className="text-[10.5px] text-slate-500 mt-1">
+                {surveys.length > 0 ? 'Fidélité & renouvellement' : 'Taux calculé post-réception'}
+              </p>
             </div>
           </div>
 
