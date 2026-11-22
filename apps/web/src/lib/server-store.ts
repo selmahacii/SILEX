@@ -1797,12 +1797,7 @@ class ServerStore {
     // 3. Matrice RBAC initiale
     this.rolePermissions = JSON.parse(JSON.stringify(DEFAULT_RBAC_MATRIX));
 
-    // 4. Données de démonstration Commercial & Fiche de Coût
-    this.initCommercialBaseline();
-    this.initProjectsBaseline();
-    this.initProcurementBaseline();
-    this.initHrBaseline();
-    this.initFinanceBaseline();
+    // 4. Base vierge : Aucun mockdata ni fake data injecté. Seuls les utilisateurs et rôles sont configurés.
   }
 
 
