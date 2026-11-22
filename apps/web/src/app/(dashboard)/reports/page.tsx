@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { api } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
 import { downloadXLSX, XlsxColumn } from '@/lib/xlsx-export';
+import { ComplianceModal } from '@/components/compliance-modal';
 import {
   formatCurrencyDA,
   formatDateDZ,
@@ -85,6 +86,7 @@ export default function ReportsPage() {
   const { activeRole } = useAuth();
   const [projects, setProjects] = useState<ProjectReportItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showComplianceModal, setShowComplianceModal] = useState(false);
 
   // -------------------------------------------------------------------------
   // 3.1. FILTRES MULTI-CRITÈRES
@@ -554,6 +556,14 @@ export default function ReportsPage() {
           >
             <Printer className="w-4 h-4" />
             <span>Imprimer / PDF</span>
+          </button>
+          <button
+            onClick={() => setShowComplianceModal(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white text-xs font-semibold rounded-md transition-colors shadow-xs cursor-pointer"
+            title="Consulter et générer la Fiche de Conformité aux 5 modules du Cahier des Charges Silex"
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-200" />
+            <span>Fiche de Conformité (5 Modules)</span>
           </button>
         </div>
       </div>
@@ -1175,6 +1185,12 @@ export default function ReportsPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal Fiche de Conformité au Cahier des Charges */}
+      <ComplianceModal
+        isOpen={showComplianceModal}
+        onClose={() => setShowComplianceModal(false)}
+      />
     </div>
   );
 }

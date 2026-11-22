@@ -9,6 +9,7 @@ import {
   Clock,
   ArrowUpRight,
   ShieldAlert,
+  ShieldCheck,
   ArrowRight,
   FileCheck,
   Building2,
@@ -38,6 +39,7 @@ import { api } from '@/lib/api-client';
 import { useAuth } from '@/lib/auth-context';
 import { formatCurrencyDA, SILEX_DOMAINS, COMPANY_NAME, COMPANY_ESTABLISHED } from '@silex/shared';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { ComplianceModal } from '@/components/compliance-modal';
 
 const DOMAIN_ICONS: Record<string, React.ElementType> = {
   'accompagnement-projets': Compass,
@@ -63,6 +65,7 @@ export default function ExecutiveDashboardPage() {
   const [costDistribution, setCostDistribution] = useState<any[]>([]);
   const [commercialKpis, setCommercialKpis] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showComplianceModal, setShowComplianceModal] = useState(false);
 
   const loadData = async () => {
     try {
@@ -123,6 +126,14 @@ export default function ExecutiveDashboardPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowComplianceModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors shadow-2xs cursor-pointer"
+            title="Consulter et générer la Fiche de Conformité aux 5 modules du Cahier des Charges Silex"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Fiche Conformité 5 Modules</span>
+          </button>
           <button
             onClick={loadData}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white border border-[#E1E6ED] rounded-lg text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
@@ -538,6 +549,12 @@ export default function ExecutiveDashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal Fiche de Conformité au Cahier des Charges */}
+      <ComplianceModal
+        isOpen={showComplianceModal}
+        onClose={() => setShowComplianceModal(false)}
+      />
     </div>
   );
 }
