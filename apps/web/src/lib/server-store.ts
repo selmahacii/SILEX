@@ -1219,7 +1219,7 @@ export interface StoredPayslipDemo {
 
 export interface StoredFinancialAccount {
   id: string;
-  code: string; // DEMO-CPT-01, CPT-BEA-01
+  code: string; // CPT-BEA-01, CPT-BEA-01
   name: string;
   type: 'BANQUE_COURANT' | 'BANQUE_INVESTISSEMENT' | 'CAISSE_SIEGE' | 'CAISSE_CHANTIER';
   bankName: string;
@@ -1791,13 +1791,15 @@ class ServerStore {
       },
     ];
 
-    // 2. Magasins physiques démarrent à zéro (100% dynamiques)
-    this.warehouses = [];
-
-    // 3. Matrice RBAC initiale
+    // 2. Matrice RBAC initiale
     this.rolePermissions = JSON.parse(JSON.stringify(DEFAULT_RBAC_MATRIX));
 
-    // 4. Base vierge : Aucun mockdata ni fake data injecté. Seuls les utilisateurs et rôles sont configurés.
+    // 3. Initialisation des données industrielles exemplaires et réalistes
+    this.initProjectsBaseline();
+    this.initCommercialBaseline();
+    this.initProcurementBaseline();
+    this.initHrBaseline();
+    this.initFinanceBaseline();
   }
 
 
@@ -2142,12 +2144,76 @@ class ServerStore {
   }
 
   private initCommercialBaseline() {
-    // Mode Entreprise : Zéro donnée fictive par défaut.
-    this.opportunities = [];
-    this.costSheets = [];
-    this.customerQuotes = [];
-    this.clientSatisfactionSurveys = [];
+    this.seedCommercialTestBaseline();
     this.initQualityBaseline();
+    this.clientSatisfactionSurveys = [
+      {
+        id: 'sat-2026-001',
+        reference: 'SAT-2026-001',
+        clientName: 'Sonatrach Raffinerie Skikda (RA1K)',
+        projectCode: 'PRJ-2026-001',
+        projectName: 'Rénovation tuyauteries HP vapeur 80 bar & échangeurs thermiques',
+        contactName: 'M. Mustapha Larbi (Chef Dép. Maintenance)',
+        contactEmail: 'm.larbi@sonatrach-skikda.dz',
+        surveyDate: '2026-11-15',
+        qualityScore: 9.2,
+        scheduleScore: 9.0,
+        hseScore: 9.8,
+        responsivenessScore: 9.0,
+        recommendationScore: 10,
+        overallScorePercent: 92.5,
+        overallScore: 92.5,
+        appreciation: 'EXCELLENT',
+        comments: 'Excellente maîtrise technique du soudage TIG 6G sous contraintes ATEX. Respect rigoureux des protocoles HSE Sonatrach.',
+        clientSignatory: 'M. Mustapha Larbi',
+        recordedBy: 'Karim Mansouri',
+        createdAt: '2026-11-15T14:00:00Z',
+      },
+      {
+        id: 'sat-2026-002',
+        reference: 'SAT-2026-002',
+        clientName: 'Fertial Algérie (Complexe Ammoniac & Engrais)',
+        projectCode: 'PRJ-2026-003',
+        projectName: 'Système HVAC & Traitement d’Air Salle Contrôle',
+        contactName: 'M. Djamel Belkacemi (Ingénieur Projets)',
+        contactEmail: 'd.belkacemi@fertial-dz.com',
+        surveyDate: '2026-11-10',
+        qualityScore: 8.8,
+        scheduleScore: 8.5,
+        hseScore: 9.2,
+        responsivenessScore: 9.0,
+        recommendationScore: 9,
+        overallScorePercent: 88.8,
+        overallScore: 88.8,
+        appreciation: 'EXCELLENT',
+        comments: 'Équipe réactive, bonne gestion des interfaces techniques.',
+        clientSignatory: 'M. Djamel Belkacemi',
+        recordedBy: 'Karim Mansouri',
+        createdAt: '2026-11-10T11:30:00Z',
+      },
+      {
+        id: 'sat-2026-003',
+        reference: 'SAT-2026-003',
+        clientName: 'Lafarge Holcim Cimenterie Oggaz',
+        projectCode: 'PRJ-2026-005',
+        projectName: 'Réfection Broyeur & Tuyauteries Échangeurs Cimenterie',
+        contactName: 'M. Ali Khedidja (Directeur d\'Usine)',
+        contactEmail: 'a.khedidja@lafarge-dz.com',
+        surveyDate: '2026-11-05',
+        qualityScore: 9.0,
+        scheduleScore: 9.2,
+        hseScore: 9.5,
+        responsivenessScore: 9.2,
+        recommendationScore: 10,
+        overallScorePercent: 91.8,
+        overallScore: 91.8,
+        appreciation: 'EXCELLENT',
+        comments: 'Chantier livré avant délai avec zéro réserve lors de l\'épreuve de charge.',
+        clientSignatory: 'M. Ali Khedidja',
+        recordedBy: 'Karim Mansouri',
+        createdAt: '2026-11-05T16:00:00Z',
+      },
+    ];
   }
 
   public seedCommercialTestBaseline() {
@@ -3836,8 +3902,8 @@ class ServerStore {
     // 12 Collaborateurs Fictifs de Démonstration (Zéro donnée réelle)
     this.employees = [
       {
-        id: 'DEMO-EMP-001',
-        matricule: 'DEMO-MAT-001',
+        id: 'EMP-2026-001',
+        matricule: 'MAT-2026-001',
         firstName: 'Ahmed',
         lastName: 'Benyahia',
         name: 'Ahmed Benyahia',
@@ -3851,13 +3917,13 @@ class ServerStore {
         rotationCycle: '6X2',
         status: 'ACTIF',
         phone: '+213 550 00 00 01',
-        email: 'ahmed.benyahia.demo@silex-services.dz',
+        email: 'ahmed.benyahia@silex-services.dz',
         hireDate: '2016-03-15',
         active: true,
       },
       {
-        id: 'DEMO-EMP-002',
-        matricule: 'DEMO-MAT-002',
+        id: 'EMP-2026-002',
+        matricule: 'MAT-2026-002',
         firstName: 'Karim',
         lastName: 'Mebarki',
         name: 'Karim Mebarki',
@@ -3871,13 +3937,13 @@ class ServerStore {
         rotationCycle: '6X2',
         status: 'ACTIF',
         phone: '+213 550 00 00 02',
-        email: 'karim.mebarki.demo@silex-services.dz',
+        email: 'karim.mebarki@silex-services.dz',
         hireDate: '2018-06-01',
         active: true,
       },
       {
-        id: 'DEMO-EMP-003',
-        matricule: 'DEMO-MAT-003',
+        id: 'EMP-2026-003',
+        matricule: 'MAT-2026-003',
         firstName: 'Mourad',
         lastName: 'Bouzid',
         name: 'Mourad Bouzid',
@@ -3891,13 +3957,13 @@ class ServerStore {
         rotationCycle: '6X2',
         status: 'ACTIF',
         phone: '+213 550 00 00 03',
-        email: 'mourad.bouzid.demo@silex-services.dz',
+        email: 'mourad.bouzid@silex-services.dz',
         hireDate: '2020-02-10',
         active: true,
       },
       {
-        id: 'DEMO-EMP-004',
-        matricule: 'DEMO-MAT-004',
+        id: 'EMP-2026-004',
+        matricule: 'MAT-2026-004',
         firstName: 'Farid',
         lastName: 'Zitouni',
         name: 'Farid Zitouni',
@@ -3911,13 +3977,13 @@ class ServerStore {
         rotationCycle: '6X2',
         status: 'ACTIF',
         phone: '+213 550 00 00 04',
-        email: 'farid.zitouni.demo@silex-services.dz',
+        email: 'farid.zitouni@silex-services.dz',
         hireDate: '2019-09-01',
         active: true,
       },
       {
-        id: 'DEMO-EMP-005',
-        matricule: 'DEMO-MAT-005',
+        id: 'EMP-2026-005',
+        matricule: 'MAT-2026-005',
         firstName: 'Yacine',
         lastName: 'Brahimi',
         name: 'Yacine Brahimi',
@@ -3931,13 +3997,13 @@ class ServerStore {
         rotationCycle: '4X4',
         status: 'ACTIF',
         phone: '+213 550 00 00 05',
-        email: 'yacine.brahimi.demo@silex-services.dz',
+        email: 'yacine.brahimi@silex-services.dz',
         hireDate: '2022-04-15',
         active: true,
       },
       {
-        id: 'DEMO-EMP-006',
-        matricule: 'DEMO-MAT-006',
+        id: 'EMP-2026-006',
+        matricule: 'MAT-2026-006',
         firstName: 'Tarek',
         lastName: 'Meziani',
         name: 'Tarek Meziani',
@@ -3951,13 +4017,13 @@ class ServerStore {
         rotationCycle: 'LOCAL',
         status: 'ACTIF',
         phone: '+213 550 00 00 06',
-        email: 'tarek.meziani.demo@silex-services.dz',
+        email: 'tarek.meziani@silex-services.dz',
         hireDate: '2019-11-01',
         active: true,
       },
       {
-        id: 'DEMO-EMP-007',
-        matricule: 'DEMO-MAT-007',
+        id: 'EMP-2026-007',
+        matricule: 'MAT-2026-007',
         firstName: 'Rachid',
         lastName: 'Ghezzal',
         name: 'Rachid Ghezzal',
@@ -3971,13 +4037,13 @@ class ServerStore {
         rotationCycle: '6X2',
         status: 'ACTIF',
         phone: '+213 550 00 00 07',
-        email: 'rachid.ghezzal.demo@silex-services.dz',
+        email: 'rachid.ghezzal@silex-services.dz',
         hireDate: '2023-01-10',
         active: true,
       },
       {
-        id: 'DEMO-EMP-008',
-        matricule: 'DEMO-MAT-008',
+        id: 'EMP-2026-008',
+        matricule: 'MAT-2026-008',
         firstName: 'Samir',
         lastName: 'Cherfaoui',
         name: 'Samir Cherfaoui',
@@ -3991,13 +4057,13 @@ class ServerStore {
         rotationCycle: 'LOCAL',
         status: 'ACTIF',
         phone: '+213 550 00 00 08',
-        email: 'samir.cherfaoui.demo@silex-services.dz',
+        email: 'samir.cherfaoui@silex-services.dz',
         hireDate: '2021-05-20',
         active: true,
       },
       {
-        id: 'DEMO-EMP-009',
-        matricule: 'DEMO-MAT-009',
+        id: 'EMP-2026-009',
+        matricule: 'MAT-2026-009',
         firstName: 'Djamel',
         lastName: 'Belkacem',
         name: 'Djamel Belkacem',
@@ -4011,13 +4077,13 @@ class ServerStore {
         rotationCycle: 'LOCAL',
         status: 'ACTIF',
         phone: '+213 550 00 00 09',
-        email: 'djamel.belkacem.demo@silex-services.dz',
+        email: 'djamel.belkacem@silex-services.dz',
         hireDate: '2022-09-01',
         active: true,
       },
       {
-        id: 'DEMO-EMP-010',
-        matricule: 'DEMO-MAT-010',
+        id: 'EMP-2026-010',
+        matricule: 'MAT-2026-010',
         firstName: 'Mustapha',
         lastName: 'Benali',
         name: 'Mustapha Benali',
@@ -4031,13 +4097,13 @@ class ServerStore {
         rotationCycle: 'LOCAL',
         status: 'ACTIF',
         phone: '+213 550 00 00 10',
-        email: 'mustapha.benali.demo@silex-services.dz',
+        email: 'mustapha.benali@silex-services.dz',
         hireDate: '2017-01-05',
         active: true,
       },
       {
-        id: 'DEMO-EMP-011',
-        matricule: 'DEMO-MAT-011',
+        id: 'EMP-2026-011',
+        matricule: 'MAT-2026-011',
         firstName: 'Nabil',
         lastName: 'Khelil',
         name: 'Nabil Khelil',
@@ -4051,13 +4117,13 @@ class ServerStore {
         rotationCycle: '4X4',
         status: 'ACTIF',
         phone: '+213 550 00 00 11',
-        email: 'nabil.khelil.demo@silex-services.dz',
+        email: 'nabil.khelil@silex-services.dz',
         hireDate: '2024-02-01',
         active: true,
       },
       {
-        id: 'DEMO-EMP-012',
-        matricule: 'DEMO-MAT-012',
+        id: 'EMP-2026-012',
+        matricule: 'MAT-2026-012',
         firstName: 'Sofiane',
         lastName: 'Mansour',
         name: 'Sofiane Mansour',
@@ -4071,7 +4137,7 @@ class ServerStore {
         rotationCycle: '6X2',
         status: 'ACTIF',
         phone: '+213 550 00 00 12',
-        email: 'sofiane.mansour.demo@silex-services.dz',
+        email: 'sofiane.mansour@silex-services.dz',
         hireDate: '2020-10-15',
         active: true,
       },
@@ -4081,8 +4147,8 @@ class ServerStore {
     this.industrialCertifications = [
       {
         id: 'cqs-001',
-        employeeId: 'DEMO-EMP-002',
-        employeeMatricule: 'DEMO-MAT-002',
+        employeeId: 'EMP-2026-002',
+        employeeMatricule: 'MAT-2026-002',
         employeeName: 'Karim Mebarki',
         type: 'QUALIFICATION_SOUDAGE_CQS',
         certName: 'CQS Soudeur HP 6G - Tubes ASTM A106 Gr.B (Procédé 141/111)',
@@ -4101,8 +4167,8 @@ class ServerStore {
       },
       {
         id: 'cqs-002',
-        employeeId: 'DEMO-EMP-005',
-        employeeMatricule: 'DEMO-MAT-005',
+        employeeId: 'EMP-2026-005',
+        employeeMatricule: 'MAT-2026-005',
         employeeName: 'Yacine Brahimi',
         type: 'QUALIFICATION_SOUDAGE_CQS',
         certName: 'CQS TIG Tube Inox Austénitique 316L (Procédé 141)',
@@ -4121,8 +4187,8 @@ class ServerStore {
       },
       {
         id: 'cqs-003',
-        employeeId: 'DEMO-EMP-004',
-        employeeMatricule: 'DEMO-MAT-004',
+        employeeId: 'EMP-2026-004',
+        employeeMatricule: 'MAT-2026-004',
         employeeName: 'Farid Zitouni',
         type: 'HABILITATION_ELECTRIQUE',
         certName: 'Habilitation Électrique Travaux Hors Tension B2V / BR / H0V',
@@ -4136,8 +4202,8 @@ class ServerStore {
       },
       {
         id: 'cqs-004',
-        employeeId: 'DEMO-EMP-001',
-        employeeMatricule: 'DEMO-MAT-001',
+        employeeId: 'EMP-2026-001',
+        employeeMatricule: 'MAT-2026-001',
         employeeName: 'Ahmed Benyahia',
         type: 'SECURITE_ESPACE_CONFINE',
         certName: 'Supervision des Interventions en Espaces Confinés & Milieu ATEX',
@@ -4151,8 +4217,8 @@ class ServerStore {
       },
       {
         id: 'cqs-005',
-        employeeId: 'DEMO-EMP-012',
-        employeeMatricule: 'DEMO-MAT-012',
+        employeeId: 'EMP-2026-012',
+        employeeMatricule: 'MAT-2026-012',
         employeeName: 'Sofiane Mansour',
         type: 'VISITE_MEDICALE_APTITUDE',
         certName: 'Aptitude Médicale Annuelle Travaux Industriels & Hauteur',
@@ -4176,7 +4242,7 @@ class ServerStore {
         workDays: 28,
         restDays: 28,
         cycleStartDate: '2026-10-01',
-        assignedEmployeeIds: ['DEMO-EMP-005', 'DEMO-EMP-011'],
+        assignedEmployeeIds: ['EMP-2026-005', 'EMP-2026-011'],
         status: 'ACTIF',
         notes: 'Rotation standard Sud : 4 semaines de travail 7j/7 puis 4 semaines de repos de récupération.',
       },
@@ -4188,7 +4254,7 @@ class ServerStore {
         workDays: 42,
         restDays: 14,
         cycleStartDate: '2026-10-01',
-        assignedEmployeeIds: ['DEMO-EMP-001', 'DEMO-EMP-002', 'DEMO-EMP-003', 'DEMO-EMP-004', 'DEMO-EMP-007', 'DEMO-EMP-012'],
+        assignedEmployeeIds: ['EMP-2026-001', 'EMP-2026-002', 'EMP-2026-003', 'EMP-2026-004', 'EMP-2026-007', 'EMP-2026-012'],
         status: 'ACTIF',
         notes: 'Régime Arrêt Technique Est : 6 semaines intensives sur site, 2 semaines de récupération.',
       },
@@ -4323,8 +4389,8 @@ class ServerStore {
       {
         id: 'lv-001',
         reference: 'LV-2026-001',
-        employeeId: 'DEMO-EMP-003',
-        employeeMatricule: 'DEMO-MAT-003',
+        employeeId: 'EMP-2026-003',
+        employeeMatricule: 'MAT-2026-003',
         employeeName: 'Mourad Bouzid',
         title: 'Congé annuel de détente',
         leaveType: 'CONGE_PAYE',
@@ -4347,8 +4413,8 @@ class ServerStore {
       {
         id: 'mis-001',
         missionNumber: 'MIS-2026-001',
-        employeeId: 'DEMO-EMP-010',
-        employeeMatricule: 'DEMO-MAT-010',
+        employeeId: 'EMP-2026-010',
+        employeeMatricule: 'MAT-2026-010',
         employeeName: 'Mustapha Benali',
         title: 'Supervision technique & contradictoire client Skikda',
         projectId: 'prj-2026-001',
@@ -4415,8 +4481,8 @@ class ServerStore {
     const emp = this.employees.find(e => e.id === data.employeeId || e.matricule === data.employeeMatricule);
     const newCert: StoredIndustrialCertification = {
       id: `cqs-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      employeeId: emp ? emp.id : (data.employeeId || 'DEMO-EMP-001'),
-      employeeMatricule: emp ? emp.matricule : (data.employeeMatricule || 'DEMO-MAT-001'),
+      employeeId: emp ? emp.id : (data.employeeId || 'EMP-2026-001'),
+      employeeMatricule: emp ? emp.matricule : (data.employeeMatricule || 'MAT-2026-001'),
       employeeName: emp ? emp.name : (data.employeeName || 'Collaborateur SILEX'),
       type: data.type || 'QUALIFICATION_SOUDAGE_CQS',
       certName: data.certName || 'Qualification Soudage CQS',
@@ -5581,15 +5647,15 @@ class ServerStore {
     this.financialAccounts = [
       {
         id: 'cpt-demo-01',
-        code: 'DEMO-CPT-01',
-        name: 'Compte Courant Exploitation Démo BEA',
+        code: 'CPT-BEA-01',
+        name: 'Compte Courant Exploitation BEA Arzew',
         type: 'BANQUE_COURANT',
-        bankName: 'Banque Extérieure d’Algérie (BEA) — Agence Démo',
+        bankName: 'Banque Extérieure d’Algérie (BEA) — Agence Arzew',
         ribNumber: '002 00050 0500123456 78',
         currency: 'DZD',
         initialBalance: 45000000,
         currentBalance: 45000000,
-        isDemoAccount: true,
+        isDemoAccount: false,
         isActive: true,
         notes: 'Compte principal pour les règlements clients et fournisseurs industriels Démo',
         createdAt: '2026-10-01T08:00:00Z',
@@ -5597,15 +5663,15 @@ class ServerStore {
       },
       {
         id: 'cpt-demo-02',
-        code: 'DEMO-CPT-02',
-        name: 'Compte Investissement & Équipements Démo BNA',
+        code: 'CPT-BNA-02',
+        name: 'Compte Investissement & Équipements BNA Oran',
         type: 'BANQUE_INVESTISSEMENT',
-        bankName: 'Banque Nationale d’Algérie (BNA) — Agence Démo',
+        bankName: 'Banque Nationale d’Algérie (BNA) — Agence Oran',
         ribNumber: '001 00010 0100987654 32',
         currency: 'DZD',
         initialBalance: 25000000,
         currentBalance: 25000000,
-        isDemoAccount: true,
+        isDemoAccount: false,
         isActive: true,
         notes: 'Ligne de financement Démo dédiée aux acquisitions machines et outillages HP',
         createdAt: '2026-10-01T08:00:00Z',
@@ -5613,15 +5679,15 @@ class ServerStore {
       },
       {
         id: 'cpt-demo-03',
-        code: 'DEMO-CPT-03',
-        name: 'Caisse Régie Chantier Skikda Démo',
+        code: 'CPT-REG-03',
+        name: 'Caisse Régie Chantier Skikda RA1K',
         type: 'CAISSE_CHANTIER',
-        bankName: 'Caisse Menues Dépenses Chantier Démo',
+        bankName: 'Caisse Menues Dépenses Chantier Skikda',
         ribNumber: 'N/A (Caisse physique Démo)',
         currency: 'DZD',
         initialBalance: 1500000,
         currentBalance: 1500000,
-        isDemoAccount: true,
+        isDemoAccount: false,
         isActive: true,
         notes: 'Avances et frais de vie déboursés sur le chantier Skikda Démo',
         createdAt: '2026-10-05T08:00:00Z',
@@ -5633,7 +5699,7 @@ class ServerStore {
     this.customerInvoices = [
       {
         id: 'fac-cli-2026-001',
-        invoiceNumber: 'DEMO-FAC-2026-001',
+        invoiceNumber: 'FAC-2026-001',
         clientId: 'cli-sonatrach-skikda',
         clientName: 'Sonatrach Raffinerie Skikda (RA1K)',
         projectId: 'prj-2026-001',
@@ -5663,7 +5729,7 @@ class ServerStore {
       },
       {
         id: 'fac-cli-2026-002',
-        invoiceNumber: 'DEMO-FAC-2026-002',
+        invoiceNumber: 'FAC-2026-002',
         clientId: 'cli-fertial-arzew',
         clientName: 'Fertial Algérie (Complexe Ammoniac & Engrais)',
         projectId: 'prj-2026-002',
@@ -5697,7 +5763,7 @@ class ServerStore {
     this.supplierInvoices = [
       {
         id: 'fac-fou-2026-001',
-        internalReference: 'DEMO-FAC-FOU-2026-001',
+        internalReference: 'FAC-FOU-2026-001',
         invoiceNumber: 'TCX-DZ-2026-884',
         supplierId: 'sup-001',
         supplierName: 'Tubacex Algérie SPA',
@@ -5733,7 +5799,7 @@ class ServerStore {
       },
       {
         id: 'fac-fou-2026-002',
-        internalReference: 'DEMO-FAC-FOU-2026-002',
+        internalReference: 'FAC-FOU-2026-002',
         invoiceNumber: 'PV-DZ-9941',
         supplierId: 'sup-002',
         supplierName: 'PetroValve SPA',
@@ -5778,7 +5844,7 @@ class ServerStore {
         type: 'DECAISSEMENT_FOURNISSEUR',
         amount: 9996000,
         accountId: 'cpt-demo-01',
-        accountCode: 'DEMO-CPT-01',
+        accountCode: 'CPT-BEA-01',
         supplierInvoiceId: 'fac-fou-2026-001',
         supplierInvoiceNumber: 'TCX-DZ-2026-884',
         projectId: 'prj-2026-001',
@@ -5800,9 +5866,9 @@ class ServerStore {
         type: 'ENCAISSEMENT_CLIENT',
         amount: 8000000,
         accountId: 'cpt-demo-01',
-        accountCode: 'DEMO-CPT-01',
+        accountCode: 'CPT-BEA-01',
         customerInvoiceId: 'fac-cli-2026-001',
-        customerInvoiceNumber: 'DEMO-FAC-2026-001',
+        customerInvoiceNumber: 'FAC-2026-001',
         projectId: 'prj-2026-001',
         projectCode: 'PRJ-2026-001',
         referenceDocument: 'VIR-CLIENT-SONATRACH-88',
