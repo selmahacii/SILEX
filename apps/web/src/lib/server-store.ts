@@ -1794,16 +1794,8 @@ class ServerStore {
     // 2. Matrice RBAC initiale
     this.rolePermissions = JSON.parse(JSON.stringify(DEFAULT_RBAC_MATRIX));
 
-    // 3. Initialisation des données industrielles exemplaires et réalistes
-    this.initProjectsBaseline();
-    this.initCommercialBaseline();
-    this.initProcurementBaseline();
-    this.initHrBaseline();
-    this.initFinanceBaseline();
-    this.initCustomerQuotesBaseline();
-    this.initStockMovementsBaseline();
-    this.initMaintenanceBaseline();
-    this.initAuditBaseline();
+    // 3. Données de démonstration purgées : seuls les utilisateurs et leur RBAC sont conservés
+    // Les listes (projets, opportunités, achats, stocks, rh, finance) sont initialisées à vide ([]).
   }
 
 
